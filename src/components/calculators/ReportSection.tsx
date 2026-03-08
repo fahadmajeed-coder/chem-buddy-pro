@@ -255,8 +255,7 @@ export function ReportSection() {
                     <input type="text" value={entry.yellowRange} onChange={(e) => updateEntry(entry.id, 'yellowRange', e.target.value)}
                       placeholder="e.g. 95-100"
                       className="w-full bg-transparent border border-transparent hover:border-border focus:border-warning/60 rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
-                    </td>
-                  ))}
+                  </td>
                   <td className="py-2 px-3 text-center">{statusIcon(entry.status)}</td>
                   <td className="py-2 px-2">
                     {entries.length > 1 && (
