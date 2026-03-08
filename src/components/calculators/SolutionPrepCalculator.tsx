@@ -302,7 +302,7 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                 <InputField label="Molecular Weight" unit="g/mol" value={step.mw} onChange={(v) => updateStep(step.id, 'mw', v)} disabled={locked} />
                 <InputField label="n-Factor" unit="" value={step.nFactor} onChange={(v) => updateStep(step.id, 'nFactor', v)} disabled={locked} placeholder="1" />
                 <InputField label="Purity" unit="%" value={step.purity} onChange={(v) => updateStep(step.id, 'purity', v)} disabled={locked} placeholder="100" />
-                <InputField label="Density" unit="g/mL" value={step.density} onChange={(v) => updateStep(step.id, 'density', v)} disabled={locked} placeholder="Optional" />
+                <InputField label="Density" unit="g/mL" value={step.density} onChange={(v) => updateStep(step.id, 'density', v)} disabled={locked} placeholder={step.reagentState === 'liquid' ? 'Required' : 'Optional'} />
               </div>
             </div>
 
