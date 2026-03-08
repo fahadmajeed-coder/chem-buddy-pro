@@ -406,14 +406,46 @@ export function AnalyticalTestSection() {
         );
       })}
 
-      {/* Add another formula button */}
-      {blocks.length > 0 && !locked && savedFormulas.length > blocks.length && (
-        <button
-          onClick={() => setShowPicker(true)}
-          className="w-full py-3 rounded-lg border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Another Formula
-        </button>
+      {/* Add another formula + Clear All */}
+      {blocks.length > 0 && !locked && (
+        <div className="flex items-center gap-3">
+          {savedFormulas.length > blocks.length && (
+            <button
+              onClick={() => setShowPicker(true)}
+              className="flex-1 py-3 rounded-lg border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Another Formula
+            </button>
+          )}
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="py-3 px-4 rounded-lg border border-dashed border-destructive/30 text-destructive/70 hover:border-destructive hover:text-destructive flex items-center justify-center gap-2 text-sm transition-all"
+          >
+            <Trash2 className="w-4 h-4" /> Clear All
+          </button>
+        </div>
+      )}
+
+      {/* Clear All confirmation */}
+      {showClearConfirm && (
+        <div className="glass-panel rounded-lg p-5 border border-destructive/30 animate-fade-in">
+          <p className="text-sm text-foreground font-medium mb-1">Remove all formulas?</p>
+          <p className="text-xs text-muted-foreground mb-4">This will remove all formula blocks and their sample data from this page.</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setBlocks([]); setShowClearConfirm(false); }}
+              className="px-4 py-2 rounded-md bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"
+            >
+              Yes, Clear All
+            </button>
+            <button
+              onClick={() => setShowClearConfirm(false)}
+              className="px-4 py-2 rounded-md bg-secondary text-secondary-foreground text-sm font-medium hover:bg-secondary/80 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
