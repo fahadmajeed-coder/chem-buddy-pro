@@ -107,6 +107,8 @@ export function ChemistryAssistant() {
     setIsTyping(true);
 
     if (useAI) {
+      const newCount = incrementAIUsage();
+      setAiUsage(getAIUsage());
       const history: ChatMessage[] = messages
         .filter(m => m.id !== 'welcome')
         .map(m => ({ role: m.role, content: m.content }));
