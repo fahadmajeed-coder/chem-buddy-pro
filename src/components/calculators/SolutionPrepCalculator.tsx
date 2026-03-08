@@ -430,7 +430,10 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
               </div>
             )}
 
-            {/* ───── Section 4: Equivalent Concentrations ───── */}
+            {/* ───── Section 4: Quick Unit Converter ───── */}
+            <QuickUnitConverter step={step} locked={locked} />
+
+            {/* ───── Section 5: Equivalent Concentrations ───── */}
             {r.conversions && (
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
