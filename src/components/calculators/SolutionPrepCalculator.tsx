@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
@@ -16,11 +16,21 @@ interface PrepStep {
   density: string;
 }
 
-export function SolutionPrepCalculator() {
+interface SolutionPrepCalculatorProps {
+  initialMw?: number | null;
+}
+
+export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProps) {
   const [locked, setLocked] = useState(false);
   const [steps, setSteps] = useState<PrepStep[]>([
     { id: '1', targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
   ]);
+
+  useEffect(() => {
+    if (initialMw) {
+      setSteps(prev => prev.map((s, i) => i === 0 ? { ...s, mw: initialMw.toString() } : s));
+    }
+  }, [initialMw]);
 
   const addStep = () => {
     setSteps(prev => [...prev, {
