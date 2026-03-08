@@ -49,6 +49,7 @@ export const DEFAULT_TEMPLATE: Omit<CalibrationCurveData, 'id' | 'createdAt'> = 
 };
 
 const FORMULA_VARIABLES = [
+  { key: 'Abs', label: 'Absorbance (sample)' },
   { key: 'C', label: 'Concentration from curve' },
   { key: 'DF', label: 'Dilution Factor' },
   { key: 'Vol', label: 'Final Volume (mL)' },
