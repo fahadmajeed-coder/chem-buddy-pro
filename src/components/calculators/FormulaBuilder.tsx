@@ -79,11 +79,49 @@ const OPERATIONS: Operation[] = [
   { token: 'max(', icon: 'max', name: 'Maximum', description: 'Largest of two or more values — max(a, b)', category: 'Min, Max & Clamp' },
   { token: 'clamp(', icon: '⟨⟩', name: 'Clamp', description: 'Keep value between min and max — clamp(value, min, max)', category: 'Min, Max & Clamp' },
 
-  // ─── Statistical ───
-  { token: 'average(', icon: 'x̄', name: 'Average (Mean)', description: 'Average of values — average(a, b, c)', category: 'Statistical' },
-  { token: 'sum(', icon: 'Σ', name: 'Sum', description: 'Add all values together — sum(a, b, c)', category: 'Statistical' },
-  { token: 'count(', icon: 'n', name: 'Count', description: 'Count how many values — count(a, b, c)', category: 'Statistical' },
-  { token: 'range(', icon: 'R', name: 'Range', description: 'Difference between largest and smallest', category: 'Statistical' },
+  // ─── Statistical — Central Tendency ───
+  { token: 'average(', icon: 'x̄', name: 'Average (Mean)', description: 'Arithmetic mean — average(a, b, c)', category: 'Statistical — Central Tendency' },
+  { token: 'median(', icon: 'M̃', name: 'Median', description: 'Middle value when sorted — median(a, b, c)', category: 'Statistical — Central Tendency' },
+  { token: 'geometricMean(', icon: 'GM', name: 'Geometric Mean', description: 'Nth root of product — geometricMean(a, b, c)', category: 'Statistical — Central Tendency' },
+  { token: 'harmonicMean(', icon: 'HM', name: 'Harmonic Mean', description: 'Reciprocal of average of reciprocals', category: 'Statistical — Central Tendency' },
+  { token: 'weightedAvg(', icon: 'wx̄', name: 'Weighted Average', description: 'weightedAvg(val1, wt1, val2, wt2, ...)', category: 'Statistical — Central Tendency' },
+
+  // ─── Statistical — Spread & Variability ───
+  { token: 'sum(', icon: 'Σ', name: 'Sum', description: 'Add all values — sum(a, b, c)', category: 'Statistical — Spread & Variability' },
+  { token: 'count(', icon: 'n', name: 'Count', description: 'Number of values — count(a, b, c)', category: 'Statistical — Spread & Variability' },
+  { token: 'range(', icon: 'R', name: 'Range', description: 'Max minus Min', category: 'Statistical — Spread & Variability' },
+  { token: 'variance(', icon: 'σ²', name: 'Variance (Population)', description: 'Average of squared deviations from mean', category: 'Statistical — Spread & Variability' },
+  { token: 'sampleVariance(', icon: 's²', name: 'Variance (Sample)', description: 'Using n−1 divisor (Bessel correction)', category: 'Statistical — Spread & Variability' },
+  { token: 'stdDev(', icon: 'σ', name: 'Std Deviation (Population)', description: 'Square root of population variance', category: 'Statistical — Spread & Variability' },
+  { token: 'sampleStdDev(', icon: 's', name: 'Std Deviation (Sample)', description: 'Square root of sample variance (n−1)', category: 'Statistical — Spread & Variability' },
+  { token: 'coeffVar(', icon: 'CV%', name: 'Coefficient of Variation', description: '(Std Dev / Mean) × 100 — relative variability', category: 'Statistical — Spread & Variability' },
+  { token: 'meanAbsDev(', icon: 'MAD', name: 'Mean Absolute Deviation', description: 'Average of absolute deviations from mean', category: 'Statistical — Spread & Variability' },
+  { token: 'sumOfSquares(', icon: 'SS', name: 'Sum of Squares', description: 'Sum of squared deviations from mean', category: 'Statistical — Spread & Variability' },
+
+  // ─── Statistical — Error & Uncertainty ───
+  { token: 'stdError(', icon: 'SE', name: 'Standard Error of Mean', description: 'Std Dev / √n — precision of mean estimate', category: 'Statistical — Error & Uncertainty' },
+  { token: 'relStdDev(', icon: 'RSD', name: 'Relative Std Deviation (RSD)', description: 'Same as CV% — (s/x̄)×100', category: 'Statistical — Error & Uncertainty' },
+  { token: 'confidenceInterval(', icon: 'CI', name: 'Confidence Interval (95%)', description: 'confidenceInterval(mean, stdDev, n) — returns ± margin', category: 'Statistical — Error & Uncertainty' },
+  { token: 'zScore(', icon: 'z', name: 'Z-Score', description: 'zScore(value, mean, stdDev) — how many std devs from mean', category: 'Statistical — Error & Uncertainty' },
+  { token: 'tValue(', icon: 't', name: 'T-Value (approx)', description: 'tValue(value, mean, stdDev, n)', category: 'Statistical — Error & Uncertainty' },
+  { token: 'pooledStdDev(', icon: 'sp', name: 'Pooled Std Deviation', description: 'pooledStdDev(s1, n1, s2, n2)', category: 'Statistical — Error & Uncertainty' },
+  { token: 'propagateAdd(', icon: '±+', name: 'Error Propagation (Add)', description: 'propagateAdd(err1, err2) = √(err1² + err2²)', category: 'Statistical — Error & Uncertainty' },
+  { token: 'propagateMul(', icon: '±×', name: 'Error Propagation (Multiply)', description: 'propagateMul(val1, err1, val2, err2) — relative errors', category: 'Statistical — Error & Uncertainty' },
+
+  // ─── Statistical — Regression & Correlation ───
+  { token: 'slope(', icon: 'm', name: 'Slope (Linear Fit)', description: 'slope(x1,y1, x2,y2, ...) — best fit line slope', category: 'Statistical — Regression' },
+  { token: 'intercept(', icon: 'b', name: 'Y-Intercept (Linear Fit)', description: 'intercept(x1,y1, x2,y2, ...) — where line crosses y-axis', category: 'Statistical — Regression' },
+  { token: 'rSquared(', icon: 'R²', name: 'R-Squared', description: 'Coefficient of determination — goodness of fit', category: 'Statistical — Regression' },
+  { token: 'correlation(', icon: 'r', name: 'Correlation Coefficient', description: 'Pearson correlation — correlation(x1,y1, x2,y2, ...)', category: 'Statistical — Regression' },
+
+  // ─── Statistical — Outlier & Quality ───
+  { token: 'grubbsG(', icon: 'G', name: "Grubbs' Test (G)", description: 'grubbsG(suspect, mean, stdDev) — outlier detection', category: 'Statistical — Outlier & Quality' },
+  { token: 'dixonQ(', icon: 'Q', name: "Dixon's Q Test", description: 'dixonQ(suspect, nearest, range) — outlier ratio', category: 'Statistical — Outlier & Quality' },
+  { token: 'percentile(', icon: 'Pk', name: 'Percentile', description: 'percentile(rank, a, b, c, ...) — value at given percentile', category: 'Statistical — Outlier & Quality' },
+  { token: 'iqr(', icon: 'IQR', name: 'Interquartile Range', description: 'Q3 − Q1 — middle 50% spread', category: 'Statistical — Outlier & Quality' },
+  { token: 'recoveryPercent(', icon: '%Rec', name: 'Recovery Percent', description: 'recoveryPercent(found, expected) = (found/expected)×100', category: 'Statistical — Outlier & Quality' },
+  { token: 'horwitzRSD(', icon: 'PRSD', name: 'Horwitz Predicted RSD', description: 'horwitzRSD(concentration) — expected %RSD for a given conc', category: 'Statistical — Outlier & Quality' },
+  { token: 'horratRatio(', icon: 'HorRat', name: 'HorRat Ratio', description: 'horratRatio(actualRSD, concentration) — method performance', category: 'Statistical — Outlier & Quality' },
 
   // ─── Percentage & Ratio ───
   { token: 'percent(', icon: '%', name: 'Percentage', description: 'Calculate percentage — percent(part, total) = (part/total)×100', category: 'Percentage & Ratio' },
