@@ -486,6 +486,81 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
   );
 }
 
+const convertUnits = ['M', 'N', 'F', '%w/v', '%w/w', '%v/v', 'mg/mL', 'ppm', 'µg/mL', 'g/L'] as const;
+
+/** Inline quick unit converter */
+function QuickUnitConverter({ step, locked }: { step: PrepStep; locked: boolean }) {
+  const [fromUnit, setFromUnit] = useState('M');
+  const [toUnit, setToUnit] = useState('N');
+  const [inputVal, setInputVal] = useState('');
+
+  const mw = parseFloat(step.mw) || 0;
+  const density = parseFloat(step.density) || 0;
+  const nFactor = parseFloat(step.nFactor) || 1;
+  const purity = (parseFloat(step.purity) || 100) / 100;
+
+  const numVal = parseFloat(inputVal);
+  let result: string | null = null;
+
+  if (numVal > 0) {
+    const allConversions = convertConcentration(numVal, fromUnit, mw, density, nFactor, purity);
+    const converted = allConversions[toUnit];
+    result = converted !== null ? converted.toFixed(6) : null;
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5">
+        <ArrowRightLeft className="w-3.5 h-3.5 text-primary" />
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Quick Convert</span>
+      </div>
+      <div className="flex flex-wrap items-end gap-2 p-3 bg-muted/30 rounded-lg border border-border/50">
+        <div className="space-y-1">
+          <label className="text-[10px] text-muted-foreground font-medium uppercase">Value</label>
+          <input
+            type="number"
+            value={inputVal}
+            onChange={(e) => setInputVal(e.target.value)}
+            disabled={locked}
+            className="w-24 bg-input border border-border rounded-md px-2 py-1.5 text-sm font-mono text-foreground focus:ring-1 focus:ring-primary disabled:opacity-50"
+            placeholder="0"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] text-muted-foreground font-medium uppercase">From</label>
+          <select
+            value={fromUnit}
+            onChange={(e) => setFromUnit(e.target.value)}
+            disabled={locked}
+            className="bg-input border border-border rounded-md px-2 py-1.5 text-sm font-mono text-foreground focus:ring-1 focus:ring-primary disabled:opacity-50"
+          >
+            {convertUnits.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+        <span className="text-muted-foreground text-sm font-bold pb-1">→</span>
+        <div className="space-y-1">
+          <label className="text-[10px] text-muted-foreground font-medium uppercase">To</label>
+          <select
+            value={toUnit}
+            onChange={(e) => setToUnit(e.target.value)}
+            disabled={locked}
+            className="bg-input border border-border rounded-md px-2 py-1.5 text-sm font-mono text-foreground focus:ring-1 focus:ring-primary disabled:opacity-50"
+          >
+            {convertUnits.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1 min-w-[100px]">
+          <label className="text-[10px] text-muted-foreground font-medium uppercase">Result</label>
+          <div className="px-2 py-1.5 bg-primary/5 border border-primary/20 rounded-md text-sm font-mono font-bold text-primary min-h-[34px] flex items-center">
+            {result ?? '—'}
+          </div>
+        </div>
+      </div>
+      <p className="text-[10px] text-muted-foreground italic">Uses MW, density, n-factor & purity from reagent properties above</p>
+    </div>
+  );
+}
+
 /** Small result display card */
 function ResultCard({ icon, label, value, detail, highlight }: {
   icon: string;
