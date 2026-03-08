@@ -51,6 +51,8 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
   const dragOverItem = useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
+  const resetOrder = () => setOrder(DEFAULT_NAV_ITEMS.map(i => i.id));
+
   // Close mobile menu on section change
   const handleSectionChange = (id: string) => {
     onSectionChange(id);
