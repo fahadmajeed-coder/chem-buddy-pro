@@ -327,62 +327,67 @@ export function AnalyticalTestSection() {
             <FlaskConical className="w-3.5 h-3.5" />
             No formulas saved yet. Go to <span className="font-semibold text-primary">Formulas</span> to create one.
           </p>
-        ) : blocks.length === 0 && !showPicker ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground text-sm mb-3">Add a formula to start entering sample data.</p>
-            <button
-              onClick={() => setShowPicker(true)}
-              disabled={locked}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              <Plus className="w-4 h-4" /> Add Formula
-            </button>
-          </div>
-        ) : null}
-
-        {/* Formula picker */}
-        {showPicker && (
-          <div className="mb-4 border border-border rounded-lg overflow-hidden">
-            <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
-              <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search formulas by name, description, or expression..."
-                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-                autoFocus
-              />
-              <button onClick={() => { setShowPicker(false); setSearchQuery(''); }} className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors">
-                <X className="w-4 h-4" />
+        ) : (
+          <>
+            {/* Always-visible Add Formula button */}
+            {!locked && savedFormulas.length > blocks.length && (
+              <button
+                onClick={() => setShowPicker(p => !p)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 mb-3"
+              >
+                <Plus className="w-4 h-4" /> Add Formula
               </button>
-            </div>
-            <div className="max-h-48 overflow-y-auto">
-              {filteredFormulas.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No formulas match your search.</p>
-              ) : (
-                filteredFormulas.map(f => {
-                  const alreadyUsed = usedFormulaIds.has(f.id);
-                  return (
-                    <button
-                      key={f.id}
-                      onClick={() => !alreadyUsed && addFormulaBlock(f.id)}
-                      disabled={alreadyUsed}
-                      className="w-full text-left px-3 py-2.5 hover:bg-muted/50 border-b border-border/50 last:border-b-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FlaskConical className="w-3.5 h-3.5 text-primary shrink-0" />
-                        <span className="text-sm font-medium text-foreground">{f.name}</span>
-                        {alreadyUsed && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Added</span>}
-                      </div>
-                      {f.description && <p className="text-xs text-muted-foreground mt-0.5 ml-5.5">{f.description}</p>}
-                      <code className="text-[10px] font-mono text-muted-foreground mt-1 ml-5.5 block truncate">{f.expression}</code>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
+            )}
+
+            {blocks.length === 0 && !showPicker && (
+              <p className="text-muted-foreground text-sm text-center py-4">Click "Add Formula" to start entering sample data.</p>
+            )}
+
+            {/* Formula picker */}
+            {showPicker && (
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
+                  <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search formulas by name, description, or expression..."
+                    className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                    autoFocus
+                  />
+                  <button onClick={() => { setShowPicker(false); setSearchQuery(''); }} className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {filteredFormulas.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">No formulas match your search.</p>
+                  ) : (
+                    filteredFormulas.map(f => {
+                      const alreadyUsed = usedFormulaIds.has(f.id);
+                      return (
+                        <button
+                          key={f.id}
+                          onClick={() => !alreadyUsed && addFormulaBlock(f.id)}
+                          disabled={alreadyUsed}
+                          className="w-full text-left px-3 py-2.5 hover:bg-muted/50 border-b border-border/50 last:border-b-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FlaskConical className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span className="text-sm font-medium text-foreground">{f.name}</span>
+                            {alreadyUsed && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Added</span>}
+                          </div>
+                          {f.description && <p className="text-xs text-muted-foreground mt-0.5 ml-5.5">{f.description}</p>}
+                          <code className="text-[10px] font-mono text-muted-foreground mt-1 ml-5.5 block truncate">{f.expression}</code>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </CalculatorCard>
 
