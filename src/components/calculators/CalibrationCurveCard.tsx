@@ -101,7 +101,7 @@ interface Props {
 }
 
 export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, canDelete }: Props) {
-  const { standards, samples, dilutionFactor, sampleWeight, finalVolume, formula, locked, title } = data;
+  const { standards, samples, dilutionFactor, sampleWeight, finalVolume, formula = '(C * DF * Vol) / W', locked, title } = data;
   const [editingTitle, setEditingTitle] = useState(false);
 
   const regression = useMemo(() => {
