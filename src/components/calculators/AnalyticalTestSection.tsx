@@ -245,6 +245,7 @@ export function AnalyticalTestSection() {
   const [blocks, setBlocks] = useState<FormulaBlock[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showPicker, setShowPicker] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const filteredFormulas = useMemo(() => {
     if (!searchQuery.trim()) return savedFormulas;
