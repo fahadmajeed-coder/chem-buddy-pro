@@ -918,6 +918,356 @@ export const conversionCategories: ConversionCategory[] = [
     ],
   },
 
+  // ─── IONIC STRENGTH & ACTIVITY ───
+  {
+    id: 'ionic_activity',
+    label: 'Ionic & Activity',
+    icon: '⚡',
+    conversions: [
+      {
+        id: 'ionic_strength_mono', label: 'Ionic Strength (1:1)', desc: 'I = ½ Σ cᵢzᵢ² — for monovalent salt (e.g. NaCl)',
+        fields: [
+          { key: 'conc', label: 'Concentration', unit: 'M' },
+        ],
+        calculate: (get) => {
+          const c = get('conc');
+          return c ? { value: c.toFixed(6), unit: 'M (I)' } : null;
+        },
+      },
+      {
+        id: 'ionic_strength_general', label: 'Ionic Strength (General)', desc: 'I = ½ Σ cᵢzᵢ² — up to 3 ion types',
+        fields: [
+          { key: 'c1', label: 'Ion 1 Conc.', unit: 'M' },
+          { key: 'z1', label: 'Ion 1 Charge', unit: '' },
+          { key: 'c2', label: 'Ion 2 Conc.', unit: 'M' },
+          { key: 'z2', label: 'Ion 2 Charge', unit: '' },
+          { key: 'c3', label: 'Ion 3 Conc. (opt)', unit: 'M', placeholder: '0' },
+          { key: 'z3', label: 'Ion 3 Charge (opt)', unit: '', placeholder: '0' },
+        ],
+        calculate: (get) => {
+          const c1 = get('c1'), z1 = get('z1'), c2 = get('c2'), z2 = get('z2');
+          const c3 = get('c3') || 0, z3 = get('z3') || 0;
+          if (!c1 || !z1 || !c2 || !z2) return null;
+          const I = 0.5 * (c1 * z1 * z1 + c2 * z2 * z2 + c3 * z3 * z3);
+          return { value: I.toFixed(6), unit: 'M (I)' };
+        },
+      },
+      {
+        id: 'debye_huckel', label: 'Debye-Hückel γ', desc: 'log γ = -0.509 z² √I / (1 + √I) — activity coefficient',
+        fields: [
+          { key: 'ionicStrength', label: 'Ionic Strength (I)', unit: 'M' },
+          { key: 'charge', label: 'Ion Charge (z)', unit: '' },
+        ],
+        calculate: (get) => {
+          const I = get('ionicStrength'), z = get('charge');
+          if (!I || !z) return null;
+          const sqrtI = Math.sqrt(I);
+          const logGamma = -0.509 * z * z * sqrtI / (1 + sqrtI);
+          const gamma = Math.pow(10, logGamma);
+          return { value: `${gamma.toFixed(4)} (log γ = ${logGamma.toFixed(4)})`, unit: '' };
+        },
+      },
+      {
+        id: 'extended_debye_huckel', label: 'Extended D-H γ', desc: 'log γ = -0.509 z² √I / (1 + 0.328 a √I) — with ion size',
+        fields: [
+          { key: 'ionicStrength', label: 'Ionic Strength (I)', unit: 'M' },
+          { key: 'charge', label: 'Ion Charge (z)', unit: '' },
+          { key: 'ionSize', label: 'Ion Size Parameter (å)', unit: 'Å', placeholder: '3' },
+        ],
+        calculate: (get) => {
+          const I = get('ionicStrength'), z = get('charge'), a = get('ionSize') || 3;
+          if (!I || !z) return null;
+          const sqrtI = Math.sqrt(I);
+          const logGamma = -0.509 * z * z * sqrtI / (1 + 0.328 * a * sqrtI);
+          const gamma = Math.pow(10, logGamma);
+          return { value: `${gamma.toFixed(4)} (log γ = ${logGamma.toFixed(4)})`, unit: '' };
+        },
+      },
+      {
+        id: 'davies_equation', label: 'Davies γ', desc: 'log γ = -0.509 z² (√I/(1+√I) − 0.3I) — up to I ≈ 0.5',
+        fields: [
+          { key: 'ionicStrength', label: 'Ionic Strength (I)', unit: 'M' },
+          { key: 'charge', label: 'Ion Charge (z)', unit: '' },
+        ],
+        calculate: (get) => {
+          const I = get('ionicStrength'), z = get('charge');
+          if (!I || !z) return null;
+          const sqrtI = Math.sqrt(I);
+          const logGamma = -0.509 * z * z * (sqrtI / (1 + sqrtI) - 0.3 * I);
+          const gamma = Math.pow(10, logGamma);
+          return { value: `${gamma.toFixed(4)} (log γ = ${logGamma.toFixed(4)})`, unit: '' };
+        },
+      },
+      {
+        id: 'mean_activity_coeff', label: 'Mean γ±', desc: 'γ± = (γ₊^ν₊ · γ₋^ν₋)^(1/(ν₊+ν₋))',
+        fields: [
+          { key: 'gammaPlus', label: 'γ₊ (cation)', unit: '' },
+          { key: 'nuPlus', label: 'ν₊ (cation stoich.)', unit: '' },
+          { key: 'gammaMinus', label: 'γ₋ (anion)', unit: '' },
+          { key: 'nuMinus', label: 'ν₋ (anion stoich.)', unit: '' },
+        ],
+        calculate: (get) => {
+          const gp = get('gammaPlus'), np = get('nuPlus'), gm = get('gammaMinus'), nm = get('nuMinus');
+          if (!gp || !np || !gm || !nm) return null;
+          const mean = Math.pow(Math.pow(gp, np) * Math.pow(gm, nm), 1 / (np + nm));
+          return { value: mean.toFixed(4), unit: 'γ±' };
+        },
+      },
+      {
+        id: 'effective_conc', label: 'Effective Conc.', desc: 'a = γ × C — thermodynamic activity',
+        fields: [
+          { key: 'conc', label: 'Concentration', unit: 'M' },
+          { key: 'gamma', label: 'Activity Coefficient (γ)', unit: '' },
+        ],
+        calculate: (get) => {
+          const c = get('conc'), gamma = get('gamma');
+          return c && gamma ? { value: (c * gamma).toFixed(6), unit: 'M (activity)' } : null;
+        },
+      },
+    ],
+  },
+
+  // ─── BUFFER & TITRATION ───
+  {
+    id: 'buffer_titration',
+    label: 'Buffer & Titration',
+    icon: '🔬',
+    conversions: [
+      {
+        id: 'henderson_acid', label: 'H-H (Acid)', desc: 'pH = pKₐ + log([A⁻]/[HA]) — Henderson-Hasselbalch for acids',
+        fields: [
+          { key: 'pka', label: 'pKₐ', unit: '' },
+          { key: 'concBase', label: '[A⁻] (conjugate base)', unit: 'M' },
+          { key: 'concAcid', label: '[HA] (weak acid)', unit: 'M' },
+        ],
+        calculate: (get) => {
+          const pka = get('pka'), cb = get('concBase'), ca = get('concAcid');
+          if (!pka || !cb || !ca || ca === 0) return null;
+          const pH = pka + Math.log10(cb / ca);
+          return { value: pH.toFixed(4), unit: 'pH' };
+        },
+      },
+      {
+        id: 'henderson_base', label: 'H-H (Base)', desc: 'pOH = pKb + log([BH⁺]/[B]) — Henderson-Hasselbalch for bases',
+        fields: [
+          { key: 'pkb', label: 'pKb', unit: '' },
+          { key: 'concAcid', label: '[BH⁺] (conjugate acid)', unit: 'M' },
+          { key: 'concBase', label: '[B] (weak base)', unit: 'M' },
+        ],
+        calculate: (get) => {
+          const pkb = get('pkb'), ca = get('concAcid'), cb = get('concBase');
+          if (!pkb || !ca || !cb || cb === 0) return null;
+          const pOH = pkb + Math.log10(ca / cb);
+          const pH = 14 - pOH;
+          return { value: `pH = ${pH.toFixed(4)} (pOH = ${pOH.toFixed(4)})`, unit: '' };
+        },
+      },
+      {
+        id: 'buffer_capacity', label: 'Buffer Capacity', desc: 'β = 2.303 × C × Kₐ[H⁺] / (Kₐ + [H⁺])²',
+        fields: [
+          { key: 'totalConc', label: 'Total Buffer Conc. (C)', unit: 'M' },
+          { key: 'pka', label: 'pKₐ', unit: '' },
+          { key: 'ph', label: 'pH of Solution', unit: '' },
+        ],
+        calculate: (get) => {
+          const C = get('totalConc'), pka = get('pka'), pH = get('ph');
+          if (!C || !pka || !pH) return null;
+          const Ka = Math.pow(10, -pka);
+          const H = Math.pow(10, -pH);
+          const beta = 2.303 * C * Ka * H / Math.pow(Ka + H, 2);
+          return { value: beta.toFixed(6), unit: 'mol/(L·pH)' };
+        },
+      },
+      {
+        id: 'buffer_ratio', label: 'Buffer Ratio', desc: 'Find [A⁻]/[HA] ratio needed for target pH',
+        fields: [
+          { key: 'pka', label: 'pKₐ', unit: '' },
+          { key: 'targetPh', label: 'Target pH', unit: '' },
+        ],
+        calculate: (get) => {
+          const pka = get('pka'), pH = get('targetPh');
+          if (!pka || !pH) return null;
+          const ratio = Math.pow(10, pH - pka);
+          return { value: `${ratio.toFixed(4)} : 1 ([A⁻] : [HA])`, unit: '' };
+        },
+      },
+      {
+        id: 'buffer_prep', label: 'Buffer Prep', desc: 'Masses of acid & salt for target pH buffer',
+        fields: [
+          { key: 'pka', label: 'pKₐ', unit: '' },
+          { key: 'targetPh', label: 'Target pH', unit: '' },
+          { key: 'totalConc', label: 'Total Buffer Conc.', unit: 'M' },
+          { key: 'volume', label: 'Volume', unit: 'mL' },
+          { key: 'mwAcid', label: 'MW of Acid', unit: 'g/mol' },
+          { key: 'mwSalt', label: 'MW of Salt', unit: 'g/mol' },
+        ],
+        calculate: (get) => {
+          const pka = get('pka'), pH = get('targetPh'), C = get('totalConc'), V = get('volume');
+          const mwA = get('mwAcid'), mwS = get('mwSalt');
+          if (!pka || !pH || !C || !V || !mwA || !mwS) return null;
+          const ratio = Math.pow(10, pH - pka);
+          const cHA = C / (1 + ratio);
+          const cA = C - cHA;
+          const volL = V / 1000;
+          const massAcid = cHA * volL * mwA;
+          const massSalt = cA * volL * mwS;
+          return { value: `Acid: ${massAcid.toFixed(4)} g | Salt: ${massSalt.toFixed(4)} g`, unit: '' };
+        },
+      },
+      {
+        id: 'titration_strong_strong', label: 'Strong-Strong Titr.', desc: 'Equivalence volume: V_t = C_a × V_a / C_b',
+        fields: [
+          { key: 'concAcid', label: 'Acid Concentration', unit: 'M' },
+          { key: 'volAcid', label: 'Acid Volume', unit: 'mL' },
+          { key: 'concBase', label: 'Base Concentration', unit: 'M' },
+        ],
+        calculate: (get) => {
+          const ca = get('concAcid'), va = get('volAcid'), cb = get('concBase');
+          if (!ca || !va || !cb) return null;
+          const vb = (ca * va) / cb;
+          return { value: `${vb.toFixed(2)} mL base needed | Equiv. pH = 7.00`, unit: '' };
+        },
+      },
+      {
+        id: 'titration_weak_strong', label: 'Weak Acid Titr. pH', desc: 'pH at any point during weak acid / strong base titration',
+        fields: [
+          { key: 'concAcid', label: 'Acid Concentration', unit: 'M' },
+          { key: 'volAcid', label: 'Acid Volume', unit: 'mL' },
+          { key: 'pka', label: 'pKₐ', unit: '' },
+          { key: 'concBase', label: 'Base Concentration', unit: 'M' },
+          { key: 'volBase', label: 'Base Volume Added', unit: 'mL' },
+        ],
+        calculate: (get) => {
+          const ca = get('concAcid'), va = get('volAcid'), pka = get('pka');
+          const cb = get('concBase'), vb = get('volBase');
+          if (!ca || !va || !pka || !cb || vb === undefined || isNaN(vb)) return null;
+          const molesAcid = ca * va / 1000;
+          const molesBase = cb * vb / 1000;
+          const totalVol = (va + vb) / 1000;
+          const Ka = Math.pow(10, -pka);
+
+          if (molesBase < molesAcid * 0.999) {
+            // Buffer region
+            const ha = molesAcid - molesBase;
+            const a = molesBase;
+            if (a <= 0) {
+              // Initial pH of weak acid
+              const H = Math.sqrt(Ka * ca);
+              return { value: (-Math.log10(H)).toFixed(4), unit: 'pH (initial)' };
+            }
+            const pH = pka + Math.log10(a / ha);
+            return { value: pH.toFixed(4), unit: 'pH (buffer region)' };
+          } else if (molesBase <= molesAcid * 1.001) {
+            // Equivalence point
+            const cA = molesAcid / totalVol;
+            const Kb = 1e-14 / Ka;
+            const OH = Math.sqrt(Kb * cA);
+            const pOH = -Math.log10(OH);
+            return { value: (14 - pOH).toFixed(4), unit: 'pH (equiv. point)' };
+          } else {
+            // Excess base
+            const excessOH = (molesBase - molesAcid) / totalVol;
+            const pOH = -Math.log10(excessOH);
+            return { value: (14 - pOH).toFixed(4), unit: 'pH (excess base)' };
+          }
+        },
+      },
+      {
+        id: 'titration_polyprotic', label: 'Polyprotic Equiv.', desc: 'Equivalence volumes for polyprotic acid',
+        fields: [
+          { key: 'concAcid', label: 'Acid Concentration', unit: 'M' },
+          { key: 'volAcid', label: 'Acid Volume', unit: 'mL' },
+          { key: 'concBase', label: 'Base Concentration', unit: 'M' },
+          { key: 'protons', label: 'Number of Protons', unit: '', placeholder: '2' },
+        ],
+        calculate: (get) => {
+          const ca = get('concAcid'), va = get('volAcid'), cb = get('concBase'), n = get('protons') || 2;
+          if (!ca || !va || !cb) return null;
+          const equivVols = [];
+          for (let i = 1; i <= n; i++) {
+            equivVols.push(`EP${i}: ${((ca * va * i) / cb).toFixed(2)} mL`);
+          }
+          return { value: equivVols.join(' | '), unit: '' };
+        },
+      },
+      {
+        id: 'back_titration', label: 'Back Titration', desc: 'Moles analyte from excess titrant back-titration',
+        fields: [
+          { key: 'concExcess', label: 'Excess Reagent Conc.', unit: 'M' },
+          { key: 'volExcess', label: 'Excess Reagent Vol.', unit: 'mL' },
+          { key: 'concBack', label: 'Back-Titrant Conc.', unit: 'M' },
+          { key: 'volBack', label: 'Back-Titrant Vol.', unit: 'mL' },
+          { key: 'nfactor', label: 'n-Factor', unit: '', placeholder: '1' },
+        ],
+        calculate: (get) => {
+          const ce = get('concExcess'), ve = get('volExcess'), cb = get('concBack'), vb = get('volBack');
+          const nf = get('nfactor') || 1;
+          if (!ce || !ve || !cb || !vb) return null;
+          const molesExcess = ce * ve / 1000;
+          const molesBack = cb * vb / 1000;
+          const molesAnalyte = (molesExcess - molesBack) / nf;
+          return { value: `${molesAnalyte.toFixed(6)} mol analyte | ${(molesAnalyte * 1000).toFixed(4)} mmol`, unit: '' };
+        },
+      },
+    ],
+  },
+
+  // ─── SOLUBILITY & EQUILIBRIUM ───
+  {
+    id: 'solubility',
+    label: 'Solubility',
+    icon: '💎',
+    conversions: [
+      {
+        id: 'ksp_to_solubility', label: 'Ksp → Solubility', desc: 'For AxBy: s = (Ksp / (x^x × y^y))^(1/(x+y))',
+        fields: [
+          { key: 'ksp', label: 'Ksp', unit: '', placeholder: 'e.g. 1.8e-10' },
+          { key: 'catCoeff', label: 'Cation Stoich. (x)', unit: '', placeholder: '1' },
+          { key: 'anCoeff', label: 'Anion Stoich. (y)', unit: '', placeholder: '1' },
+        ],
+        calculate: (get) => {
+          const ksp = get('ksp'), x = get('catCoeff') || 1, y = get('anCoeff') || 1;
+          if (!ksp) return null;
+          const s = Math.pow(ksp / (Math.pow(x, x) * Math.pow(y, y)), 1 / (x + y));
+          return { value: `${s.toExponential(4)} M | ${(s * 1000).toExponential(4)} mM`, unit: '' };
+        },
+      },
+      {
+        id: 'common_ion_solubility', label: 'Common Ion Effect', desc: 'Solubility with common ion present',
+        fields: [
+          { key: 'ksp', label: 'Ksp', unit: '', placeholder: 'e.g. 1.8e-10' },
+          { key: 'commonIonConc', label: 'Common Ion Conc.', unit: 'M' },
+          { key: 'ionCoeff', label: 'Ion Stoich. in salt', unit: '', placeholder: '1' },
+        ],
+        calculate: (get) => {
+          const ksp = get('ksp'), ci = get('commonIonConc'), n = get('ionCoeff') || 1;
+          if (!ksp || !ci) return null;
+          // For AB type: Ksp = s × (s + ci) ≈ s × ci when ci >> s
+          const s = ksp / Math.pow(ci, n);
+          return { value: `≈ ${s.toExponential(4)} M (assuming common ion >> s)`, unit: '' };
+        },
+      },
+      {
+        id: 'ion_product_vs_ksp', label: 'Q vs Ksp', desc: 'Will a precipitate form? Compare Q to Ksp',
+        fields: [
+          { key: 'concCation', label: 'Cation Conc.', unit: 'M' },
+          { key: 'concAnion', label: 'Anion Conc.', unit: 'M' },
+          { key: 'catCoeff', label: 'Cation Stoich.', unit: '', placeholder: '1' },
+          { key: 'anCoeff', label: 'Anion Stoich.', unit: '', placeholder: '1' },
+          { key: 'ksp', label: 'Ksp', unit: '' },
+        ],
+        calculate: (get) => {
+          const cc = get('concCation'), ca = get('concAnion'), x = get('catCoeff') || 1, y = get('anCoeff') || 1;
+          const ksp = get('ksp');
+          if (!cc || !ca || !ksp) return null;
+          const Q = Math.pow(cc, x) * Math.pow(ca, y);
+          const verdict = Q > ksp ? '⬇️ Precipitate forms (Q > Ksp)' : Q < ksp ? '✅ No precipitate (Q < Ksp)' : '⚖️ At equilibrium (Q = Ksp)';
+          return { value: `Q = ${Q.toExponential(4)} | ${verdict}`, unit: '' };
+        },
+      },
+    ],
+  },
+
   // ─── UNIT CONVERSIONS ───
   {
     id: 'units',
