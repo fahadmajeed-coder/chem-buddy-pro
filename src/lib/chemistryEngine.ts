@@ -275,22 +275,6 @@ export function getChemistryResponse(input: string): string {
     }
   }
 
-  // Check for pH calculation
-  const phMatch = trimmed.match(/pH\s*(?:of\s+)?\[?H\+?\]?\s*=?\s*([\d.eE-]+)/i) || trimmed.match(/(?:calculate|find|compute)\s+pH.*?([\d.eE-]+)\s*M/i);
-  if (phMatch) {
-    const conc = parseFloat(phMatch[1]);
-    if (conc > 0) {
-      const pH = -Math.log10(conc);
-      return `**pH Calculation:**\n\n[H⁺] = ${conc} M\npH = -log₁₀(${conc}) = **${pH.toFixed(2)}**\n\nThis solution is **${pH < 7 ? 'acidic' : pH > 7 ? 'basic' : 'neutral'}**.`;
-    }
-  }
-
-  // Check Q&A database
-  for (const qa of qaDatabase) {
-    if (qa.patterns.some(p => p.test(trimmed))) {
-      return qa.answer;
-    }
-  }
 
   // Check if input contains any recognizable formula
   const anyFormula = trimmed.match(/([A-Z][a-z]?(?:\d+)?(?:[A-Z][a-z]?(?:\d+)?)*(?:\((?:[A-Z][a-z]?(?:\d+)?)+\)(?:\d+)?)*)/);
