@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette, Percent, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react';
+import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette, Percent, ChevronUp, ChevronDown } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -50,8 +50,6 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-
-  const resetOrder = () => setOrder(DEFAULT_NAV_ITEMS.map(i => i.id));
 
   // Close mobile menu on section change
   const handleSectionChange = (id: string) => {
@@ -119,15 +117,6 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
           <span className={`${collapsed && !isMobile ? 'hidden' : ''} text-[10px] font-semibold uppercase tracking-widest text-muted-foreground`}>
             Calculators
           </span>
-          {(!collapsed || isMobile) && (
-            <button
-              onClick={resetOrder}
-              className="text-muted-foreground/50 hover:text-primary transition-colors"
-              title="Reset order"
-            >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          )}
         </div>
         {orderedIds.map((id, idx) => (
           <div
