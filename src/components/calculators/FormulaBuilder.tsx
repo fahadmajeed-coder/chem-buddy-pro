@@ -340,6 +340,8 @@ export function FormulaBuilder() {
   const [newVarDefault, setNewVarDefault] = useState('');
   const expressionRef = useRef<HTMLTextAreaElement>(null);
   const [draggedVar, setDraggedVar] = useState<string | null>(null);
+  const [editingFormulaId, setEditingFormulaId] = useState<string | null>(null);
+  const [editingVarId, setEditingVarId] = useState<string | null>(null);
 
   // --- Variable Management ---
   const addVariable = () => {
