@@ -4,7 +4,7 @@ import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 
-type ConversionType = 'M_to_N' | 'N_to_M' | 'M_to_F' | 'ppm_to_M' | 'percent_to_M' | 'dilution' | 'vol_for_N' | 'N_from_mass' | 'N_from_pct' | 'vol_pct_to_pct' | 'gm_from_pellet';
+type ConversionType = 'M_to_N' | 'N_to_M' | 'M_to_F' | 'ppm_to_M' | 'percent_to_M' | 'dilution' | 'vol_for_N' | 'N_from_mass' | 'N_from_pct' | 'vol_pct_to_pct' | 'gm_from_pellet' | 'pct_wv' | 'pct_ww' | 'pct_vv';
 
 const conversions: { id: ConversionType; label: string; desc: string }[] = [
   { id: 'M_to_N', label: 'M → N', desc: 'N = M × n-factor' },
@@ -18,6 +18,9 @@ const conversions: { id: ConversionType; label: string; desc: string }[] = [
   { id: 'N_from_pct', label: 'N from %', desc: 'N = (% × density × 10) / Eq.Wt' },
   { id: 'vol_pct_to_pct', label: '% → % Vol', desc: 'V₁ = (C₂ × V₂) / C₁' },
   { id: 'gm_from_pellet', label: 'gm for %', desc: 'mass = (% × V(mL)) / (purity × 100)' },
+  { id: 'pct_wv', label: '%w/v', desc: '%w/v = (mass of solute / volume of solution) × 100' },
+  { id: 'pct_ww', label: '%w/w', desc: '%w/w = (mass of solute / mass of solution) × 100' },
+  { id: 'pct_vv', label: '%v/v', desc: '%v/v = (volume of solute / volume of solution) × 100' },
 ];
 
 export function ConversionCalculator() {
