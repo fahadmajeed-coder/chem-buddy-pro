@@ -44,7 +44,7 @@ export const DEFAULT_TEMPLATE: Omit<CalibrationCurveData, 'id' | 'createdAt'> = 
   dilutionFactor: '1',
   sampleWeight: '0.5',
   finalVolume: '1',
-  formula: '(C * DF * Vol) / W',
+  formula: '(Abs * m + b) / W * 100',
   locked: false,
 };
 
