@@ -132,15 +132,36 @@ export function ChemistryAssistant() {
                   <div dangerouslySetInnerHTML={{ __html: renderMarkdown(displayContent) }} />
                 </div>
                 {isSearchOnline && (
-                  <a
-                    href={`https://chatgpt.com/?q=${encodeURIComponent(lastUserMsg)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 border border-border transition-colors"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Search on ChatGPT
-                  </a>
+                  <div className="flex gap-2 flex-wrap">
+                    <a
+                      href={`https://www.google.com/search?q=${encodeURIComponent(lastUserMsg + ' chemistry')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const url = `https://www.google.com/search?q=${encodeURIComponent(lastUserMsg + ' chemistry')}`;
+                        try { window.top?.open(url, '_blank') || window.open(url, '_blank'); } catch { window.location.href = url; }
+                      }}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 border border-border transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Search on Google
+                    </a>
+                    <a
+                      href={`https://chatgpt.com/?q=${encodeURIComponent(lastUserMsg)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const url = `https://chatgpt.com/?q=${encodeURIComponent(lastUserMsg)}`;
+                        try { window.top?.open(url, '_blank') || window.open(url, '_blank'); } catch { window.location.href = url; }
+                      }}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 border border-border transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Search on ChatGPT
+                    </a>
+                  </div>
                 )}
               </div>
             </div>
