@@ -17,6 +17,7 @@ import { PeriodicTable } from '@/components/calculators/PeriodicTable';
 import { FormulaBuilder } from '@/components/calculators/FormulaBuilder';
 import { CalibrationCurveSection } from '@/components/calculators/CalibrationCurveSection';
 import { StandardsInventory } from '@/components/calculators/StandardsInventory';
+import { SOPSection } from '@/components/calculators/SOPSection';
 import { Wifi, WifiOff } from 'lucide-react';
 
 const Index = () => {
@@ -51,6 +52,7 @@ const Index = () => {
     formulas: 'Custom Formulas',
     calibration: 'Calibration Curve',
     'standards-inventory': 'Standards Inventory',
+    sop: 'Standard Operating Procedures (SOP)',
   };
 
   const sections: Record<string, React.ReactNode> = {
@@ -69,6 +71,7 @@ const Index = () => {
     formulas: <FormulaBuilder />,
     calibration: <CalibrationCurveSection />,
     'standards-inventory': <StandardsInventory />,
+    sop: <SOPSection />,
   };
 
   const renderSections = () => {
