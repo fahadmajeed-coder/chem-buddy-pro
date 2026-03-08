@@ -263,6 +263,15 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
                 <div className="flex justify-between"><span className="text-[10px] text-muted-foreground">Intercept</span><span className="text-xs font-mono text-foreground">{regression.intercept.toFixed(6)}</span></div>
                 <div className="flex justify-between"><span className="text-[10px] text-muted-foreground">R²</span><span className={`text-xs font-mono font-bold ${regression.r2 >= 0.99 ? 'text-success' : regression.r2 >= 0.95 ? 'text-warning' : 'text-destructive'}`}>{regression.r2.toFixed(6)}</span></div>
               </div>
+              {regression.r2 < 0.9 && (
+                <div className="mt-2 flex items-start gap-2 p-2.5 rounded-md bg-destructive/10 border border-destructive/30">
+                  <span className="text-destructive text-sm mt-0.5">⚠</span>
+                  <div>
+                    <span className="text-[11px] font-semibold text-destructive">Poor Linearity (R² &lt; 0.9)</span>
+                    <p className="text-[10px] text-destructive/80 mt-0.5">Standards need improvement. Check for outliers, preparation errors, or contamination. Re-prepare standards with fresh solutions and ensure proper dilution technique.</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {chartData && (
