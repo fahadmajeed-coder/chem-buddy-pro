@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Plus, Trash2, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
+type ComparisonOp = '≤' | '≥' | '=' | 'range';
+
 interface StandardEntry {
   id: string;
   name: string;
@@ -8,6 +10,7 @@ interface StandardEntry {
   tolerance: string;
   actualValue: string;
   unit: string;
+  comparison: ComparisonOp;
 }
 
 export function StandardsSection() {
