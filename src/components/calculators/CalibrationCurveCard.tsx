@@ -99,7 +99,7 @@ interface Props {
 }
 
 export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, canDelete }: Props) {
-  const { standards, samples, dilutionFactor, sampleWeight, finalVolume, locked, title } = data;
+  const { standards, samples, dilutionFactor, sampleWeight, finalVolume, formula, locked, title } = data;
   const [editingTitle, setEditingTitle] = useState(false);
 
   const regression = useMemo(() => {
@@ -119,10 +119,10 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
       if (isNaN(abs)) return { ...s, concentration: null, corrected: null, finalConc: null };
       const conc = (abs - regression.intercept) / regression.slope;
       const corrected = conc * df;
-      const finalConc = (conc * df * vol) / sw;
+      const finalConc = evaluateFormula(formula, { C: conc, DF: df, Vol: vol, W: sw });
       return { ...s, concentration: conc, corrected, finalConc };
     });
-  }, [samples, regression, dilutionFactor, sampleWeight, finalVolume]);
+  }, [samples, regression, dilutionFactor, sampleWeight, finalVolume, formula]);
 
   const chartData = useMemo(() => {
     const pts = standards
