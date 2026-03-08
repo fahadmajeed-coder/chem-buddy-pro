@@ -230,7 +230,8 @@ export function ConversionCalculator() {
         {activeConv === 'vol_for_N' && (
           <>
             <InputField label="Mass of Solute" unit="g" value={inputs.mass || ''} onChange={(v) => updateInput('mass', v)} disabled={locked} />
-            <InputField label="Equivalent Weight" unit="g/eq" value={inputs.eqWt || ''} onChange={(v) => updateInput('eqWt', v)} disabled={locked} />
+            <InputField label="Molecular Weight" unit="g/mol" value={inputs.mw || ''} onChange={(v) => updateInput('mw', v)} disabled={locked} />
+            <InputField label="n-Factor" unit="" value={inputs.nfactor || ''} onChange={(v) => updateInput('nfactor', v)} disabled={locked} placeholder="1" />
             <InputField label="Desired Normality" unit="N" value={inputs.normality || ''} onChange={(v) => updateInput('normality', v)} disabled={locked} />
             <InputField label="Purity" unit="%" value={inputs.purity || ''} onChange={(v) => updateInput('purity', v)} disabled={locked} placeholder="100" />
           </>
@@ -238,7 +239,8 @@ export function ConversionCalculator() {
         {activeConv === 'N_from_mass' && (
           <>
             <InputField label="Mass of Solute" unit="g" value={inputs.mass || ''} onChange={(v) => updateInput('mass', v)} disabled={locked} />
-            <InputField label="Equivalent Weight" unit="g/eq" value={inputs.eqWt || ''} onChange={(v) => updateInput('eqWt', v)} disabled={locked} />
+            <InputField label="Molecular Weight" unit="g/mol" value={inputs.mw || ''} onChange={(v) => updateInput('mw', v)} disabled={locked} />
+            <InputField label="n-Factor" unit="" value={inputs.nfactor || ''} onChange={(v) => updateInput('nfactor', v)} disabled={locked} placeholder="1" />
             <InputField label="Volume of Solution" unit="mL" value={inputs.volume || ''} onChange={(v) => updateInput('volume', v)} disabled={locked} />
             <InputField label="Purity" unit="%" value={inputs.purity || ''} onChange={(v) => updateInput('purity', v)} disabled={locked} placeholder="100" />
           </>
@@ -247,7 +249,8 @@ export function ConversionCalculator() {
           <>
             <InputField label="Concentration" unit="%" value={inputs.percent || ''} onChange={(v) => updateInput('percent', v)} disabled={locked} />
             <InputField label="Density" unit="g/mL" value={inputs.density || ''} onChange={(v) => updateInput('density', v)} disabled={locked} />
-            <InputField label="Equivalent Weight" unit="g/eq" value={inputs.eqWt || ''} onChange={(v) => updateInput('eqWt', v)} disabled={locked} />
+            <InputField label="Molecular Weight" unit="g/mol" value={inputs.mw || ''} onChange={(v) => updateInput('mw', v)} disabled={locked} />
+            <InputField label="n-Factor" unit="" value={inputs.nfactor || ''} onChange={(v) => updateInput('nfactor', v)} disabled={locked} placeholder="1" />
           </>
         )}
         {activeConv === 'vol_pct_to_pct' && (
