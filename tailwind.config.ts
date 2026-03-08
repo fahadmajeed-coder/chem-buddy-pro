@@ -85,8 +85,8 @@ export default {
           to: { height: "0" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 15px -5px hsla(var(--primary), 0.3)" },
-          "50%": { boxShadow: "0 0 25px -5px hsla(var(--primary), 0.5)" },
+          "0%, 100%": { boxShadow: "0 0 15px -5px hsl(var(--primary) / 0.3)" },
+          "50%": { boxShadow: "0 0 25px -5px hsl(var(--primary) / 0.5)" },
         },
         "fade-in": {
           from: { opacity: "0", transform: "translateY(8px)" },
