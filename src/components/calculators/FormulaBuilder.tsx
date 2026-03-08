@@ -888,6 +888,13 @@ export function FormulaBuilder() {
                         Edit
                       </button>
                       <button
+                        onClick={ev => { ev.stopPropagation(); duplicateFormula(f); }}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-primary transition-colors"
+                        title="Duplicate formula"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button
                         onClick={ev => { ev.stopPropagation(); deleteFormula(f.id); }}
                         className="p-1.5 rounded-md text-muted-foreground hover:text-destructive transition-colors"
                       >
@@ -904,7 +911,7 @@ export function FormulaBuilder() {
                       <div className="flex flex-wrap gap-1.5">
                         {f.variables.map(v => (
                           <span key={v.id} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-mono">
-                            {v.name}{v.description ? ` — ${v.description}` : ''}
+                            {v.name}{v.description ? ` — ${v.description}` : ''}{v.defaultValue ? ` (=${v.defaultValue})` : ''}
                           </span>
                         ))}
                       </div>
