@@ -405,25 +405,7 @@ export function AnalyticalTestSection() {
         </div>
       </div>
 
-      {/* Render each formula block */}
-      {blocks.map(block => {
-        const formula = savedFormulas.find(f => f.id === block.formulaId);
-        if (!formula) return null;
-        return (
-          <FormulaBlockCard
-            key={block.formulaId}
-            formula={formula}
-            block={block}
-            onUpdateRow={(rowId, field, value) => updateRowInBlock(block.formulaId, rowId, field, value)}
-            onUpdateSampleId={(rowId, value) => updateSampleIdInBlock(block.formulaId, rowId, value)}
-            onAddRow={() => addRowToBlock(block.formulaId)}
-            onRemoveRow={(rowId) => removeRowFromBlock(block.formulaId, rowId)}
-            onRemoveBlock={() => removeBlock(block.formulaId)}
-          />
-        );
-      })}
-
-      {/* Clear All confirmation */}
+      {/* Clear All confirmation - at the top */}
       {showClearConfirm && (
         <div className="glass-panel rounded-lg p-5 border border-destructive/30 animate-fade-in">
           <p className="text-sm text-foreground font-medium mb-1">Remove all formulas?</p>
@@ -444,6 +426,24 @@ export function AnalyticalTestSection() {
           </div>
         </div>
       )}
+
+      {/* Render each formula block */}
+      {blocks.map(block => {
+        const formula = savedFormulas.find(f => f.id === block.formulaId);
+        if (!formula) return null;
+        return (
+          <FormulaBlockCard
+            key={block.formulaId}
+            formula={formula}
+            block={block}
+            onUpdateRow={(rowId, field, value) => updateRowInBlock(block.formulaId, rowId, field, value)}
+            onUpdateSampleId={(rowId, value) => updateSampleIdInBlock(block.formulaId, rowId, value)}
+            onAddRow={() => addRowToBlock(block.formulaId)}
+            onRemoveRow={(rowId) => removeRowFromBlock(block.formulaId, rowId)}
+            onRemoveBlock={() => removeBlock(block.formulaId)}
+          />
+        );
+      })}
     </div>
   );
 }
