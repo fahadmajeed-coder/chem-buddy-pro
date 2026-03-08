@@ -164,7 +164,7 @@ const unitLabels: Record<string, string> = {
 export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProps) {
   const [locked, setLocked] = useState(false);
   const [steps, setSteps] = useState<PrepStep[]>([
-    { id: '1', reagentState: 'solid', targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
+    { id: '1', reagentState: 'solid', targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '', resultUnit: 'g' }
   ]);
 
   useEffect(() => {
