@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette, Percent } from 'lucide-react';
+import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette, Percent, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -50,6 +50,8 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const resetOrder = () => setOrder(DEFAULT_NAV_ITEMS.map(i => i.id));
 
   // Close mobile menu on section change
   const handleSectionChange = (id: string) => {
@@ -113,8 +115,19 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
 
       {/* Nav */}
       <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto overscroll-contain">
-        <div className={`${collapsed && !isMobile ? 'hidden' : ''} px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground`}>
-          Calculators
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className={`${collapsed && !isMobile ? 'hidden' : ''} text-[10px] font-semibold uppercase tracking-widest text-muted-foreground`}>
+            Calculators
+          </span>
+          {(!collapsed || isMobile) && (
+            <button
+              onClick={resetOrder}
+              className="text-muted-foreground/50 hover:text-primary transition-colors"
+              title="Reset order"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          )}
         </div>
         {orderedIds.map((id, idx) => (
           <div
@@ -124,11 +137,11 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
             onDragEnter={() => handleDragEnter(idx)}
             onDragEnd={handleDragEnd}
             onDragOver={(e) => e.preventDefault()}
-            className={`${dragOverIdx === idx ? 'border-t-2 border-primary' : 'border-t-2 border-transparent'}`}
+            className={`${dragOverIdx === idx ? 'border-t-2 border-primary' : 'border-t-2 border-transparent'} flex items-center`}
           >
             <button
               onClick={() => handleSectionChange(id)}
-              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm transition-all duration-200
+              className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-md text-sm transition-all duration-200
                 ${activeSection === id
                   ? 'bg-sidebar-accent text-sidebar-primary glow-border'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
@@ -139,6 +152,24 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
               {ICON_MAP[id]}
               {(!collapsed || isMobile) && <span>{LABEL_MAP[id]}</span>}
             </button>
+            {isMobile && (
+              <div className="flex flex-col mr-1">
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (idx > 0) { const n = [...orderedIds]; [n[idx-1], n[idx]] = [n[idx], n[idx-1]]; setOrder(n); } }}
+                  disabled={idx === 0}
+                  className="p-0.5 text-muted-foreground/40 hover:text-primary disabled:opacity-20 transition-colors"
+                >
+                  <ChevronUp className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (idx < orderedIds.length - 1) { const n = [...orderedIds]; [n[idx], n[idx+1]] = [n[idx+1], n[idx]]; setOrder(n); } }}
+                  disabled={idx === orderedIds.length - 1}
+                  className="p-0.5 text-muted-foreground/40 hover:text-primary disabled:opacity-20 transition-colors"
+                >
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
         ))}
 
