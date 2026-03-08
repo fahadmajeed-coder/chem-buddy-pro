@@ -573,7 +573,7 @@ function FormulaBlockCard({
 }
 
 export function AnalyticalTestSection() {
-  const [savedFormulas] = useLocalStorage<SavedFormula[]>('chem-formulas-v2', []);
+  const [savedFormulas, setSavedFormulas] = useLocalStorage<SavedFormula[]>('chem-formulas-v2', []);
   const [blocks, setBlocks] = useState<FormulaBlock[]>([]);
   const [blockResults, setBlockResults] = useState<Record<string, AnalyticalResult[]>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -854,6 +854,9 @@ export function AnalyticalTestSection() {
             onRemoveRow={(rowId) => removeRowFromBlock(block.formulaId, rowId)}
             onRemoveBlock={() => removeBlock(block.formulaId)}
             onResultsChange={(results) => handleResultsChange(block.formulaId, results)}
+            onUpdateFormula={(updated) => {
+              setSavedFormulas(prev => prev.map(f => f.id === updated.id ? updated : f));
+            }}
           />
         );
       })}
