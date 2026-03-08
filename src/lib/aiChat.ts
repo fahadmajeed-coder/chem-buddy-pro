@@ -1,6 +1,46 @@
+import { supabase } from '@/integrations/supabase/client';
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chemistry-chat`;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+export interface GeneratedItem {
+  type: "generate_sop" | "generate_formula" | "generate_inventory_item";
+  data: Record<string, unknown>;
+  text: string;
+}
+
+// Detect if user is asking to generate/add an SOP, formula, or inventory item
+export function isGenerationRequest(input: string): boolean {
+  const lower = input.toLowerCase();
+  const generateKeywords = [
+    'generate sop', 'create sop', 'add sop', 'write sop', 'make sop', 'new sop',
+    'generate formula', 'create formula', 'add formula', 'write formula', 'make formula', 'new formula',
+    'add chemical', 'add compound', 'add reagent', 'add to inventory', 'generate inventory',
+    'create inventory', 'look up chemical', 'lookup chemical',
+    'sop for', 'procedure for', 'method for',
+    'formula for calculating', 'calculation for',
+  ];
+  return generateKeywords.some(kw => lower.includes(kw));
+}
+
+export async function generateItem(messages: ChatMessage[]): Promise<GeneratedItem | { type: "text"; text: string }> {
+  const resp = await fetch(CHAT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify({ messages, type: "generate" }),
+  });
+
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({ error: "AI request failed" }));
+    throw new Error(data.error || `Error ${resp.status}`);
+  }
+
+  return resp.json();
+}
 
 export async function streamChat({
   messages,
@@ -19,7 +59,7 @@ export async function streamChat({
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, type: "chat" }),
   });
 
   if (!resp.ok) {

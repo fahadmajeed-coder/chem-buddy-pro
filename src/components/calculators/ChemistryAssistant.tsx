@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, Trash2, Bot, User, Zap } from 'lucide-react';
 import { getChemistryResponse, suggestedPrompts } from '@/lib/chemistryEngine';
-import { streamChat, type ChatMessage } from '@/lib/aiChat';
+import { streamChat, generateItem, isGenerationRequest, type ChatMessage, type GeneratedItem } from '@/lib/aiChat';
+import { addGeneratedItem } from '@/lib/aiItemStore';
+import { GeneratedItemCard } from './GeneratedItemCard';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
@@ -11,6 +13,9 @@ interface Message {
   content: string;
   timestamp: Date;
   source?: 'offline' | 'ai';
+  generatedItem?: GeneratedItem;
+  itemConfirmed?: boolean;
+  itemDismissed?: boolean;
 }
 
 export function ChemistryAssistant() {
@@ -18,7 +23,7 @@ export function ChemistryAssistant() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Hello! I\'m your **Chemistry Assistant** powered by AI. Ask me anything about chemistry — formulas, concepts, reactions, calculations, and more!',
+      content: 'Hello! I\'m your **Chemistry Assistant** powered by AI.\n\nI can answer questions, **generate SOPs**, **create formulas**, and **add chemicals to your inventory**.\n\nTry: *"Generate SOP for pH determination"* or *"Add NaOH to inventory"*',
       timestamp: new Date(),
       source: 'ai',
     },
@@ -32,6 +37,24 @@ export function ChemistryAssistant() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleConfirm = (msgId: string) => {
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg?.generatedItem) return;
+
+    const success = addGeneratedItem(msg.generatedItem);
+    if (success) {
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, itemConfirmed: true } : m));
+      const labels = { generate_sop: 'SOP', generate_formula: 'Formula', generate_inventory_item: 'Inventory Item' };
+      toast.success(`${labels[msg.generatedItem.type]} added successfully!`);
+    } else {
+      toast.error('Failed to add item. Please try again.');
+    }
+  };
+
+  const handleDismiss = (msgId: string) => {
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, itemDismissed: true } : m));
+  };
 
   const handleSend = async (text?: string) => {
     const messageText = text || input.trim();
@@ -49,12 +72,56 @@ export function ChemistryAssistant() {
     setIsTyping(true);
 
     if (useAI) {
-      // Build conversation history for AI
       const history: ChatMessage[] = messages
         .filter(m => m.id !== 'welcome')
         .map(m => ({ role: m.role, content: m.content }));
       history.push({ role: 'user', content: messageText });
 
+      // Check if this is a generation request
+      if (isGenerationRequest(messageText)) {
+        try {
+          const result = await generateItem(history);
+          const assistantId = `assistant-${Date.now()}`;
+
+          if (result.type === 'text') {
+            setMessages(prev => [...prev, {
+              id: assistantId,
+              role: 'assistant',
+              content: result.text,
+              timestamp: new Date(),
+              source: 'ai',
+            }]);
+          } else {
+            const genItem = result as GeneratedItem;
+            const labels = { generate_sop: 'SOP', generate_formula: 'Formula', generate_inventory_item: 'chemical' };
+            const itemName = (genItem.data as Record<string, unknown>).name as string;
+            setMessages(prev => [...prev, {
+              id: assistantId,
+              role: 'assistant',
+              content: genItem.text || `Here's the generated **${labels[genItem.type]}**: **${itemName}**. Review it below and click "Add" to save it.`,
+              timestamp: new Date(),
+              source: 'ai',
+              generatedItem: genItem,
+            }]);
+          }
+        } catch (e) {
+          const errMsg = e instanceof Error ? e.message : 'AI generation failed';
+          toast.error(errMsg);
+          // Fallback to offline
+          const response = getChemistryResponse(messageText);
+          setMessages(prev => [...prev, {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: response,
+            timestamp: new Date(),
+            source: 'offline',
+          }]);
+        }
+        setIsTyping(false);
+        return;
+      }
+
+      // Regular streaming chat
       let assistantSoFar = '';
       const assistantId = `assistant-${Date.now()}`;
 
@@ -76,7 +143,6 @@ export function ChemistryAssistant() {
           onDone: () => setIsTyping(false),
           onError: (error) => {
             toast.error(error);
-            // Fallback to offline engine
             const response = getChemistryResponse(messageText);
             setMessages(prev => [...prev, {
               id: assistantId,
@@ -101,7 +167,6 @@ export function ChemistryAssistant() {
         setIsTyping(false);
       }
     } else {
-      // Offline engine
       setTimeout(() => {
         const response = getChemistryResponse(messageText);
         setMessages(prev => [...prev, {
@@ -121,8 +186,8 @@ export function ChemistryAssistant() {
       id: 'welcome',
       role: 'assistant',
       content: useAI
-        ? 'Chat cleared! Ask me anything about chemistry.'
-        : 'Chat cleared! Using offline engine. Ask me about formulas or concepts.',
+        ? 'Chat cleared! Ask me anything, or try generating SOPs, formulas, or inventory items.'
+        : 'Chat cleared! Using offline engine.',
       timestamp: new Date(),
       source: useAI ? 'ai' : 'offline',
     }]);
@@ -139,7 +204,7 @@ export function ChemistryAssistant() {
           <div>
             <h2 className="text-base font-semibold text-foreground">Chemistry Assistant</h2>
             <p className="text-xs text-muted-foreground">
-              {useAI ? '🟢 AI Powered' : '⚫ Offline Engine'}
+              {useAI ? '🟢 AI Powered • SOPs • Formulas • Inventory' : '⚫ Offline Engine'}
             </p>
           </div>
         </div>
@@ -151,7 +216,6 @@ export function ChemistryAssistant() {
                 ? 'bg-primary/15 text-primary border-primary/30'
                 : 'bg-muted text-muted-foreground border-border'
             }`}
-            title={useAI ? 'Switch to offline mode' : 'Switch to AI mode'}
           >
             <Zap className="w-3.5 h-3.5" />
             {useAI ? 'AI On' : 'AI Off'}
@@ -159,7 +223,6 @@ export function ChemistryAssistant() {
           <button
             onClick={clearChat}
             className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-            title="Clear chat"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -177,7 +240,7 @@ export function ChemistryAssistant() {
             }`}>
               {msg.role === 'assistant' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
             </div>
-            <div className="max-w-[80%]">
+            <div className="max-w-[85%] space-y-2">
               <div className={`rounded-xl px-4 py-3 text-sm leading-relaxed ${
                 msg.role === 'assistant'
                   ? 'bg-card border border-border text-card-foreground'
@@ -191,6 +254,17 @@ export function ChemistryAssistant() {
                   <span>{msg.content}</span>
                 )}
               </div>
+
+              {/* Generated Item Card */}
+              {msg.generatedItem && !msg.itemDismissed && (
+                <GeneratedItemCard
+                  item={msg.generatedItem}
+                  onConfirm={() => handleConfirm(msg.id)}
+                  onDismiss={() => handleDismiss(msg.id)}
+                  confirmed={msg.itemConfirmed}
+                />
+              )}
+
               {msg.source && msg.role === 'assistant' && (
                 <span className="text-[10px] text-muted-foreground mt-1 ml-1 inline-block">
                   {msg.source === 'ai' ? '✨ AI' : '📦 Offline'}
@@ -220,7 +294,12 @@ export function ChemistryAssistant() {
       {/* Suggestions */}
       {messages.length <= 2 && (
         <div className="flex flex-wrap gap-2 py-3">
-          {suggestedPrompts.slice(0, 4).map((prompt) => (
+          {[
+            "Generate SOP for pH determination",
+            "Add Na2SO4 to inventory",
+            "Create formula for percent recovery",
+            "What is Beer-Lambert law?",
+          ].map((prompt) => (
             <button
               key={prompt}
               onClick={() => handleSend(prompt)}
@@ -240,7 +319,7 @@ export function ChemistryAssistant() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          placeholder="Ask about chemistry — formulas, reactions, concepts..."
+          placeholder={useAI ? "Ask, generate SOPs, add chemicals..." : "Ask about chemistry..."}
           className="flex-1 bg-input border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <button
