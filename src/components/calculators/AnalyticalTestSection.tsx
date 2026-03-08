@@ -177,17 +177,33 @@ function FormulaBlockCard({
     return avgs;
   }, [showAverages, rowResults]);
 
+  // Report exportable results to parent
+  useEffect(() => {
+    const results: AnalyticalResult[] = [];
+    if (showAverages && sampleAverages.size > 0) {
+      // Use averages for grouped samples
+      for (const [id, avg] of sampleAverages) {
+        results.push({ formulaName: formula.name, sampleId: id, result: avg, isAverage: true });
+      }
+      // Also include ungrouped (single-occurrence) sample results
+      const groupedIds = new Set(sampleAverages.keys());
+      for (const row of rowResults) {
+        if (row.sampleId.trim() && !groupedIds.has(row.sampleId.trim()) && row.result !== null) {
+          results.push({ formulaName: formula.name, sampleId: row.sampleId.trim(), result: row.result, isAverage: false });
+        }
+      }
+    } else {
+      for (const row of rowResults) {
+        if (row.result !== null) {
+          results.push({ formulaName: formula.name, sampleId: row.sampleId.trim(), result: row.result, isAverage: false });
+        }
+      }
+    }
+    onResultsChange(results);
+  }, [rowResults, showAverages, sampleAverages, formula.name, onResultsChange]);
+
   // Track which sampleIds we've already rendered an average row for
   const renderedAverages = useMemo(() => new Set<string>(), [block.rows]);
-
-  return (
-    <div className={`glass-panel rounded-lg animate-fade-in ${cardLocked ? 'glow-border' : ''}`}>
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-        <button onClick={() => setCollapsed(c => !c)} className="flex items-center gap-2 min-w-0">
-          {collapsed ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-          <FlaskConical className="w-3.5 h-3.5 text-primary shrink-0" />
-          <h3 className="text-sm font-semibold text-foreground truncate">{formula.name}</h3>
-        </button>
         <div className="flex items-center gap-1 shrink-0 ml-2">
           {!cardLocked && (
             <button
