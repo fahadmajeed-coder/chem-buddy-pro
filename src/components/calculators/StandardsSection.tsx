@@ -5,13 +5,20 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 interface AnalysisParam {
   id: string;
   analysis: string;
-  normal: string;
+  normalMin: string;
+  normalMax: string;
   min: string;
   max: string;
   standard: string;
-  withDeduction: string;
-  outlier: string;
+  withDeductionMin: string;
+  withDeductionMax: string;
+  outlierMin: string;
+  outlierMax: string;
   reason: string;
+  // Legacy compat
+  normal?: string;
+  withDeduction?: string;
+  outlier?: string;
 }
 
 interface SavedStandard {
@@ -29,14 +36,14 @@ const DEFAULT_ANALYSES = [
 
 const emptyParam = (): AnalysisParam => ({
   id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-  analysis: '', normal: '', min: '', max: '', standard: '', withDeduction: '', outlier: '', reason: '',
+  analysis: '', normalMin: '', normalMax: '', min: '', max: '', standard: '',
+  withDeductionMin: '', withDeductionMax: '', outlierMin: '', outlierMax: '', reason: '',
 });
 
 export function StandardsSection() {
   const [savedStandards, setSavedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
   const [expandedStandard, setExpandedStandard] = useState<string | null>(null);
 
-  // Builder state
   const [templateName, setTemplateName] = useState('');
   const [templateDesc, setTemplateDesc] = useState('');
   const [parameters, setParameters] = useState<AnalysisParam[]>([emptyParam()]);
@@ -85,7 +92,18 @@ export function StandardsSection() {
   const loadStandard = (s: SavedStandard) => {
     setTemplateName(s.name);
     setTemplateDesc(s.description);
-    setParameters(s.parameters.map(p => ({ ...p, id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` })));
+    setParameters(s.parameters.map(p => ({
+      ...emptyParam(),
+      ...p,
+      id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      // Migrate legacy single-value fields to range fields
+      normalMin: p.normalMin || '',
+      normalMax: p.normalMax || '',
+      withDeductionMin: p.withDeductionMin || '',
+      withDeductionMax: p.withDeductionMax || '',
+      outlierMin: p.outlierMin || '',
+      outlierMax: p.outlierMax || '',
+    })));
     setEditingId(s.id);
   };
 
@@ -105,15 +123,19 @@ export function StandardsSection() {
     if (editingId === id) resetBuilder();
   };
 
-  const fields: { key: keyof AnalysisParam; label: string; placeholder: string; width: string }[] = [
-    { key: 'analysis', label: 'Analysis', placeholder: 'e.g. Moisture', width: 'w-28' },
-    { key: 'normal', label: 'Normal', placeholder: 'e.g. 7-15', width: 'w-20' },
-    { key: 'min', label: 'Min', placeholder: '0', width: 'w-16' },
-    { key: 'max', label: 'Max', placeholder: '0', width: 'w-16' },
-    { key: 'standard', label: 'Standard', placeholder: '0', width: 'w-18' },
-    { key: 'withDeduction', label: 'With Ded.', placeholder: '0', width: 'w-18' },
-    { key: 'outlier', label: 'Outlier', placeholder: '0', width: 'w-16' },
-    { key: 'reason', label: 'Reason', placeholder: 'e.g. Mixing', width: 'w-24' },
+  const formatRange = (min?: string, max?: string) => {
+    const a = min || '';
+    const b = max || '';
+    if (a && b) return `${a}–${b}`;
+    if (a) return `≥${a}`;
+    if (b) return `≤${b}`;
+    return '—';
+  };
+
+  const rangeFields: { minKey: keyof AnalysisParam; maxKey: keyof AnalysisParam; label: string; color: string }[] = [
+    { minKey: 'normalMin', maxKey: 'normalMax', label: 'Normal', color: '' },
+    { minKey: 'withDeductionMin', maxKey: 'withDeductionMax', label: 'With Ded.', color: 'focus:border-warning' },
+    { minKey: 'outlierMin', maxKey: 'outlierMax', label: 'Outlier', color: 'focus:border-destructive' },
   ];
 
   return (
@@ -169,28 +191,75 @@ export function StandardsSection() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/30">
-                {fields.map(f => (
-                  <th key={f.key} className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                    {f.label}
-                  </th>
-                ))}
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Analysis</th>
+                <th colSpan={2} className="text-center py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Normal Range</th>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Min</th>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Max</th>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Standard</th>
+                <th colSpan={2} className="text-center py-2.5 px-2 text-xs font-medium text-warning uppercase tracking-wider whitespace-nowrap">With Ded. Range</th>
+                <th colSpan={2} className="text-center py-2.5 px-2 text-xs font-medium text-destructive uppercase tracking-wider whitespace-nowrap">Outlier Range</th>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Reason</th>
                 <th className="py-2.5 px-2"></th>
+              </tr>
+              <tr className="border-b border-border/50 bg-secondary/10">
+                <th></th>
+                <th className="text-center py-1 px-1 text-[9px] text-muted-foreground/60">Min</th>
+                <th className="text-center py-1 px-1 text-[9px] text-muted-foreground/60">Max</th>
+                <th></th><th></th><th></th>
+                <th className="text-center py-1 px-1 text-[9px] text-warning/60">Min</th>
+                <th className="text-center py-1 px-1 text-[9px] text-warning/60">Max</th>
+                <th className="text-center py-1 px-1 text-[9px] text-destructive/60">Min</th>
+                <th className="text-center py-1 px-1 text-[9px] text-destructive/60">Max</th>
+                <th></th><th></th>
               </tr>
             </thead>
             <tbody>
               {parameters.map((param) => (
                 <tr key={param.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
-                  {fields.map(f => (
-                    <td key={f.key} className="py-1.5 px-1.5">
-                      <input
-                        type="text"
-                        value={param[f.key]}
-                        onChange={e => updateParam(param.id, f.key, e.target.value)}
-                        placeholder={f.placeholder}
-                        className={`${f.width} bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors`}
-                      />
-                    </td>
-                  ))}
+                  <td className="py-1.5 px-1.5">
+                    <input type="text" value={param.analysis} onChange={e => updateParam(param.id, 'analysis', e.target.value)}
+                      placeholder="e.g. Moisture" className="w-28 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                  </td>
+                  <td className="py-1.5 px-1">
+                    <input type="text" value={param.normalMin} onChange={e => updateParam(param.id, 'normalMin', e.target.value)}
+                      placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
+                  </td>
+                  <td className="py-1.5 px-1">
+                    <input type="text" value={param.normalMax} onChange={e => updateParam(param.id, 'normalMax', e.target.value)}
+                      placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
+                  </td>
+                  <td className="py-1.5 px-1.5">
+                    <input type="text" value={param.min} onChange={e => updateParam(param.id, 'min', e.target.value)}
+                      placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                  </td>
+                  <td className="py-1.5 px-1.5">
+                    <input type="text" value={param.max} onChange={e => updateParam(param.id, 'max', e.target.value)}
+                      placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                  </td>
+                  <td className="py-1.5 px-1.5">
+                    <input type="text" value={param.standard} onChange={e => updateParam(param.id, 'standard', e.target.value)}
+                      placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                  </td>
+                  <td className="py-1.5 px-1">
+                    <input type="text" value={param.withDeductionMin} onChange={e => updateParam(param.id, 'withDeductionMin', e.target.value)}
+                      placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-warning rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
+                  </td>
+                  <td className="py-1.5 px-1">
+                    <input type="text" value={param.withDeductionMax} onChange={e => updateParam(param.id, 'withDeductionMax', e.target.value)}
+                      placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-warning rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
+                  </td>
+                  <td className="py-1.5 px-1">
+                    <input type="text" value={param.outlierMin} onChange={e => updateParam(param.id, 'outlierMin', e.target.value)}
+                      placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-destructive rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
+                  </td>
+                  <td className="py-1.5 px-1">
+                    <input type="text" value={param.outlierMax} onChange={e => updateParam(param.id, 'outlierMax', e.target.value)}
+                      placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-destructive rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
+                  </td>
+                  <td className="py-1.5 px-1.5">
+                    <input type="text" value={param.reason} onChange={e => updateParam(param.id, 'reason', e.target.value)}
+                      placeholder="e.g. Mixing" className="w-24 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                  </td>
                   <td className="py-1.5 px-1.5">
                     {parameters.length > 1 && (
                       <button onClick={() => removeParam(param.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
@@ -236,7 +305,7 @@ export function StandardsSection() {
             )}
           </div>
           {editingId && (
-            <p className="text-[10px] text-primary">✏ Editing "{templateName}" — changes will update the existing standard</p>
+            <p className="text-[10px] text-primary">Editing "{templateName}" — changes will update the existing standard</p>
           )}
         </div>
       </div>
@@ -298,8 +367,8 @@ export function StandardsSection() {
                               <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Min</th>
                               <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Max</th>
                               <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Standard</th>
-                              <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">With Ded.</th>
-                              <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Outlier</th>
+                              <th className="text-left py-1.5 px-2 text-warning font-medium">With Ded.</th>
+                              <th className="text-left py-1.5 px-2 text-destructive font-medium">Outlier</th>
                               <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Reason</th>
                             </tr>
                           </thead>
@@ -307,12 +376,12 @@ export function StandardsSection() {
                             {s.parameters.map(p => (
                               <tr key={p.id} className="border-b border-border/30">
                                 <td className="py-1 px-2 font-medium text-foreground">{p.analysis}</td>
-                                <td className="py-1 px-2 font-mono text-muted-foreground">{p.normal || '—'}</td>
+                                <td className="py-1 px-2 font-mono text-muted-foreground">{formatRange(p.normalMin, p.normalMax)}</td>
                                 <td className="py-1 px-2 font-mono text-muted-foreground">{p.min || '—'}</td>
                                 <td className="py-1 px-2 font-mono text-muted-foreground">{p.max || '—'}</td>
                                 <td className="py-1 px-2 font-mono text-primary">{p.standard || '—'}</td>
-                                <td className="py-1 px-2 font-mono text-warning">{p.withDeduction || '—'}</td>
-                                <td className="py-1 px-2 font-mono text-destructive">{p.outlier || '—'}</td>
+                                <td className="py-1 px-2 font-mono text-warning">{formatRange(p.withDeductionMin, p.withDeductionMax)}</td>
+                                <td className="py-1 px-2 font-mono text-destructive">{formatRange(p.outlierMin, p.outlierMax)}</td>
                                 <td className="py-1 px-2 text-muted-foreground">{p.reason || '—'}</td>
                               </tr>
                             ))}
