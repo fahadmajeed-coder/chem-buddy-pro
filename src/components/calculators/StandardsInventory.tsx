@@ -114,12 +114,11 @@ export function StandardsInventory() {
 
     autoTable(doc, {
       startY: 34,
-      head: [['Analysis', 'Reading', 'Normal', 'Min', 'Max', 'Standard', 'With Ded.', 'Outlier', 'Status']],
+      head: [['Analysis', 'Normal', 'Min', 'Max', 'Standard', 'With Ded.', 'Outlier', 'Status']],
       body: selected.parameters.map(p => {
-        const reading = readings[p.id] || '';
         const status = getStatus(p);
         return [
-          p.analysis, reading || '—', p.normal || '—', p.min || '—', p.max || '—',
+          p.analysis, p.normal || '—', p.min || '—', p.max || '—',
           p.standard || '—', p.withDeduction || '—', p.outlier || '—',
           status === 'good' ? 'GOOD' : status === 'fair' ? 'FAIR' : status === 'reject' ? 'REJECT' : 'PENDING',
         ];
@@ -128,7 +127,7 @@ export function StandardsInventory() {
       headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold', fontSize: 8 },
       styles: { fontSize: 8, cellPadding: 3 },
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 8) {
+        if (data.section === 'body' && data.column.index === 7) {
           const val = (data.cell.raw as string || '').toUpperCase();
           if (val === 'GOOD') {
             data.cell.styles.textColor = [255, 255, 255];
@@ -237,7 +236,6 @@ export function StandardsInventory() {
               <thead>
                 <tr className="border-b border-border bg-secondary/30">
                   <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Analysis</th>
-                  <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Reading</th>
                   <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Normal</th>
                   <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Min</th>
                   <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Max</th>
@@ -253,15 +251,6 @@ export function StandardsInventory() {
                   return (
                     <tr key={p.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
                       <td className="py-2 px-3 text-xs font-medium text-foreground">{p.analysis}</td>
-                      <td className="py-2 px-2">
-                        <input
-                          type="number"
-                          value={readings[p.id] || ''}
-                          onChange={e => updateReading(p.id, e.target.value)}
-                          placeholder="Enter"
-                          className="w-20 bg-transparent border border-border hover:border-primary focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
-                        />
-                      </td>
                       <td className="py-2 px-3 text-xs font-mono text-muted-foreground">{p.normal || '—'}</td>
                       <td className="py-2 px-3 text-xs font-mono text-muted-foreground">{p.min || '—'}</td>
                       <td className="py-2 px-3 text-xs font-mono text-muted-foreground">{p.max || '—'}</td>
