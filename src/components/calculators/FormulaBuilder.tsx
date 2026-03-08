@@ -464,14 +464,24 @@ export function FormulaBuilder() {
       return;
     }
     const formula: SavedFormula = {
-      id: `f-${Date.now()}`,
+      id: editingFormulaId || `f-${Date.now()}`,
       name: formulaName.trim(),
       description: formulaDesc.trim(),
       expression,
       variables: variables.map(v => ({ ...v, testValue: '' })),
-      createdAt: Date.now(),
+      createdAt: editingFormulaId
+        ? (savedFormulas.find(f => f.id === editingFormulaId)?.createdAt || Date.now())
+        : Date.now(),
     };
-    setSavedFormulas(prev => [formula, ...prev]);
+    if (editingFormulaId) {
+      setSavedFormulas(prev => prev.map(f => f.id === editingFormulaId ? formula : f));
+    } else {
+      setSavedFormulas(prev => [formula, ...prev]);
+    }
+    resetBuilder();
+  };
+
+  const resetBuilder = () => {
     setFormulaName('');
     setFormulaDesc('');
     setExpression('');
@@ -479,10 +489,12 @@ export function FormulaBuilder() {
     setTestResult(null);
     setTestError(null);
     setTestPassed(null);
+    setEditingFormulaId(null);
   };
 
   const deleteFormula = (id: string) => {
     setSavedFormulas(prev => prev.filter(f => f.id !== id));
+    if (editingFormulaId === id) resetBuilder();
   };
 
   const loadFormula = (f: SavedFormula) => {
@@ -493,6 +505,18 @@ export function FormulaBuilder() {
     setTestResult(null);
     setTestError(null);
     setTestPassed(null);
+    setEditingFormulaId(f.id);
+  };
+
+  const duplicateFormula = (f: SavedFormula) => {
+    const dup: SavedFormula = {
+      ...f,
+      id: `f-${Date.now()}`,
+      name: `${f.name} (Copy)`,
+      createdAt: Date.now(),
+      variables: f.variables.map(v => ({ ...v, id: `v-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` })),
+    };
+    setSavedFormulas(prev => [dup, ...prev]);
   };
 
   // --- Filtered operations ---
