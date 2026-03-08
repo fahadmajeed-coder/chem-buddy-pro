@@ -448,6 +448,15 @@ export function AnalyticalTestSection() {
             <p className="text-xs text-muted-foreground mt-0.5">Add formulas and enter sample data</p>
           </div>
           <div className="flex items-center gap-1">
+            {allResults.length > 0 && (
+              <button
+                onClick={sendToCOA}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors mr-1"
+                title="Send results to COA Report"
+              >
+                <Send className="w-3.5 h-3.5" /> Send to COA
+              </button>
+            )}
             {blocks.length > 0 && !globalLocked && (
               <button
                 onClick={() => setShowClearConfirm(true)}
