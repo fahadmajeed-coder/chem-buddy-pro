@@ -290,8 +290,54 @@ export function ReportSection() {
     doc.save(`COA_${batchNo || 'report'}_${date}.pdf`);
   };
 
+  const loadFromAnalyticalTests = () => {
+    try {
+      const raw = localStorage.getItem('chemanalyst-analytical-results');
+      if (!raw) {
+        return;
+      }
+      const results: AnalyticalResult[] = JSON.parse(raw);
+      if (!results.length) return;
+      setEntries(results.map(r => ({
+        id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        parameter: r.formulaName + (r.sampleId ? ` (${r.sampleId})` : ''),
+        method: '',
+        result: r.isAverage ? r.result.toFixed(4) : r.result.toFixed(4),
+        unit: '',
+        greenRange: '',
+        yellowRange: '',
+        status: 'pending' as EntryStatus,
+      })));
+    } catch { /* ignore */ }
+  };
+
+  const hasAnalyticalResults = (() => {
+    try {
+      const raw = localStorage.getItem('chemanalyst-analytical-results');
+      return raw ? JSON.parse(raw).length > 0 : false;
+    } catch { return false; }
+  })();
+
   return (
     <div className="space-y-4">
+      {/* Import from Analytical Tests */}
+      {hasAnalyticalResults && (
+        <div className="glass-panel rounded-lg p-5 animate-fade-in">
+          <div className="flex items-center gap-2 mb-3">
+            <FlaskConical className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Import from Analytical Tests</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Load results sent from the Analytical Testing section. Averages are used when enabled.
+          </p>
+          <button
+            onClick={loadFromAnalyticalTests}
+            className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+          >
+            Load Analytical Results
+          </button>
+        </div>
+      )}
       {/* Standard Template Selector */}
       {savedStandards.length > 0 && (
         <div className="glass-panel rounded-lg p-5 animate-fade-in">
