@@ -22,19 +22,30 @@ export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
   }, [initialMw]);
 
   const purityFactor = parseFloat(purity) / 100 || 1;
-  const effectiveMass = parseFloat(mass) * purityFactor;
-  const densityVal = parseFloat(density);
+  const massVal = parseFloat(mass);
   const mwVal = parseFloat(mw);
+  const volVal = parseFloat(volume);
+  const densityVal = parseFloat(density);
   const nFactorVal = parseFloat(nFactor) || 1;
   const eqWeight = mwVal / nFactorVal;
 
-  // N = (mass × purity / Eq.Wt) / V(L)  where Eq.Wt = MW / n-factor
-  const normality = mass && mw && volume && nFactor
-    ? ((effectiveMass / eqWeight) / (parseFloat(volume) / 1000))
+  // N = (mass × purity / Eq.Wt) / V(L)
+  const normality = massVal && mwVal && volVal && nFactorVal
+    ? ((massVal * purityFactor / eqWeight) / (volVal / 1000))
+    : null;
+
+  // Stock normality from density + purity: N = (density × purity% × 1000 × n-factor) / MW
+  const normalityFromDensity = densityVal > 0 && mwVal && nFactorVal
+    ? (densityVal * purityFactor * 1000 * nFactorVal) / mwVal
     : null;
 
   const result = normality !== null && isFinite(normality)
     ? { value: normality.toFixed(4), unit: 'N (eq/L)' }
+    : null;
+
+  // Volume to pipette
+  const volumeToPipette = massVal && densityVal > 0
+    ? (massVal / densityVal)
     : null;
 
   const handleCompoundSelect = (compound: ChemicalCompound) => {
@@ -62,20 +73,35 @@ export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
         <InputField label="Purity" unit="%" value={purity} onChange={setPurity} disabled={locked} />
         <InputField label="Density" unit="g/mL" value={density} onChange={setDensity} disabled={locked} placeholder="Optional" />
       </div>
-      <div className="mt-2 space-y-0.5">
+      <div className="mt-2 space-y-1">
         {mwVal > 0 && nFactorVal > 0 && (
           <p className="text-xs text-muted-foreground font-mono">
             Equivalent Weight: {mwVal} / {nFactorVal} = {eqWeight.toFixed(3)} g/eq
           </p>
         )}
-        {purity && parseFloat(purity) < 100 && mass && (
-          <p className="text-xs text-muted-foreground font-mono">
-            Effective mass at {purity}% purity: {effectiveMass.toFixed(4)} g
-          </p>
+        {normalityFromDensity !== null && mwVal > 0 && (
+          <div className="p-2 bg-primary/5 border border-primary/20 rounded-md">
+            <p className="text-xs font-medium text-primary">
+              Stock concentration (from density & purity): {normalityFromDensity.toFixed(4)} N
+            </p>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              = ({densityVal} × {(purityFactor * 100).toFixed(1)}% × 1000 × {nFactorVal}) / {mwVal}
+            </p>
+          </div>
         )}
-        {densityVal > 0 && mass && (
+        {volumeToPipette !== null && (
+          <div className="p-2 bg-accent/30 border border-accent/20 rounded-md">
+            <p className="text-xs font-medium text-foreground">
+              📐 Volume to pipette: <span className="text-primary font-bold">{volumeToPipette.toFixed(4)} mL</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              = {massVal} g / {densityVal} g/mL
+            </p>
+          </div>
+        )}
+        {purityFactor < 1 && massVal > 0 && (
           <p className="text-xs text-muted-foreground font-mono">
-            Volume of pure solute: {(parseFloat(mass) / densityVal).toFixed(4)} mL
+            Effective mass at {purity}% purity: {(massVal * purityFactor).toFixed(4)} g
           </p>
         )}
       </div>
