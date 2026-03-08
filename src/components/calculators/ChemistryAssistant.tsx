@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Trash2, Bot, User } from 'lucide-react';
+import { Send, Sparkles, Trash2, Bot, User, ExternalLink } from 'lucide-react';
 import { getChemistryResponse, suggestedPrompts } from '@/lib/chemistryEngine';
 
 interface Message {
@@ -107,24 +107,43 @@ export function ChemistryAssistant() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-              msg.role === 'assistant'
-                ? 'bg-primary/15 text-primary'
-                : 'bg-secondary text-secondary-foreground'
-            }`}>
-              {msg.role === 'assistant' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+        {messages.map((msg) => {
+          const isSearchOnline = msg.role === 'assistant' && msg.content.startsWith('__SEARCH_ONLINE__');
+          const displayContent = isSearchOnline ? msg.content.replace('__SEARCH_ONLINE__', '') : msg.content;
+          const lastUserMsg = isSearchOnline
+            ? messages.filter(m => m.role === 'user').pop()?.content || ''
+            : '';
+
+          return (
+            <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                msg.role === 'assistant'
+                  ? 'bg-primary/15 text-primary'
+                  : 'bg-secondary text-secondary-foreground'
+              }`}>
+                {msg.role === 'assistant' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+              </div>
+              <div className={`max-w-[80%] space-y-2`}>
+                <div className={`rounded-xl px-4 py-3 text-sm leading-relaxed ${
+                  msg.role === 'assistant'
+                    ? 'bg-card border border-border text-card-foreground'
+                    : 'bg-primary text-primary-foreground'
+                }`}>
+                  <div dangerouslySetInnerHTML={{ __html: renderMarkdown(displayContent) }} />
+                </div>
+                {isSearchOnline && (
+                  <button
+                    onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(lastUserMsg)}`, '_blank')}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 border border-border transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Search on ChatGPT
+                  </button>
+                )}
+              </div>
             </div>
-            <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
-              msg.role === 'assistant'
-                ? 'bg-card border border-border text-card-foreground'
-                : 'bg-primary text-primary-foreground'
-            }`}>
-              <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {isTyping && (
           <div className="flex gap-3">
