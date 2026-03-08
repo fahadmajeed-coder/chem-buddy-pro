@@ -43,6 +43,7 @@ interface ReportEntry {
   greenRange: string;
   yellowRange: string;
   status: EntryStatus;
+  included: boolean;
 }
 
 const formatRangeStr = (min?: string, max?: string, legacy?: string) => {
