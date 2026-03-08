@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, Package, FlaskConical } from 'lucide-react';
-import { searchInventory, ChemicalCompound } from '@/lib/chemicalInventory';
+import { searchStoredInventory } from '@/lib/inventoryStore';
+import { ChemicalCompound } from '@/lib/chemicalInventory';
 
 interface CompoundSelectorProps {
   onSelect: (compound: ChemicalCompound) => void;
@@ -15,7 +16,7 @@ export function CompoundSelector({ onSelect, disabled }: CompoundSelectorProps) 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setResults(searchInventory(query));
+    setResults(searchStoredInventory(query));
     setOpen(query.length >= 2);
   }, [query]);
 

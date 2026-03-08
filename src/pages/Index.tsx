@@ -11,6 +11,7 @@ import { StandardsSection } from '@/components/calculators/StandardsSection';
 import { CustomCalculatorSection } from '@/components/calculators/CustomCalculatorSection';
 import { AddSectionDialog } from '@/components/AddSectionDialog';
 import { ChemistryAssistant } from '@/components/calculators/ChemistryAssistant';
+import { InventoryManager } from '@/components/calculators/InventoryManager';
 import { Wifi, WifiOff } from 'lucide-react';
 
 const Index = () => {
@@ -33,6 +34,7 @@ const Index = () => {
     report: 'Reports & Certificate of Analysis',
     standards: 'Standards Matching',
     assistant: 'Chemistry Assistant',
+    inventory: 'Chemical Inventory',
   };
 
   const renderSection = () => {
@@ -46,6 +48,7 @@ const Index = () => {
       case 'report': return <ReportSection />;
       case 'standards': return <StandardsSection />;
       case 'assistant': return <ChemistryAssistant />;
+      case 'inventory': return <InventoryManager />;
       default: {
         const custom = customSections.find(s => s.id === activeSection);
         return custom ? <CustomCalculatorSection name={custom.name} /> : null;
