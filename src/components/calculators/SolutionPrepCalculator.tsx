@@ -539,13 +539,7 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
 }
 
 
-/** Small result display card */
 
-/** Inline quick unit converter */
-function QuickUnitConverter({ step, locked }: { step: PrepStep; locked: boolean }) {
-  const [fromUnit, setFromUnit] = useState('M');
-  const [toUnit, setToUnit] = useState('N');
-  const [inputVal, setInputVal] = useState('');
 
   const mw = parseFloat(step.mw) || 0;
   const density = parseFloat(step.density) || 0;
