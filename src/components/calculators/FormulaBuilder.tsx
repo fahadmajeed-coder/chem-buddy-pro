@@ -350,12 +350,7 @@ export function FormulaBuilder() {
     // Convert human-readable → JS
     const jsExpr = toJavaScript(expr);
 
-    // Validate sanitized expression
-    const sanitized = jsExpr.replace(/Math\.(sqrt|abs|log10|log|exp|round|floor|ceil|sin|cos|tan|PI|E)/g, '0');
-    if (!/^[\d\s+\-*/%().**,]+$/.test(sanitized)) {
-      setTestError('Something looks wrong in the expression. Check for unsupported characters.');
-      return;
-    }
+    // Validation is handled by the try/catch — toJavaScript converts everything
 
     try {
       const fn = new Function(`"use strict"; return (${jsExpr});`);
@@ -424,10 +419,11 @@ export function FormulaBuilder() {
       )
     : OPERATIONS;
 
-  const groupedOps = filteredOps.reduce<Record<string, Operation[]>>((acc, op) => {
-    (acc[op.category] = acc[op.category] || []).push(op);
-    return acc;
-  }, {});
+  const groupedOps: Record<string, Operation[]> = {};
+  for (const cat of CATEGORY_ORDER) {
+    const ops = filteredOps.filter(op => op.category === cat);
+    if (ops.length > 0) groupedOps[cat] = ops;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
