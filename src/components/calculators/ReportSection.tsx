@@ -11,7 +11,8 @@ interface ReportEntry {
   method: string;
   result: string;
   unit: string;
-  specification: string;
+  greenRange: string;
+  yellowRange: string;
   status: EntryStatus;
 }
 
@@ -22,12 +23,12 @@ export function ReportSection() {
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [entries, setEntries] = useState<ReportEntry[]>([
-    { id: '1', parameter: '', method: '', result: '', unit: '', specification: '', status: 'pending' }
+    { id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending' }
   ]);
 
   const addEntry = () => {
     setEntries(prev => [...prev, {
-      id: Date.now().toString(), parameter: '', method: '', result: '', unit: '', specification: '', status: 'pending'
+      id: Date.now().toString(), parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending'
     }]);
   };
 
@@ -39,23 +40,25 @@ export function ReportSection() {
     setEntries(prev => prev.map(e => {
       if (e.id !== id) return e;
       const updated = { ...e, [field]: value };
-      if (field === 'result' || field === 'specification') {
-        const spec = updated.specification;
+      if (field === 'result' || field === 'greenRange' || field === 'yellowRange') {
         const res = parseFloat(updated.result);
-        if (spec && !isNaN(res)) {
-          const match = spec.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
-          if (match) {
-            const min = parseFloat(match[1]);
-            const max = parseFloat(match[2]);
-            const range = max - min;
-            if (res >= min && res <= max) {
-              // Fair if within outer 10% of range on either side
-              const fairMargin = range * 0.1;
-              updated.status = (res <= min + fairMargin || res >= max - fairMargin) ? 'fair' : 'good';
-            } else {
-              updated.status = 'reject';
-            }
+        const greenMatch = updated.greenRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
+        const yellowMatch = updated.yellowRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
+        if (!isNaN(res) && (greenMatch || yellowMatch)) {
+          let status: EntryStatus = 'reject';
+          if (greenMatch) {
+            const gMin = parseFloat(greenMatch[1]);
+            const gMax = parseFloat(greenMatch[2]);
+            if (res >= gMin && res <= gMax) status = 'good';
           }
+          if (status !== 'good' && yellowMatch) {
+            const yMin = parseFloat(yellowMatch[1]);
+            const yMax = parseFloat(yellowMatch[2]);
+            if (res >= yMin && res <= yMax) status = 'fair';
+          }
+          updated.status = status;
+        } else {
+          updated.status = 'pending';
         }
       }
       return updated;
