@@ -47,17 +47,17 @@ const Index = () => {
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'molarity': return <MolarityCalculator />;
+      case 'molarity': return <MolarityCalculator initialMw={elementMw} />;
       case 'normality': return <NormalityCalculator />;
       case 'formality': return <FormalityCalculator />;
       case 'conversion': return <ConversionCalculator />;
-      case 'solution': return <SolutionPrepCalculator />;
+      case 'solution': return <SolutionPrepCalculator initialMw={elementMw} />;
       case 'analytical': return <AnalyticalTestSection />;
       case 'report': return <ReportSection />;
       case 'standards': return <StandardsSection />;
       case 'assistant': return <ChemistryAssistant />;
       case 'inventory': return <InventoryManager />;
-      case 'periodic-table': return <PeriodicTable />;
+      case 'periodic-table': return <PeriodicTable onUseInCalculator={handleUseInCalculator} />;
       default: {
         const custom = customSections.find(s => s.id === activeSection);
         return custom ? <CustomCalculatorSection name={custom.name} /> : null;
