@@ -28,54 +28,215 @@ interface Operation {
 
 // All operations use HUMAN-READABLE tokens. We convert to JS only at evaluation time.
 const OPERATIONS: Operation[] = [
-  // Basic Math
-  { token: '+', icon: '+', name: 'Add', description: 'Add two values together', category: 'Basic Math' },
-  { token: '-', icon: '−', name: 'Subtract', description: 'Subtract one value from another', category: 'Basic Math' },
-  { token: '*', icon: '×', name: 'Multiply', description: 'Multiply two values', category: 'Basic Math' },
-  { token: '/', icon: '÷', name: 'Divide', description: 'Divide one value by another', category: 'Basic Math' },
-  { token: '^', icon: 'xⁿ', name: 'Power', description: 'Raise to a power (e.g. x ^ 2 means x squared)', category: 'Basic Math' },
-  { token: 'mod', icon: '%', name: 'Remainder', description: 'Remainder after division', category: 'Basic Math' },
-  // Grouping
+  // ─── Basic Arithmetic ───
+  { token: '+', icon: '+', name: 'Add', description: 'Add two values together', category: 'Basic Arithmetic' },
+  { token: '-', icon: '−', name: 'Subtract', description: 'Subtract one value from another', category: 'Basic Arithmetic' },
+  { token: '*', icon: '×', name: 'Multiply', description: 'Multiply two values', category: 'Basic Arithmetic' },
+  { token: '/', icon: '÷', name: 'Divide', description: 'Divide one value by another', category: 'Basic Arithmetic' },
+  { token: '^', icon: 'xⁿ', name: 'Power', description: 'Raise to a power (e.g. x ^ 2 = x squared)', category: 'Basic Arithmetic' },
+  { token: 'mod', icon: '%', name: 'Remainder', description: 'Remainder after division (modulo)', category: 'Basic Arithmetic' },
+
+  // ─── Grouping ───
   { token: '(', icon: '(', name: 'Open Bracket', description: 'Start grouping — calculate this part first', category: 'Grouping' },
   { token: ')', icon: ')', name: 'Close Bracket', description: 'End grouping', category: 'Grouping' },
-  // Common Functions (shown as friendly names)
-  { token: 'sqrt(', icon: '√', name: 'Square Root', description: 'Square root of a number', category: 'Functions' },
-  { token: 'abs(', icon: '|x|', name: 'Absolute Value', description: 'Make negative numbers positive', category: 'Functions' },
-  { token: 'round(', icon: '≈', name: 'Round', description: 'Round to the nearest whole number', category: 'Functions' },
-  { token: 'roundUp(', icon: '⌈x⌉', name: 'Round Up', description: 'Always round up to the next whole number', category: 'Functions' },
-  { token: 'roundDown(', icon: '⌊x⌋', name: 'Round Down', description: 'Always round down to the previous whole number', category: 'Functions' },
-  { token: 'log(', icon: 'log', name: 'Logarithm (base 10)', description: 'Log base 10 — common in pH calculations', category: 'Functions' },
-  { token: 'ln(', icon: 'ln', name: 'Natural Logarithm', description: 'Log base e (≈ 2.718)', category: 'Functions' },
-  { token: 'exp(', icon: 'eˣ', name: 'Exponential', description: 'e raised to a power — used in decay/growth', category: 'Functions' },
-  { token: 'sin(', icon: 'sin', name: 'Sine', description: 'Sine function (input in radians)', category: 'Trigonometry' },
-  { token: 'cos(', icon: 'cos', name: 'Cosine', description: 'Cosine function (input in radians)', category: 'Trigonometry' },
-  { token: 'tan(', icon: 'tan', name: 'Tangent', description: 'Tangent function (input in radians)', category: 'Trigonometry' },
-  // Constants
+  { token: ',', icon: ',', name: 'Separator', description: 'Separate values inside a function (e.g. max(a, b))', category: 'Grouping' },
+
+  // ─── Comparison ───
+  { token: '>', icon: '>', name: 'Greater Than', description: 'Is left bigger than right? Returns 1 (yes) or 0 (no)', category: 'Comparison' },
+  { token: '<', icon: '<', name: 'Less Than', description: 'Is left smaller than right? Returns 1 (yes) or 0 (no)', category: 'Comparison' },
+  { token: '>=', icon: '≥', name: 'Greater or Equal', description: 'Is left bigger or equal? Returns 1 or 0', category: 'Comparison' },
+  { token: '<=', icon: '≤', name: 'Less or Equal', description: 'Is left smaller or equal? Returns 1 or 0', category: 'Comparison' },
+  { token: '==', icon: '=', name: 'Equals', description: 'Are both values the same? Returns 1 or 0', category: 'Comparison' },
+  { token: '!=', icon: '≠', name: 'Not Equal', description: 'Are values different? Returns 1 or 0', category: 'Comparison' },
+
+  // ─── Roots & Powers ───
+  { token: 'sqrt(', icon: '√', name: 'Square Root', description: 'Square root of a number', category: 'Roots & Powers' },
+  { token: 'cbrt(', icon: '∛', name: 'Cube Root', description: 'Cube root of a number', category: 'Roots & Powers' },
+  { token: 'squared(', icon: 'x²', name: 'Squared', description: 'Multiply a number by itself', category: 'Roots & Powers' },
+  { token: 'cubed(', icon: 'x³', name: 'Cubed', description: 'Number × itself × itself', category: 'Roots & Powers' },
+
+  // ─── Rounding ───
+  { token: 'round(', icon: '≈', name: 'Round', description: 'Round to the nearest whole number', category: 'Rounding' },
+  { token: 'roundUp(', icon: '⌈x⌉', name: 'Round Up', description: 'Always round up to the next whole number', category: 'Rounding' },
+  { token: 'roundDown(', icon: '⌊x⌋', name: 'Round Down', description: 'Always round down', category: 'Rounding' },
+  { token: 'roundTo(', icon: '.0n', name: 'Round to Decimals', description: 'Round to N decimal places — roundTo(value, places)', category: 'Rounding' },
+  { token: 'truncate(', icon: '✂', name: 'Truncate', description: 'Cut off decimal part without rounding', category: 'Rounding' },
+
+  // ─── Logarithms & Exponentials ───
+  { token: 'log(', icon: 'log', name: 'Logarithm (base 10)', description: 'Log base 10 — common in pH calculations', category: 'Logarithms & Exponentials' },
+  { token: 'ln(', icon: 'ln', name: 'Natural Logarithm', description: 'Log base e — used in kinetics & thermodynamics', category: 'Logarithms & Exponentials' },
+  { token: 'log2(', icon: 'log₂', name: 'Log base 2', description: 'Logarithm base 2', category: 'Logarithms & Exponentials' },
+  { token: 'exp(', icon: 'eˣ', name: 'Exponential', description: 'e raised to a power — used in decay/growth', category: 'Logarithms & Exponentials' },
+  { token: 'pow10(', icon: '10ˣ', name: 'Power of 10', description: '10 raised to a power — antilog', category: 'Logarithms & Exponentials' },
+
+  // ─── Absolute & Sign ───
+  { token: 'abs(', icon: '|x|', name: 'Absolute Value', description: 'Make any number positive', category: 'Absolute & Sign' },
+  { token: 'sign(', icon: '±', name: 'Sign', description: 'Returns −1, 0, or +1 depending on the sign', category: 'Absolute & Sign' },
+  { token: 'negate(', icon: '−x', name: 'Negate', description: 'Flip the sign (positive ↔ negative)', category: 'Absolute & Sign' },
+
+  // ─── Min, Max & Clamp ───
+  { token: 'min(', icon: 'min', name: 'Minimum', description: 'Smallest of two or more values — min(a, b)', category: 'Min, Max & Clamp' },
+  { token: 'max(', icon: 'max', name: 'Maximum', description: 'Largest of two or more values — max(a, b)', category: 'Min, Max & Clamp' },
+  { token: 'clamp(', icon: '⟨⟩', name: 'Clamp', description: 'Keep value between min and max — clamp(value, min, max)', category: 'Min, Max & Clamp' },
+
+  // ─── Statistical ───
+  { token: 'average(', icon: 'x̄', name: 'Average (Mean)', description: 'Average of values — average(a, b, c)', category: 'Statistical' },
+  { token: 'sum(', icon: 'Σ', name: 'Sum', description: 'Add all values together — sum(a, b, c)', category: 'Statistical' },
+  { token: 'count(', icon: 'n', name: 'Count', description: 'Count how many values — count(a, b, c)', category: 'Statistical' },
+  { token: 'range(', icon: 'R', name: 'Range', description: 'Difference between largest and smallest', category: 'Statistical' },
+
+  // ─── Percentage & Ratio ───
+  { token: 'percent(', icon: '%', name: 'Percentage', description: 'Calculate percentage — percent(part, total) = (part/total)×100', category: 'Percentage & Ratio' },
+  { token: 'percentOf(', icon: '%of', name: 'Percent Of', description: 'What is X% of Y — percentOf(percent, total)', category: 'Percentage & Ratio' },
+  { token: 'ratio(', icon: 'a:b', name: 'Ratio', description: 'Ratio of two values — ratio(a, b) = a / b', category: 'Percentage & Ratio' },
+  { token: 'ppm(', icon: 'ppm', name: 'Parts Per Million', description: 'Convert to ppm — ppm(part, total) = (part/total)×1000000', category: 'Percentage & Ratio' },
+  { token: 'ppb(', icon: 'ppb', name: 'Parts Per Billion', description: 'Convert to ppb — ppb(part, total) = (part/total)×1e9', category: 'Percentage & Ratio' },
+
+  // ─── Trigonometry ───
+  { token: 'sin(', icon: 'sin', name: 'Sine', description: 'Sine (input in radians)', category: 'Trigonometry' },
+  { token: 'cos(', icon: 'cos', name: 'Cosine', description: 'Cosine (input in radians)', category: 'Trigonometry' },
+  { token: 'tan(', icon: 'tan', name: 'Tangent', description: 'Tangent (input in radians)', category: 'Trigonometry' },
+  { token: 'asin(', icon: 'sin⁻¹', name: 'Arc Sine (Inverse)', description: 'Inverse sine — returns radians', category: 'Trigonometry' },
+  { token: 'acos(', icon: 'cos⁻¹', name: 'Arc Cosine (Inverse)', description: 'Inverse cosine — returns radians', category: 'Trigonometry' },
+  { token: 'atan(', icon: 'tan⁻¹', name: 'Arc Tangent (Inverse)', description: 'Inverse tangent — returns radians', category: 'Trigonometry' },
+  { token: 'toRadians(', icon: 'rad', name: 'Degrees → Radians', description: 'Convert degrees to radians', category: 'Trigonometry' },
+  { token: 'toDegrees(', icon: 'deg', name: 'Radians → Degrees', description: 'Convert radians to degrees', category: 'Trigonometry' },
+  { token: 'hypot(', icon: 'hyp', name: 'Hypotenuse', description: 'Length of hypotenuse — hypot(a, b) = √(a² + b²)', category: 'Trigonometry' },
+
+  // ─── Chemistry Helpers ───
+  { token: 'molarity(', icon: 'M', name: 'Molarity', description: 'molarity(mass_g, molWeight, volume_L)', category: 'Chemistry Helpers' },
+  { token: 'dilution(', icon: 'C₁V₁', name: 'Dilution', description: 'dilution(C1, V1, V2) = C1×V1/V2', category: 'Chemistry Helpers' },
+  { token: 'percentYield(', icon: '%Y', name: 'Percent Yield', description: 'percentYield(actual, theoretical) = (actual/theoretical)×100', category: 'Chemistry Helpers' },
+  { token: 'percentError(', icon: '%E', name: 'Percent Error', description: 'percentError(experimental, theoretical)', category: 'Chemistry Helpers' },
+  { token: 'percentPurity(', icon: '%P', name: 'Percent Purity', description: 'percentPurity(pure_mass, total_mass) = (pure/total)×100', category: 'Chemistry Helpers' },
+  { token: 'normality(', icon: 'N', name: 'Normality', description: 'normality(mass_g, eqWeight, volume_L)', category: 'Chemistry Helpers' },
+
+  // ─── Unit Conversions ───
+  { token: 'gToMg(', icon: 'g→mg', name: 'Grams to Milligrams', description: 'Multiply by 1000', category: 'Unit Conversions' },
+  { token: 'mgToG(', icon: 'mg→g', name: 'Milligrams to Grams', description: 'Divide by 1000', category: 'Unit Conversions' },
+  { token: 'LToMl(', icon: 'L→mL', name: 'Liters to Milliliters', description: 'Multiply by 1000', category: 'Unit Conversions' },
+  { token: 'mlToL(', icon: 'mL→L', name: 'Milliliters to Liters', description: 'Divide by 1000', category: 'Unit Conversions' },
+  { token: 'celToFah(', icon: '°C→°F', name: 'Celsius to Fahrenheit', description: '(C × 9/5) + 32', category: 'Unit Conversions' },
+  { token: 'fahToCel(', icon: '°F→°C', name: 'Fahrenheit to Celsius', description: '(F − 32) × 5/9', category: 'Unit Conversions' },
+  { token: 'celToKel(', icon: '°C→K', name: 'Celsius to Kelvin', description: 'C + 273.15', category: 'Unit Conversions' },
+  { token: 'kelToCel(', icon: 'K→°C', name: 'Kelvin to Celsius', description: 'K − 273.15', category: 'Unit Conversions' },
+
+  // ─── Constants ───
   { token: 'π', icon: 'π', name: 'Pi', description: '3.14159... — ratio of circumference to diameter', category: 'Constants' },
-  { token: 'e', icon: 'e', name: "Euler's Number", description: '2.71828... — base of natural logarithm', category: 'Constants' },
+  { token: 'E_CONST', icon: 'e', name: "Euler's Number", description: '2.71828... — base of natural logarithm', category: 'Constants' },
+  { token: 'AVOGADRO', icon: 'Nₐ', name: "Avogadro's Number", description: '6.022 × 10²³ — atoms/molecules per mole', category: 'Constants' },
+  { token: 'GAS_R', icon: 'R', name: 'Gas Constant (R)', description: '8.314 J/(mol·K)', category: 'Constants' },
+  { token: 'FARADAY', icon: 'F', name: 'Faraday Constant', description: '96485 C/mol — charge per mole of electrons', category: 'Constants' },
+  { token: 'BOLTZMANN', icon: 'kB', name: 'Boltzmann Constant', description: '1.381 × 10⁻²³ J/K', category: 'Constants' },
+  { token: 'PLANCK', icon: 'h', name: 'Planck Constant', description: '6.626 × 10⁻³⁴ J·s', category: 'Constants' },
+  { token: 'SPEED_OF_LIGHT', icon: 'c', name: 'Speed of Light', description: '2.998 × 10⁸ m/s', category: 'Constants' },
+  { token: 'ATM_TO_PA', icon: 'atm', name: '1 atm in Pascals', description: '101325 Pa', category: 'Constants' },
+  { token: 'WATER_MW', icon: 'H₂O', name: 'Water Molar Mass', description: '18.015 g/mol', category: 'Constants' },
+];
+
+// Category display order
+const CATEGORY_ORDER = [
+  'Basic Arithmetic', 'Grouping', 'Roots & Powers', 'Rounding',
+  'Logarithms & Exponentials', 'Absolute & Sign', 'Min, Max & Clamp',
+  'Statistical', 'Percentage & Ratio', 'Comparison',
+  'Trigonometry', 'Chemistry Helpers', 'Unit Conversions', 'Constants',
 ];
 
 /**
- * Convert human-readable expression → JavaScript for evaluation
- * Users never see Math.*, they write sqrt(, log(, ^, etc.
+ * Convert human-readable expression → JavaScript for evaluation.
+ * Users never see Math.* or JS syntax — they write sqrt(, log(, ^, etc.
  */
 function toJavaScript(expr: string): string {
-  return expr
-    .replace(/\bsqrt\(/g, 'Math.sqrt(')
-    .replace(/\babs\(/g, 'Math.abs(')
-    .replace(/\broundUp\(/g, 'Math.ceil(')
-    .replace(/\broundDown\(/g, 'Math.floor(')
-    .replace(/\bround\(/g, 'Math.round(')
-    .replace(/\blog\(/g, 'Math.log10(')
-    .replace(/\bln\(/g, 'Math.log(')
-    .replace(/\bexp\(/g, 'Math.exp(')
-    .replace(/\bsin\(/g, 'Math.sin(')
-    .replace(/\bcos\(/g, 'Math.cos(')
-    .replace(/\btan\(/g, 'Math.tan(')
-    .replace(/π/g, 'Math.PI')
-    .replace(/\be\b/g, 'Math.E')
-    .replace(/\^/g, '**')
-    .replace(/\bmod\b/g, '%');
+  let js = expr;
+
+  // Multi-arg helper functions → inline JS
+  // Statistical
+  js = js.replace(/\baverage\(([^)]+)\)/g, '(($1) => { const _a = [$1]; return _a.reduce((s,v)=>s+v,0)/_a.length; })($1)');
+  // Actually, let's use a simpler approach: define helpers in the eval scope
+
+  // Single-arg math functions
+  js = js.replace(/\bsqrt\(/g, 'Math.sqrt(');
+  js = js.replace(/\bcbrt\(/g, 'Math.cbrt(');
+  js = js.replace(/\bsquared\(([^)]+)\)/g, '(($1) ** 2)');
+  js = js.replace(/\bcubed\(([^)]+)\)/g, '(($1) ** 3)');
+  js = js.replace(/\babs\(/g, 'Math.abs(');
+  js = js.replace(/\bsign\(/g, 'Math.sign(');
+  js = js.replace(/\bnegate\(([^)]+)\)/g, '(-($1))');
+  js = js.replace(/\broundUp\(/g, 'Math.ceil(');
+  js = js.replace(/\broundDown\(/g, 'Math.floor(');
+  js = js.replace(/\broundTo\(([^,]+),\s*([^)]+)\)/g, '(Math.round(($1) * Math.pow(10, $2)) / Math.pow(10, $2))');
+  js = js.replace(/\bround\(/g, 'Math.round(');
+  js = js.replace(/\btruncate\(/g, 'Math.trunc(');
+  js = js.replace(/\blog2\(/g, 'Math.log2(');
+  js = js.replace(/\blog\(/g, 'Math.log10(');
+  js = js.replace(/\bln\(/g, 'Math.log(');
+  js = js.replace(/\bexp\(/g, 'Math.exp(');
+  js = js.replace(/\bpow10\(([^)]+)\)/g, 'Math.pow(10, $1)');
+
+  // Trig
+  js = js.replace(/\basin\(/g, 'Math.asin(');
+  js = js.replace(/\bacos\(/g, 'Math.acos(');
+  js = js.replace(/\batan\(/g, 'Math.atan(');
+  js = js.replace(/\bsin\(/g, 'Math.sin(');
+  js = js.replace(/\bcos\(/g, 'Math.cos(');
+  js = js.replace(/\btan\(/g, 'Math.tan(');
+  js = js.replace(/\btoRadians\(([^)]+)\)/g, '(($1) * Math.PI / 180)');
+  js = js.replace(/\btoDegrees\(([^)]+)\)/g, '(($1) * 180 / Math.PI)');
+  js = js.replace(/\bhypot\(/g, 'Math.hypot(');
+
+  // Min/Max/Clamp
+  js = js.replace(/\bmin\(/g, 'Math.min(');
+  js = js.replace(/\bmax\(/g, 'Math.max(');
+  js = js.replace(/\bclamp\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, 'Math.min(Math.max(($1), ($2)), ($3))');
+
+  // Statistical (multi-arg)
+  js = js.replace(/\baverage\(([^)]+)\)/g, '(function(){var _v=[$1];return _v.reduce(function(a,b){return a+b},0)/_v.length}())');
+  js = js.replace(/\bsum\(([^)]+)\)/g, '([$1].reduce(function(a,b){return a+b},0))');
+  js = js.replace(/\bcount\(([^)]+)\)/g, '([$1].length)');
+  js = js.replace(/\brange\(([^)]+)\)/g, '(Math.max($1) - Math.min($1))');
+
+  // Percentage & Ratio
+  js = js.replace(/\bpercent\(([^,]+),\s*([^)]+)\)/g, '((($1) / ($2)) * 100)');
+  js = js.replace(/\bpercentOf\(([^,]+),\s*([^)]+)\)/g, '((($1) / 100) * ($2))');
+  js = js.replace(/\bratio\(([^,]+),\s*([^)]+)\)/g, '(($1) / ($2))');
+  js = js.replace(/\bppm\(([^,]+),\s*([^)]+)\)/g, '((($1) / ($2)) * 1000000)');
+  js = js.replace(/\bppb\(([^,]+),\s*([^)]+)\)/g, '((($1) / ($2)) * 1000000000)');
+
+  // Chemistry helpers
+  js = js.replace(/\bmolarity\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, '((($1) / ($2)) / ($3))');
+  js = js.replace(/\bdilution\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, '((($1) * ($2)) / ($3))');
+  js = js.replace(/\bpercentYield\(([^,]+),\s*([^)]+)\)/g, '((($1) / ($2)) * 100)');
+  js = js.replace(/\bpercentError\(([^,]+),\s*([^)]+)\)/g, '((Math.abs(($1) - ($2)) / Math.abs($2)) * 100)');
+  js = js.replace(/\bpercentPurity\(([^,]+),\s*([^)]+)\)/g, '((($1) / ($2)) * 100)');
+  js = js.replace(/\bnormality\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, '((($1) / ($2)) / ($3))');
+
+  // Unit conversions
+  js = js.replace(/\bgToMg\(([^)]+)\)/g, '(($1) * 1000)');
+  js = js.replace(/\bmgToG\(([^)]+)\)/g, '(($1) / 1000)');
+  js = js.replace(/\bLToMl\(([^)]+)\)/g, '(($1) * 1000)');
+  js = js.replace(/\bmlToL\(([^)]+)\)/g, '(($1) / 1000)');
+  js = js.replace(/\bcelToFah\(([^)]+)\)/g, '((($1) * 9 / 5) + 32)');
+  js = js.replace(/\bfahToCel\(([^)]+)\)/g, '((($1) - 32) * 5 / 9)');
+  js = js.replace(/\bcelToKel\(([^)]+)\)/g, '(($1) + 273.15)');
+  js = js.replace(/\bkelToCel\(([^)]+)\)/g, '(($1) - 273.15)');
+
+  // Constants
+  js = js.replace(/π/g, 'Math.PI');
+  js = js.replace(/\bE_CONST\b/g, 'Math.E');
+  js = js.replace(/\bAVOGADRO\b/g, '6.02214076e23');
+  js = js.replace(/\bGAS_R\b/g, '8.314462618');
+  js = js.replace(/\bFARADAY\b/g, '96485.33212');
+  js = js.replace(/\bBOLTZMANN\b/g, '1.380649e-23');
+  js = js.replace(/\bPLANCK\b/g, '6.62607015e-34');
+  js = js.replace(/\bSPEED_OF_LIGHT\b/g, '299792458');
+  js = js.replace(/\bATM_TO_PA\b/g, '101325');
+  js = js.replace(/\bWATER_MW\b/g, '18.015');
+
+  // Operators
+  js = js.replace(/\^/g, '**');
+  js = js.replace(/\bmod\b/g, '%');
+
+  return js;
 }
 
 export function FormulaBuilder() {
