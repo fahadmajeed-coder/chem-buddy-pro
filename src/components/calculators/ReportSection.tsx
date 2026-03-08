@@ -353,6 +353,7 @@ export function ReportSection() {
             greenRange: '',
             yellowRange: '',
             status: 'pending' as EntryStatus,
+            included: true,
           });
         }
         setEntries([...updatedEntries, ...extraEntries]);
@@ -367,6 +368,7 @@ export function ReportSection() {
           greenRange: '',
           yellowRange: '',
           status: 'pending' as EntryStatus,
+          included: true,
         })));
       }
       toast.success(`Analytical results loaded and merged.`);
