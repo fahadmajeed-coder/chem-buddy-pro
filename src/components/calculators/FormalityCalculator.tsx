@@ -16,6 +16,7 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
   const [volume, setVolume] = useState('');
   const [purity, setPurity] = useState('100');
   const [density, setDensity] = useState('');
+  const [targetConc, setTargetConc] = useState('');
   const [reagentState, setReagentState] = useState<'solid' | 'liquid'>('solid');
   const [locked, setLocked] = useState(false);
 
@@ -24,10 +25,18 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
   }, [initialMw]);
 
   const purityFactor = parseFloat(purity) / 100 || 1;
-  const massVal = parseFloat(mass);
   const fwVal = parseFloat(fw);
   const volVal = parseFloat(volume);
   const densityVal = parseFloat(density);
+  const targetConcVal = parseFloat(targetConc);
+  const isLiquid = reagentState === 'liquid';
+
+  // For liquid: auto-calculate mass from target formality
+  const autoMass = isLiquid && targetConcVal > 0 && fwVal > 0 && volVal > 0
+    ? (targetConcVal * fwVal * (volVal / 1000)) / purityFactor
+    : null;
+
+  const massVal = isLiquid ? (autoMass ?? 0) : parseFloat(mass);
 
   const formality = massVal && fwVal && volVal
     ? ((massVal * purityFactor / fwVal) / (volVal / 1000))
@@ -41,7 +50,6 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
     ? (massVal / densityVal)
     : null;
 
-  const isLiquid = reagentState === 'liquid';
   const result = isLiquid && volumeToPipette !== null && formality !== null
     ? { value: volumeToPipette.toFixed(4), unit: 'mL to pipette' }
     : formality !== null && isFinite(formality)
@@ -60,7 +68,7 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
       subtitle="F = (mass × purity / FW) / Volume(L)"
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
-      onReset={() => { if (!locked) { setMass(''); setFw(''); setVolume(''); setPurity('100'); setDensity(''); setReagentState('solid'); } }}
+      onReset={() => { if (!locked) { setMass(''); setFw(''); setVolume(''); setPurity('100'); setDensity(''); setTargetConc(''); setReagentState('solid'); } }}
       result={result}
     >
       <CompoundSelector onSelect={handleCompoundSelect} disabled={locked} />
@@ -82,7 +90,11 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <InputField label={isLiquid ? "Mass (or calculate)" : "Mass of Solute"} unit="g" value={mass} onChange={setMass} disabled={locked} />
+        {isLiquid ? (
+          <InputField label="Target Concentration" unit="F" value={targetConc} onChange={setTargetConc} disabled={locked} placeholder="Desired F" />
+        ) : (
+          <InputField label="Mass of Solute" unit="g" value={mass} onChange={setMass} disabled={locked} />
+        )}
         <InputField label="Formula Weight" unit="g/FW" value={fw} onChange={setFw} disabled={locked} />
         <InputField label="Volume of Solution" unit="mL" value={volume} onChange={setVolume} disabled={locked} />
         <InputField label="Purity" unit="%" value={purity} onChange={setPurity} disabled={locked} />
@@ -99,13 +111,23 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
             </p>
           </div>
         )}
+        {isLiquid && autoMass !== null && autoMass > 0 && (
+          <div className="p-2 bg-accent/30 border border-accent/20 rounded-md">
+            <p className="text-xs font-medium text-foreground">
+              ⚖️ Required mass: <span className="text-primary font-bold">{autoMass.toFixed(4)} g</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              = {targetConcVal} F × {fwVal} g/FW × {(volVal / 1000).toFixed(4)} L / {(purityFactor * 100).toFixed(1)}%
+            </p>
+          </div>
+        )}
         {isLiquid && volumeToPipette !== null && (
           <div className="p-2 bg-accent/30 border border-accent/20 rounded-md">
             <p className="text-xs font-medium text-foreground">
               📐 Volume to pipette: <span className="text-primary font-bold">{volumeToPipette.toFixed(4)} mL</span>
             </p>
             <p className="text-[10px] text-muted-foreground font-mono">
-              = {massVal} g / {densityVal} g/mL
+              = {massVal.toFixed(4)} g / {densityVal} g/mL
             </p>
           </div>
         )}
