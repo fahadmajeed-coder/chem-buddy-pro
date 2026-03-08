@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight, Send, Download, BookOpen } from 'lucide-react';
+import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight, Send, Download, BookOpen, Pencil, Check, PlusCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { toast } from 'sonner';
@@ -139,6 +139,7 @@ function FormulaBlockCard({
   onRemoveRow,
   onRemoveBlock,
   onResultsChange,
+  onUpdateFormula,
 }: {
   formula: SavedFormula;
   block: FormulaBlock;
@@ -148,10 +149,16 @@ function FormulaBlockCard({
   onRemoveRow: (rowId: string) => void;
   onRemoveBlock: () => void;
   onResultsChange: (results: AnalyticalResult[]) => void;
+  onUpdateFormula: (updated: SavedFormula) => void;
 }) {
   const [cardLocked, setCardLocked] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [showAverages, setShowAverages] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(formula.name);
+  const [editDesc, setEditDesc] = useState(formula.description);
+  const [editExpr, setEditExpr] = useState(formula.expression);
+  const [editVars, setEditVars] = useState<FormulaVariable[]>(formula.variables.map(v => ({ ...v })));
   const cardResultsRef = React.useRef<AnalyticalResult[]>([]);
 
   // Compute results for all rows
@@ -241,7 +248,7 @@ function FormulaBlockCard({
           >
             <Send className="w-3.5 h-3.5" />
           </button>
-          {!cardLocked && (
+          {!cardLocked && !editing && (
             <button
               onClick={onRemoveBlock}
               className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
@@ -249,6 +256,54 @@ function FormulaBlockCard({
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
+          )}
+          {!cardLocked && !editing && (
+            <button
+              onClick={() => {
+                setEditName(formula.name);
+                setEditDesc(formula.description);
+                setEditExpr(formula.expression);
+                setEditVars(formula.variables.map(v => ({ ...v })));
+                setEditing(true);
+                setCollapsed(false);
+              }}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+              title="Edit formula"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {editing && (
+            <>
+              <button
+                onClick={() => {
+                  if (!editName.trim() || !editExpr.trim()) {
+                    toast.error('Name and expression are required.');
+                    return;
+                  }
+                  onUpdateFormula({
+                    ...formula,
+                    name: editName.trim(),
+                    description: editDesc.trim(),
+                    expression: editExpr.trim(),
+                    variables: editVars.filter(v => v.name.trim()),
+                  });
+                  setEditing(false);
+                  toast.success('Formula updated.');
+                }}
+                className="p-1.5 rounded-md text-success hover:bg-success/10 transition-colors"
+                title="Save changes"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                title="Cancel editing"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
           )}
           <button
             onClick={() => setCardLocked(l => !l)}
@@ -260,7 +315,78 @@ function FormulaBlockCard({
         </div>
       </div>
 
-      {!collapsed && (
+      {!collapsed && editing && (
+        <div className="p-5 space-y-3 border-b border-border bg-muted/20">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Name</label>
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="w-full mt-1 bg-input border border-border rounded px-3 py-1.5 text-sm text-foreground focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Description</label>
+            <input
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              className="w-full mt-1 bg-input border border-border rounded px-3 py-1.5 text-sm text-foreground focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Expression</label>
+            <input
+              value={editExpr}
+              onChange={(e) => setEditExpr(e.target.value)}
+              className="w-full mt-1 bg-input border border-border rounded px-3 py-1.5 text-sm font-mono text-foreground focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-muted-foreground">Variables</label>
+              <button
+                onClick={() => setEditVars(prev => [...prev, { id: `v-${Date.now()}`, name: '', description: '', defaultValue: '', testValue: '' }])}
+                className="p-1 rounded text-primary hover:bg-primary/10 transition-colors"
+                title="Add variable"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {editVars.map((v, i) => (
+                <div key={v.id} className="flex items-center gap-2">
+                  <input
+                    value={v.name}
+                    onChange={(e) => { const next = [...editVars]; next[i] = { ...next[i], name: e.target.value }; setEditVars(next); }}
+                    placeholder="Name"
+                    className="w-24 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
+                  />
+                  <input
+                    value={v.description}
+                    onChange={(e) => { const next = [...editVars]; next[i] = { ...next[i], description: e.target.value }; setEditVars(next); }}
+                    placeholder="Description"
+                    className="flex-1 bg-input border border-border rounded px-2 py-1 text-xs text-foreground focus:ring-1 focus:ring-primary"
+                  />
+                  <input
+                    value={v.defaultValue}
+                    onChange={(e) => { const next = [...editVars]; next[i] = { ...next[i], defaultValue: e.target.value }; setEditVars(next); }}
+                    placeholder="Default"
+                    className="w-16 bg-input border border-border rounded px-2 py-1 text-xs text-foreground focus:ring-1 focus:ring-primary"
+                  />
+                  <button
+                    onClick={() => setEditVars(prev => prev.filter((_, j) => j !== i))}
+                    className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!collapsed && !editing && (
         <div className="p-5 space-y-4">
           {formula.description && (
             <p className="text-xs text-muted-foreground">{formula.description}</p>
@@ -447,7 +573,7 @@ function FormulaBlockCard({
 }
 
 export function AnalyticalTestSection() {
-  const [savedFormulas] = useLocalStorage<SavedFormula[]>('chem-formulas-v2', []);
+  const [savedFormulas, setSavedFormulas] = useLocalStorage<SavedFormula[]>('chem-formulas-v2', []);
   const [blocks, setBlocks] = useState<FormulaBlock[]>([]);
   const [blockResults, setBlockResults] = useState<Record<string, AnalyticalResult[]>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -728,6 +854,9 @@ export function AnalyticalTestSection() {
             onRemoveRow={(rowId) => removeRowFromBlock(block.formulaId, rowId)}
             onRemoveBlock={() => removeBlock(block.formulaId)}
             onResultsChange={(results) => handleResultsChange(block.formulaId, results)}
+            onUpdateFormula={(updated) => {
+              setSavedFormulas(prev => prev.map(f => f.id === updated.id ? updated : f));
+            }}
           />
         );
       })}
