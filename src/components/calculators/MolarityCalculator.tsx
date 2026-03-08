@@ -1,16 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 
-export function MolarityCalculator() {
+interface MolarityCalculatorProps {
+  initialMw?: number | null;
+}
+
+export function MolarityCalculator({ initialMw }: MolarityCalculatorProps) {
   const [mass, setMass] = useState('');
   const [mw, setMw] = useState('');
   const [volume, setVolume] = useState('');
   const [purity, setPurity] = useState('100');
   const [density, setDensity] = useState('');
   const [locked, setLocked] = useState(false);
+
+  useEffect(() => {
+    if (initialMw) setMw(initialMw.toString());
+  }, [initialMw]);
 
   const purityFactor = parseFloat(purity) / 100 || 1;
   const effectiveMass = parseFloat(mass) * purityFactor;
