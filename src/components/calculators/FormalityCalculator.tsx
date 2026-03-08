@@ -21,15 +21,27 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
   }, [initialMw]);
 
   const purityFactor = parseFloat(purity) / 100 || 1;
-  const effectiveMass = parseFloat(mass) * purityFactor;
+  const massVal = parseFloat(mass);
+  const fwVal = parseFloat(fw);
+  const volVal = parseFloat(volume);
   const densityVal = parseFloat(density);
 
-  const formality = mass && fw && volume
-    ? ((effectiveMass / parseFloat(fw)) / (parseFloat(volume) / 1000))
+  const formality = massVal && fwVal && volVal
+    ? ((massVal * purityFactor / fwVal) / (volVal / 1000))
+    : null;
+
+  // Stock formality from density + purity: F = (density × purity% × 1000) / FW
+  const formalityFromDensity = densityVal > 0 && fwVal && purityFactor
+    ? (densityVal * purityFactor * 1000) / fwVal
     : null;
 
   const result = formality !== null && isFinite(formality)
     ? { value: formality.toFixed(4), unit: 'F (FW/L)' }
+    : null;
+
+  // Volume to pipette
+  const volumeToPipette = massVal && densityVal > 0
+    ? (massVal / densityVal)
     : null;
 
   const handleCompoundSelect = (compound: ChemicalCompound) => {
@@ -55,15 +67,30 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
         <InputField label="Purity" unit="%" value={purity} onChange={setPurity} disabled={locked} />
         <InputField label="Density" unit="g/mL" value={density} onChange={setDensity} disabled={locked} placeholder="Optional" />
       </div>
-      <div className="mt-2 space-y-0.5">
-        {purity && parseFloat(purity) < 100 && mass && (
-          <p className="text-xs text-muted-foreground font-mono">
-            Effective mass at {purity}% purity: {effectiveMass.toFixed(4)} g
-          </p>
+      <div className="mt-2 space-y-1">
+        {formalityFromDensity !== null && fwVal > 0 && (
+          <div className="p-2 bg-primary/5 border border-primary/20 rounded-md">
+            <p className="text-xs font-medium text-primary">
+              Stock concentration (from density & purity): {formalityFromDensity.toFixed(4)} F
+            </p>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              = ({densityVal} × {(purityFactor * 100).toFixed(1)}% × 1000) / {fwVal}
+            </p>
+          </div>
         )}
-        {densityVal > 0 && mass && (
+        {volumeToPipette !== null && (
+          <div className="p-2 bg-accent/30 border border-accent/20 rounded-md">
+            <p className="text-xs font-medium text-foreground">
+              📐 Volume to pipette: <span className="text-primary font-bold">{volumeToPipette.toFixed(4)} mL</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              = {massVal} g / {densityVal} g/mL
+            </p>
+          </div>
+        )}
+        {purityFactor < 1 && massVal > 0 && (
           <p className="text-xs text-muted-foreground font-mono">
-            Volume of pure solute: {(parseFloat(mass) / densityVal).toFixed(4)} mL
+            Effective mass at {purity}% purity: {(massVal * purityFactor).toFixed(4)} g
           </p>
         )}
       </div>

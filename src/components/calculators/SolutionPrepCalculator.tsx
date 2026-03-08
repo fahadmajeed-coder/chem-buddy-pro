@@ -83,9 +83,20 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
         const mass = calcMass(step);
         const result = mass !== null ? { value: mass.toFixed(4), unit: 'g required' } : null;
         const purityVal = parseFloat(step.purity);
+        const purityFactor = purityVal / 100;
         const densityVal = parseFloat(step.density);
         const mwVal = parseFloat(step.mw);
         const nfVal = parseFloat(step.nFactor);
+
+        // Volume to pipette for liquid reagents
+        const volumeToPipette = mass && densityVal > 0 ? mass / densityVal : null;
+
+        // Stock concentration from density & purity
+        const stockConc = densityVal > 0 && mwVal > 0 && purityFactor > 0
+          ? (step.targetUnit === 'N'
+            ? (densityVal * purityFactor * 1000 * (nfVal || 1)) / mwVal
+            : (densityVal * purityFactor * 1000) / mwVal)
+          : null;
 
         return (
           <CalculatorCard
@@ -140,20 +151,35 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                 </button>
               )}
             </div>
-            <div className="mt-2 space-y-0.5">
+            <div className="mt-2 space-y-1">
               {step.targetUnit === 'N' && mwVal > 0 && nfVal > 0 && (
                 <p className="text-xs text-muted-foreground font-mono">
                   Eq. Weight: {mwVal} / {nfVal} = {(mwVal / nfVal).toFixed(3)} g/eq
                 </p>
               )}
+              {stockConc !== null && (
+                <div className="p-2 bg-primary/5 border border-primary/20 rounded-md">
+                  <p className="text-xs font-medium text-primary">
+                    Stock concentration (from density & purity): {stockConc.toFixed(4)} {step.targetUnit}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-mono">
+                    = ({densityVal} × {(purityFactor * 100).toFixed(1)}% × 1000{step.targetUnit === 'N' ? ` × ${nfVal}` : ''}) / {mwVal}
+                  </p>
+                </div>
+              )}
+              {volumeToPipette !== null && (
+                <div className="p-2 bg-accent/30 border border-accent/20 rounded-md">
+                  <p className="text-xs font-medium text-foreground">
+                    📐 Volume to pipette: <span className="text-primary font-bold">{volumeToPipette.toFixed(4)} mL</span>
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-mono">
+                    = {mass.toFixed(4)} g / {densityVal} g/mL
+                  </p>
+                </div>
+              )}
               {purityVal < 100 && mass && (
                 <p className="text-xs text-muted-foreground font-mono">
-                  Effective mass at {step.purity}% purity: {(mass * (purityVal / 100)).toFixed(4)} g
-                </p>
-              )}
-              {densityVal > 0 && mass && (
-                <p className="text-xs text-muted-foreground font-mono">
-                  Volume of solute: {(mass / densityVal).toFixed(4)} mL
+                  Effective mass at {step.purity}% purity: {(mass * purityFactor).toFixed(4)} g
                 </p>
               )}
             </div>
