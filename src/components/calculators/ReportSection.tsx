@@ -122,7 +122,7 @@ export function ReportSection() {
             <FileText className="w-5 h-5 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Certificate of Analysis</h3>
           </div>
-          <button onClick={exportReport}
+          <button onClick={exportPDF}
             className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
             <Download className="w-3.5 h-3.5" /> Export COA
           </button>
