@@ -139,6 +139,8 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
       standards: [{ id: '1', concentration: '', absorbance: '' }, { id: '2', concentration: '', absorbance: '' }],
       samples: [{ id: '1', name: 'Sample 1', absorbance: '' }],
       dilutionFactor: '1',
+      sampleWeight: '0.5',
+      finalVolume: '1',
     });
   };
 
