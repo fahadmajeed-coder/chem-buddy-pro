@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -16,6 +16,9 @@ interface ReportEntry {
 export function ReportSection() {
   const [title, setTitle] = useState('');
   const [batchNo, setBatchNo] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [entries, setEntries] = useState<ReportEntry[]>([
     { id: '1', parameter: '', method: '', result: '', unit: '', specification: '', status: 'pending' }
   ]);
@@ -58,28 +61,53 @@ export function ReportSection() {
     }
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setLogoDataUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const exportPDF = () => {
     const reportTitle = title || 'Certificate of Analysis';
     const date = new Date().toISOString().split('T')[0];
     const doc = new jsPDF();
 
-    // Header
+    let yPos = 14;
+
+    // Logo
+    if (logoDataUrl) {
+      try { doc.addImage(logoDataUrl, 'PNG', 14, yPos, 24, 24); } catch { /* skip */ }
+    }
+
+    // Company name & title
+    const textX = logoDataUrl ? 42 : 14;
+    if (companyName) {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 160, 145);
+      doc.text(companyName, textX, yPos + 8);
+    }
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text(reportTitle, 105, 20, { align: 'center' });
+    doc.setTextColor(30);
+    doc.text(reportTitle, textX, yPos + (companyName ? 18 : 10));
 
+    yPos = 44;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Batch No: ${batchNo || '—'}`, 14, 32);
-    doc.text(`Date: ${date}`, 196, 32, { align: 'right' });
+    doc.setTextColor(60);
+    doc.text(`Batch No: ${batchNo || '—'}`, 14, yPos);
+    doc.text(`Date: ${date}`, 196, yPos, { align: 'right' });
 
     doc.setDrawColor(0, 200, 180);
     doc.setLineWidth(0.5);
-    doc.line(14, 36, 196, 36);
+    doc.line(14, yPos + 4, 196, yPos + 4);
 
     // Table
     autoTable(doc, {
-      startY: 42,
+      startY: yPos + 10,
       head: [['Parameter', 'Method', 'Result', 'Specification', 'Status']],
       body: entries.map(e => [
         e.parameter || '—',
@@ -115,6 +143,38 @@ export function ReportSection() {
 
   return (
     <div className="space-y-4">
+      {/* Branding */}
+      <div className="glass-panel rounded-lg p-5 animate-fade-in">
+        <div className="flex items-center gap-2 mb-4">
+          <Building2 className="w-5 h-5 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Company Branding</h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-4 items-end">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Company Name</label>
+            <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Laboratories"
+              className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:ring-1 focus:ring-primary" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Company Logo</label>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+            <button onClick={() => fileInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 bg-input border border-border rounded-md px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors">
+              <Upload className="w-3.5 h-3.5" />
+              {logoDataUrl ? 'Change Logo' : 'Upload Logo'}
+            </button>
+          </div>
+          {logoDataUrl && (
+            <div className="flex items-center gap-2">
+              <img src={logoDataUrl} alt="Logo" className="w-10 h-10 rounded border border-border object-contain bg-white" />
+              <button onClick={() => setLogoDataUrl(null)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Report Header */}
       <div className="glass-panel rounded-lg p-5 animate-fade-in">
         <div className="flex items-center justify-between mb-4">
