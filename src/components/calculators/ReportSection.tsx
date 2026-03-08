@@ -3,6 +3,8 @@ import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upl
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+type EntryStatus = 'good' | 'fair' | 'reject' | 'pending';
+
 interface ReportEntry {
   id: string;
   parameter: string;
@@ -10,7 +12,7 @@ interface ReportEntry {
   result: string;
   unit: string;
   specification: string;
-  status: 'pass' | 'fail' | 'pending';
+  status: EntryStatus;
 }
 
 export function ReportSection() {
@@ -45,7 +47,14 @@ export function ReportSection() {
           if (match) {
             const min = parseFloat(match[1]);
             const max = parseFloat(match[2]);
-            updated.status = (res >= min && res <= max) ? 'pass' : 'fail';
+            const range = max - min;
+            if (res >= min && res <= max) {
+              // Fair if within outer 10% of range on either side
+              const fairMargin = range * 0.1;
+              updated.status = (res <= min + fairMargin || res >= max - fairMargin) ? 'fair' : 'good';
+            } else {
+              updated.status = 'reject';
+            }
           }
         }
       }
@@ -53,10 +62,11 @@ export function ReportSection() {
     }));
   };
 
-  const statusIcon = (status: string) => {
+  const statusIcon = (status: EntryStatus) => {
     switch (status) {
-      case 'pass': return <CheckCircle2 className="w-4 h-4 text-success" />;
-      case 'fail': return <AlertCircle className="w-4 h-4 text-destructive" />;
+      case 'good': return <CheckCircle2 className="w-4 h-4 text-success" />;
+      case 'fair': return <AlertCircle className="w-4 h-4 text-warning" />;
+      case 'reject': return <AlertCircle className="w-4 h-4 text-destructive" />;
       default: return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
   };
@@ -114,7 +124,7 @@ export function ReportSection() {
         e.method || '—',
         `${e.result || '—'} ${e.unit}`.trim(),
         e.specification || '—',
-        e.status === 'pass' ? '✓ Pass' : e.status === 'fail' ? '✗ Fail' : 'Pending',
+        e.status === 'good' ? '✓ Good' : e.status === 'fair' ? '⚠ Fair' : e.status === 'reject' ? '✗ Reject' : 'Pending',
       ]),
       theme: 'grid',
       headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold' },
@@ -126,6 +136,7 @@ export function ReportSection() {
         if (data.section === 'body' && data.column.index === 4) {
           const val = data.cell.raw as string;
           if (val.startsWith('✓')) data.cell.styles.textColor = [0, 160, 80];
+          else if (val.startsWith('⚠')) data.cell.styles.textColor = [200, 160, 0];
           else if (val.startsWith('✗')) data.cell.styles.textColor = [200, 50, 50];
         }
       },
