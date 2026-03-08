@@ -539,6 +539,9 @@ export function FormulaBuilder() {
                 {v.description && (
                   <span className="text-[10px] text-muted-foreground max-w-[120px] truncate">({v.description})</span>
                 )}
+                {v.defaultValue && (
+                  <span className="text-[10px] font-mono text-accent-foreground bg-accent/30 px-1.5 py-0.5 rounded">={v.defaultValue}</span>
+                )}
                 {variables.length > 1 && (
                   <button onClick={() => removeVariable(v.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5">
                     <X className="w-3 h-3" />
