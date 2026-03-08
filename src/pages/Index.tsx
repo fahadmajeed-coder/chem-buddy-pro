@@ -22,7 +22,7 @@ const Index = () => {
   const [elementMw, setElementMw] = useState<number | null>(null);
   const isOnline = navigator.onLine;
 
-  const handleUseInCalculator = (target: 'molarity' | 'solution', mw: number, _name: string) => {
+  const handleUseInCalculator = (target: 'molarity' | 'normality' | 'formality' | 'solution', mw: number, _name: string) => {
     setElementMw(mw);
     setActiveSection(target);
   };
@@ -48,8 +48,8 @@ const Index = () => {
   const renderSection = () => {
     switch (activeSection) {
       case 'molarity': return <MolarityCalculator initialMw={elementMw} />;
-      case 'normality': return <NormalityCalculator />;
-      case 'formality': return <FormalityCalculator />;
+      case 'normality': return <NormalityCalculator initialMw={elementMw} />;
+      case 'formality': return <FormalityCalculator initialMw={elementMw} />;
       case 'conversion': return <ConversionCalculator />;
       case 'solution': return <SolutionPrepCalculator initialMw={elementMw} />;
       case 'analytical': return <AnalyticalTestSection />;

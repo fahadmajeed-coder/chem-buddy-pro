@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 
-export function NormalityCalculator() {
+interface NormalityCalculatorProps {
+  initialMw?: number | null;
+}
+
+export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
   const [mass, setMass] = useState('');
   const [mw, setMw] = useState('');
   const [nFactor, setNFactor] = useState('1');
@@ -12,6 +16,10 @@ export function NormalityCalculator() {
   const [purity, setPurity] = useState('100');
   const [density, setDensity] = useState('');
   const [locked, setLocked] = useState(false);
+
+  useEffect(() => {
+    if (initialMw) setMw(initialMw.toString());
+  }, [initialMw]);
 
   const purityFactor = parseFloat(purity) / 100 || 1;
   const effectiveMass = parseFloat(mass) * purityFactor;
