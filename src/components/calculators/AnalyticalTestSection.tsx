@@ -696,7 +696,7 @@ export function AnalyticalTestSection() {
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
-            )
+            )}
             <button
               onClick={() => setGlobalLocked(l => !l)}
               className={`p-1.5 rounded-md transition-colors ${globalLocked ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
