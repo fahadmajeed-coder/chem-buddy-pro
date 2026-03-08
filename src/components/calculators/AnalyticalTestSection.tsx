@@ -325,81 +325,91 @@ export function AnalyticalTestSection() {
 
   return (
     <div className="space-y-4">
-      <CalculatorCard
-        title="Analytical Testing"
-        subtitle="Add formulas and enter sample data"
-        locked={locked}
-        onToggleLock={() => setLocked(!locked)}
-        onReset={handleReset}
-      >
-        {savedFormulas.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-4 flex items-center gap-1.5">
-            <FlaskConical className="w-3.5 h-3.5" />
-            No formulas saved yet. Go to <span className="font-semibold text-primary">Formulas</span> to create one.
-          </p>
-        ) : (
-          <>
-            {/* Always-visible Add Formula button */}
-            {!locked && savedFormulas.length > blocks.length && (
+      {/* Header */}
+      <div className="glass-panel rounded-lg">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Analytical Testing</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Add formulas and enter sample data</p>
+          </div>
+          <div className="flex items-center gap-1">
+            {savedFormulas.length > 0 && savedFormulas.length > blocks.length && (
               <button
                 onClick={() => setShowPicker(p => !p)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 mb-3"
+                className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
+                title="Add Formula"
               >
-                <Plus className="w-4 h-4" /> Add Formula
+                <Plus className="w-4 h-4" />
               </button>
             )}
-
-            {blocks.length === 0 && !showPicker && (
-              <p className="text-muted-foreground text-sm text-center py-4">Click "Add Formula" to start entering sample data.</p>
+            {blocks.length > 0 && (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
+                title="Remove All"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             )}
+          </div>
+        </div>
 
-            {/* Formula picker */}
-            {showPicker && (
-              <div className="border border-border rounded-lg overflow-hidden">
-                <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
-                  <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search formulas by name, description, or expression..."
-                    className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-                    autoFocus
-                  />
-                  <button onClick={() => { setShowPicker(false); setSearchQuery(''); }} className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="max-h-48 overflow-y-auto">
-                  {filteredFormulas.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">No formulas match your search.</p>
-                  ) : (
-                    filteredFormulas.map(f => {
-                      const alreadyUsed = usedFormulaIds.has(f.id);
-                      return (
-                        <button
-                          key={f.id}
-                          onClick={() => !alreadyUsed && addFormulaBlock(f.id)}
-                          disabled={alreadyUsed}
-                          className="w-full text-left px-3 py-2.5 hover:bg-muted/50 border-b border-border/50 last:border-b-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          <div className="flex items-center gap-2">
-                            <FlaskConical className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span className="text-sm font-medium text-foreground">{f.name}</span>
-                            {alreadyUsed && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Added</span>}
-                          </div>
-                          {f.description && <p className="text-xs text-muted-foreground mt-0.5 ml-5.5">{f.description}</p>}
-                          <code className="text-[10px] font-mono text-muted-foreground mt-1 ml-5.5 block truncate">{f.expression}</code>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
+        <div className="p-5">
+          {savedFormulas.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-4 flex items-center gap-1.5">
+              <FlaskConical className="w-3.5 h-3.5" />
+              No formulas saved yet. Go to <span className="font-semibold text-primary">Formulas</span> to create one.
+            </p>
+          ) : blocks.length === 0 && !showPicker ? (
+            <p className="text-muted-foreground text-sm text-center py-4">Click <Plus className="w-3.5 h-3.5 inline" /> above to add a formula.</p>
+          ) : null}
+
+          {/* Formula picker */}
+          {showPicker && (
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
+                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search formulas..."
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                  autoFocus
+                />
+                <button onClick={() => { setShowPicker(false); setSearchQuery(''); }} className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            )}
-          </>
-        )}
-      </CalculatorCard>
+              <div className="max-h-48 overflow-y-auto">
+                {filteredFormulas.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">No formulas match your search.</p>
+                ) : (
+                  filteredFormulas.map(f => {
+                    const alreadyUsed = usedFormulaIds.has(f.id);
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => !alreadyUsed && addFormulaBlock(f.id)}
+                        disabled={alreadyUsed}
+                        className="w-full text-left px-3 py-2.5 hover:bg-muted/50 border-b border-border/50 last:border-b-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FlaskConical className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span className="text-sm font-medium text-foreground">{f.name}</span>
+                          {alreadyUsed && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Added</span>}
+                        </div>
+                        {f.description && <p className="text-xs text-muted-foreground mt-0.5 ml-5.5">{f.description}</p>}
+                        <code className="text-[10px] font-mono text-muted-foreground mt-1 ml-5.5 block truncate">{f.expression}</code>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Render each formula block */}
       {blocks.map(block => {
@@ -410,8 +420,6 @@ export function AnalyticalTestSection() {
             key={block.formulaId}
             formula={formula}
             block={block}
-            locked={locked}
-            blockCount={blocks.length}
             onUpdateRow={(rowId, field, value) => updateRowInBlock(block.formulaId, rowId, field, value)}
             onUpdateSampleId={(rowId, value) => updateSampleIdInBlock(block.formulaId, rowId, value)}
             onAddRow={() => addRowToBlock(block.formulaId)}
@@ -420,16 +428,6 @@ export function AnalyticalTestSection() {
           />
         );
       })}
-
-      {/* Clear All */}
-      {blocks.length > 0 && !locked && (
-        <button
-          onClick={() => setShowClearConfirm(true)}
-          className="w-full py-3 rounded-lg border border-dashed border-destructive/30 text-destructive/70 hover:border-destructive hover:text-destructive flex items-center justify-center gap-2 text-sm transition-all"
-        >
-          <Trash2 className="w-4 h-4" /> Clear All
-        </button>
-      )}
 
       {/* Clear All confirmation */}
       {showClearConfirm && (
