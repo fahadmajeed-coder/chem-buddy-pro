@@ -354,10 +354,28 @@ function FormulaBlockCard({
 export function AnalyticalTestSection() {
   const [savedFormulas] = useLocalStorage<SavedFormula[]>('chem-formulas-v2', []);
   const [blocks, setBlocks] = useState<FormulaBlock[]>([]);
+  const [blockResults, setBlockResults] = useState<Record<string, AnalyticalResult[]>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showPicker, setShowPicker] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [globalLocked, setGlobalLocked] = useState(false);
+
+  const handleResultsChange = useCallback((formulaId: string, results: AnalyticalResult[]) => {
+    setBlockResults(prev => ({ ...prev, [formulaId]: results }));
+  }, []);
+
+  const allResults = useMemo(() => {
+    return Object.values(blockResults).flat();
+  }, [blockResults]);
+
+  const sendToCOA = () => {
+    if (allResults.length === 0) {
+      toast.error('No results to send. Add formulas and enter sample data first.');
+      return;
+    }
+    localStorage.setItem('chemanalyst-analytical-results', JSON.stringify(allResults));
+    toast.success(`${allResults.length} result(s) sent to COA Report section.`);
+  };
 
   const filteredFormulas = useMemo(() => {
     if (!searchQuery.trim()) return savedFormulas;
