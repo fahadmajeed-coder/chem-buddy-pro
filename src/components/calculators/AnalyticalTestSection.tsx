@@ -265,8 +265,8 @@ function FormulaBlockCard({
                     (idx === block.rows.length - 1 || block.rows[idx + 1].sampleId.trim() !== sampleId);
 
                   return (
-                    <>
-                      <tr key={row.id} className="border-b border-border/50">
+                    <React.Fragment key={row.id}>
+                      <tr className="border-b border-border/50">
                         <td className="py-2 px-1">
                           <input
                             type="text"
