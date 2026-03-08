@@ -185,7 +185,13 @@ export function ChemistryAssistant() {
           onDelta: (chunk) => upsertAssistant(chunk),
           onDone: () => setIsTyping(false),
           onError: (error) => {
-            toast.error(error);
+            if (error.includes('Rate limit')) {
+              toast.error('⏳ Rate limit reached. Wait a moment or switch to offline mode.');
+            } else if (error.includes('usage limit') || error.includes('credits')) {
+              toast.error('💳 AI credits exhausted. Top up in Settings → Workspace → Usage.');
+            } else {
+              toast.error(error);
+            }
             const response = getChemistryResponse(messageText);
             setMessages(prev => [...prev, {
               id: assistantId,
