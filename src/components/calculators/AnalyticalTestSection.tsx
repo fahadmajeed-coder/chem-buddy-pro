@@ -147,13 +147,6 @@ function FormulaBlockCard({
       locked={locked}
       onToggleLock={() => {}}
       onReset={() => {}}
-      headerRight={
-        blockCount > 1 && !locked ? (
-          <button onClick={onRemoveBlock} className="p-1.5 text-destructive hover:bg-destructive/10 rounded transition-colors" title="Remove this formula">
-            <X className="w-4 h-4" />
-          </button>
-        ) : undefined
-      }
     >
       <div className="mb-3 p-2.5 rounded-md bg-muted/50 border border-border">
         <code className="text-xs font-mono text-primary">{formula.expression}</code>
