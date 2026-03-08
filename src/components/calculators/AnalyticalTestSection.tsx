@@ -411,24 +411,14 @@ export function AnalyticalTestSection() {
         );
       })}
 
-      {/* Add another formula + Clear All */}
+      {/* Clear All */}
       {blocks.length > 0 && !locked && (
-        <div className="flex items-center gap-3">
-          {savedFormulas.length > blocks.length && (
-            <button
-              onClick={() => setShowPicker(true)}
-              className="flex-1 py-3 rounded-lg border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-sm transition-all"
-            >
-              <Plus className="w-4 h-4" /> Add Another Formula
-            </button>
-          )}
-          <button
-            onClick={() => setShowClearConfirm(true)}
-            className="py-3 px-4 rounded-lg border border-dashed border-destructive/30 text-destructive/70 hover:border-destructive hover:text-destructive flex items-center justify-center gap-2 text-sm transition-all"
-          >
-            <Trash2 className="w-4 h-4" /> Clear All
-          </button>
-        </div>
+        <button
+          onClick={() => setShowClearConfirm(true)}
+          className="w-full py-3 rounded-lg border border-dashed border-destructive/30 text-destructive/70 hover:border-destructive hover:text-destructive flex items-center justify-center gap-2 text-sm transition-all"
+        >
+          <Trash2 className="w-4 h-4" /> Clear All
+        </button>
       )}
 
       {/* Clear All confirmation */}
