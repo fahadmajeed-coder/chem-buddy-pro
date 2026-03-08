@@ -611,6 +611,17 @@ export function AnalyticalTestSection() {
 
   const usedFormulaIds = useMemo(() => new Set(blocks.map(b => b.formulaId)), [blocks]);
 
+  // Filter active blocks by search
+  const filteredBlocks = useMemo(() => {
+    if (!blockSearchQuery.trim()) return blocks;
+    const q = blockSearchQuery.toLowerCase();
+    return blocks.filter(b => {
+      const f = savedFormulas.find(sf => sf.id === b.formulaId);
+      if (!f) return false;
+      return f.name.toLowerCase().includes(q) || f.description.toLowerCase().includes(q) || f.expression.toLowerCase().includes(q);
+    });
+  }, [blocks, blockSearchQuery, savedFormulas]);
+
   const addFormulaBlock = (formulaId: string) => {
     const formula = savedFormulas.find(f => f.id === formulaId);
     if (!formula) return;
