@@ -355,7 +355,7 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
             </div>
             {/* Data rows */}
             {sampleResults.map((s, i) => (
-              <div key={s.id} className="grid grid-cols-[2.5rem_minmax(80px,1.5fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_2rem] items-center border-t border-border">
+              <div key={s.id} className="grid grid-cols-[2.5rem_minmax(80px,1.5fr)_minmax(80px,1fr)_minmax(80px,1fr)_2rem] items-center border-t border-border">
                 <span className="text-xs text-muted-foreground font-mono text-center py-2 border-r border-border">{i + 1}</span>
                 <div className="px-1 py-1 border-r border-border">
                   <input type="text" value={s.name} onChange={e => updateSample(s.id, 'name', e.target.value)} disabled={locked} className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
@@ -363,8 +363,7 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
                 <div className="px-1 py-1 border-r border-border">
                   <input type="number" value={samples.find(x => x.id === s.id)?.absorbance || ''} onChange={e => updateSample(s.id, 'absorbance', e.target.value)} disabled={locked} placeholder="0.000" className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
                 </div>
-                <span className="text-xs font-mono font-bold text-primary px-2 py-2 border-r border-border">{s.concentration !== null ? s.concentration.toFixed(6) : '—'}</span>
-                <span className="text-xs font-mono font-bold text-accent-foreground px-2 py-2 border-r border-border">{s.finalConc !== null ? s.finalConc.toFixed(6) : '—'}</span>
+                <span className="text-xs font-mono font-bold text-primary px-2 py-2 border-r border-border">{s.finalConc !== null ? s.finalConc.toFixed(6) : '—'}</span>
                 <div className="flex justify-center">
                   <button onClick={() => update({ samples: samples.filter(x => x.id !== s.id) })} disabled={locked || samples.length <= 1} className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-30">
                     <Trash2 className="w-3.5 h-3.5" />
