@@ -102,6 +102,25 @@ export function ConversionCalculator() {
         const desiredPct = get('desiredPct'); const vol = get('volume'); const purity = get('purity') || 100;
         return desiredPct && vol ? { value: ((desiredPct * vol) / purity).toFixed(4), unit: 'g' } : null;
       }
+      case 'pct_wv': {
+        // %w/v = (mass / volume) × 100
+        const mass = get('mass'); const vol = get('volume');
+        const purity = get('purity') || 100;
+        const effectiveMass = mass * (purity / 100);
+        return mass && vol ? { value: ((effectiveMass / vol) * 100).toFixed(4), unit: '%w/v' } : null;
+      }
+      case 'pct_ww': {
+        // %w/w = (mass of solute / mass of solution) × 100
+        const massSolute = get('massSolute'); const massSolution = get('massSolution');
+        const purity = get('purity') || 100;
+        const effectiveMass = massSolute * (purity / 100);
+        return massSolute && massSolution ? { value: ((effectiveMass / massSolution) * 100).toFixed(4), unit: '%w/w' } : null;
+      }
+      case 'pct_vv': {
+        // %v/v = (volume of solute / volume of solution) × 100
+        const volSolute = get('volSolute'); const volSolution = get('volSolution');
+        return volSolute && volSolution ? { value: ((volSolute / volSolution) * 100).toFixed(4), unit: '%v/v' } : null;
+      }
       default: return null;
     }
   };
