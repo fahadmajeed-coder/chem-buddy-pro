@@ -167,6 +167,7 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
       dilutionFactor: '1',
       sampleWeight: '0.5',
       finalVolume: '1',
+      formula: '(C * DF * Vol) / W',
     });
   };
 
