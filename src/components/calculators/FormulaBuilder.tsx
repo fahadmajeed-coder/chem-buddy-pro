@@ -531,7 +531,7 @@ export function FormulaBuilder() {
                   />
                 </div>
               </div>
-              <div className="max-h-52 overflow-y-auto p-2 space-y-3">
+              <div className="max-h-72 overflow-y-auto p-2 space-y-3">
                 {Object.entries(groupedOps).map(([category, ops]) => (
                   <div key={category}>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1 mb-1.5">{category}</p>
