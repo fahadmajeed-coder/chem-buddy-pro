@@ -573,6 +573,17 @@ export function FormulaBuilder() {
                 onKeyDown={ev => ev.key === 'Enter' && addVariable()}
               />
             </div>
+            <div className="w-28 space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Default (optional)</label>
+              <input
+                type="number"
+                value={newVarDefault}
+                onChange={ev => setNewVarDefault(ev.target.value)}
+                placeholder="0"
+                className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                onKeyDown={ev => ev.key === 'Enter' && addVariable()}
+              />
+            </div>
             <button
               onClick={addVariable}
               disabled={!newVarName.trim() || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newVarName.trim()) || variables.some(v => v.name === newVarName.trim())}
