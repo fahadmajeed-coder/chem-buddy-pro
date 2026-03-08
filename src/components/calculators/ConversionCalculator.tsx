@@ -147,11 +147,16 @@ export function ConversionCalculator() {
   const hints: string[] = [];
   const purity = parseFloat(inputs.purity || '');
   const density = parseFloat(inputs.density || '');
+  const mwHint = parseFloat(inputs.mw || '');
+  const nfHint = parseFloat(inputs.nfactor || '');
+  if (mwHint > 0 && nfHint > 0 && ['vol_for_N', 'N_from_mass', 'N_from_pct'].includes(activeConv)) {
+    hints.push(`Eq. Weight: ${mwHint} / ${nfHint} = ${(mwHint / nfHint).toFixed(3)} g/eq`);
+  }
   if (purity && purity < 100 && (inputs.mass || inputs.massSolute)) {
     const mass = parseFloat(inputs.mass || inputs.massSolute || '0');
     hints.push(`Effective mass at ${purity}% purity: ${(mass * purity / 100).toFixed(4)} g`);
   }
-  if (density && ['pct_ww', 'pct_vv', 'gm_from_pellet', 'vol_pct_to_pct', 'percent_to_M'].includes(activeConv)) {
+  if (density && ['pct_ww', 'pct_vv', 'gm_from_pellet', 'vol_pct_to_pct', 'percent_to_M', 'N_from_pct'].includes(activeConv)) {
     hints.push(`Using density: ${density} g/mL`);
   }
 
