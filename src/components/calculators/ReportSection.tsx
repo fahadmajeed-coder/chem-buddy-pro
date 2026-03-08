@@ -47,7 +47,14 @@ export function ReportSection() {
           if (match) {
             const min = parseFloat(match[1]);
             const max = parseFloat(match[2]);
-            updated.status = (res >= min && res <= max) ? 'pass' : 'fail';
+            const range = max - min;
+            if (res >= min && res <= max) {
+              // Fair if within outer 10% of range on either side
+              const fairMargin = range * 0.1;
+              updated.status = (res <= min + fairMargin || res >= max - fairMargin) ? 'fair' : 'good';
+            } else {
+              updated.status = 'reject';
+            }
           }
         }
       }
