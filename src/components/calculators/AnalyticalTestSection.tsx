@@ -696,16 +696,7 @@ export function AnalyticalTestSection() {
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
-            )}
-            {savedFormulas.length > 0 && savedFormulas.length > blocks.length && !globalLocked && (
-              <button
-                onClick={() => setShowPicker(p => !p)}
-                className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
-                title="Add Formula"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            )}
+            )
             <button
               onClick={() => setGlobalLocked(l => !l)}
               className={`p-1.5 rounded-md transition-colors ${globalLocked ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
