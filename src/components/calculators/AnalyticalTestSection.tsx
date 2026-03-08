@@ -718,7 +718,32 @@ export function AnalyticalTestSection() {
           </div>
         </div>
 
-        <div className="p-5">
+        <div className="p-5 space-y-3">
+          {/* Permanent search bar */}
+          {savedFormulas.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border border-border rounded-lg">
+              <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+              <input
+                type="text"
+                value={blockSearchQuery}
+                onChange={(e) => setBlockSearchQuery(e.target.value)}
+                placeholder="Search active formulas..."
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+              />
+              {blockSearchQuery && (
+                <button onClick={() => setBlockSearchQuery('')} className="p-0.5 text-muted-foreground hover:text-foreground rounded transition-colors">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {blocks.length > 0 && (
+                <>
+                  <div className="w-px h-5 bg-border" />
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">{filteredBlocks.length}/{blocks.length}</span>
+                </>
+              )}
+            </div>
+          )}
+
           {savedFormulas.length === 0 ? (
             <div className="py-4 space-y-3">
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
@@ -791,7 +816,7 @@ export function AnalyticalTestSection() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search formulas..."
+                  placeholder="Search library to add formula..."
                   className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
                   autoFocus
                 />
@@ -829,7 +854,7 @@ export function AnalyticalTestSection() {
         </div>
       </div>
 
-      {/* Clear All confirmation - at the top */}
+      {/* Clear All confirmation */}
       {showClearConfirm && (
         <div className="glass-panel rounded-lg p-5 border border-destructive/30 animate-fade-in">
           <p className="text-sm text-foreground font-medium mb-1">Remove all formulas?</p>
