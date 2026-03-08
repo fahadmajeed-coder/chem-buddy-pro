@@ -20,6 +20,7 @@ import { StandardsInventory } from '@/components/calculators/StandardsInventory'
 import { SOPSection } from '@/components/calculators/SOPSection';
 import { IndicatorsInventory } from '@/components/calculators/IndicatorsInventory';
 import { Wifi, WifiOff } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('molarity');
@@ -27,6 +28,7 @@ const Index = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [elementMw, setElementMw] = useState<number | null>(null);
   const isOnline = navigator.onLine;
+  const isMobile = useIsMobile();
 
   const handleUseInCalculator = (target: 'molarity' | 'normality' | 'formality' | 'solution', mw: number, _name: string) => {
     setElementMw(mw);
@@ -45,7 +47,7 @@ const Index = () => {
     solution: 'Solution Preparation',
     dilution: 'Dilution Calculator',
     analytical: 'Analytical Testing',
-    report: 'Reports & Certificate of Analysis',
+    report: 'Reports & COA',
     standards: 'Standards Matching',
     assistant: 'Chemistry Assistant',
     inventory: 'Chemical Inventory',
@@ -53,7 +55,7 @@ const Index = () => {
     formulas: 'Custom Formulas',
     calibration: 'Calibration Curve',
     'standards-inventory': 'Standards Inventory',
-    sop: 'Standard Operating Procedures (SOP)',
+    sop: 'SOPs',
     indicators: 'Indicators Inventory',
   };
 
@@ -90,7 +92,7 @@ const Index = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-[100dvh] overflow-hidden bg-background">
       <AppSidebar
         activeSection={activeSection}
         onSectionChange={(id) => { setElementMw(null); setActiveSection(id); }}
@@ -98,26 +100,30 @@ const Index = () => {
         onAddSection={() => setShowAddDialog(true)}
       />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top bar */}
-        <header className="flex items-center justify-between px-6 py-3 border-b border-border bg-card/50 shrink-0">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">
+        <header className={`flex items-center justify-between border-b border-border bg-card/50 shrink-0 ${
+          isMobile ? 'px-14 py-2' : 'px-6 py-3'
+        }`}>
+          <div className="min-w-0">
+            <h1 className={`font-semibold text-foreground truncate ${isMobile ? 'text-sm' : 'text-lg'}`}>
               {sectionTitles[activeSection] || customSections.find(s => s.id === activeSection)?.name || 'Calculator'}
             </h1>
-            <p className="text-xs text-muted-foreground">Analytical Chemistry Toolkit</p>
+            {!isMobile && <p className="text-xs text-muted-foreground">Analytical Chemistry Toolkit</p>}
           </div>
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${isOnline ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${isOnline ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
               {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-              {isOnline ? 'Online' : 'Offline'}
+              {!isMobile && (isOnline ? 'Online' : 'Offline')}
             </div>
           </div>
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className={`mx-auto ${activeSection === 'periodic-table' ? 'max-w-6xl' : 'max-w-4xl'}`}>
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className={`mx-auto ${
+            activeSection === 'periodic-table' ? 'max-w-6xl' : 'max-w-4xl'
+          } ${isMobile ? 'p-3' : 'p-6'}`}>
             {renderSections()}
           </div>
         </div>

@@ -63,6 +63,14 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  /* Safe area padding for notched devices */
+  html {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
   /* Custom scrollbar */
@@ -78,6 +86,13 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground));
+  }
+
+  /* Hide scrollbar on mobile for cleaner look */
+  @media (max-width: 768px) {
+    ::-webkit-scrollbar {
+      width: 2px;
+    }
   }
 }
 
@@ -96,5 +111,40 @@
     opacity: 0.95;
     backdrop-filter: blur(12px);
     border: 1px solid hsl(var(--border));
+  }
+}
+
+/* Mobile-specific responsive overrides */
+@media (max-width: 768px) {
+  /* Make tables scrollable horizontally */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Tighter card padding on mobile */
+  .card, [class*="rounded-xl"] {
+    /* Let Tailwind handle this per component */
+  }
+
+  /* Fix input zoom on iOS (font-size < 16px triggers zoom) */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Landscape mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Reduce header height in landscape */
+  header {
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
   }
 }

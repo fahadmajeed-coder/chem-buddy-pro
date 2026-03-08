@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface NavItem {
   id: string;
@@ -41,28 +42,38 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ activeSection, onSectionChange, customSections, onAddSection }: AppSidebarProps) {
+  const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [order, setOrder] = useLocalStorage<string[]>('chemanalyst-sidebar-order', DEFAULT_NAV_ITEMS.map(i => i.id));
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
-  // Ensure all default items are in order (handles new items added later)
+  // Close mobile menu on section change
+  const handleSectionChange = (id: string) => {
+    onSectionChange(id);
+    if (isMobile) setMobileOpen(false);
+  };
+
+  // Close mobile menu on escape
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  // Ensure all default items are in order
   const allIds = DEFAULT_NAV_ITEMS.map(i => i.id);
   const orderedIds = [
     ...order.filter(id => allIds.includes(id)),
     ...allIds.filter(id => !order.includes(id)),
   ];
 
-  const handleDragStart = (idx: number) => {
-    dragItem.current = idx;
-  };
-
-  const handleDragEnter = (idx: number) => {
-    dragOverItem.current = idx;
-    setDragOverIdx(idx);
-  };
-
+  const handleDragStart = (idx: number) => { dragItem.current = idx; };
+  const handleDragEnter = (idx: number) => { dragOverItem.current = idx; setDragOverIdx(idx); };
   const handleDragEnd = () => {
     if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) {
       const newOrder = [...orderedIds];
@@ -75,14 +86,23 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
     setDragOverIdx(null);
   };
 
-  return (
-    <aside className={`${collapsed ? 'w-16' : 'w-60'} bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 shrink-0`}>
+  // Mobile: hamburger button is rendered by parent (Index.tsx)
+  // This component exposes toggle via mobileOpen state
+
+  const sidebarContent = (
+    <>
       {/* Header */}
       <div className="p-4 border-b border-sidebar-border flex items-center gap-3">
-        <button onClick={() => setCollapsed(!collapsed)} className="text-sidebar-foreground hover:text-sidebar-primary transition-colors">
-          {collapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
-        </button>
-        {!collapsed && (
+        {isMobile ? (
+          <button onClick={() => setMobileOpen(false)} className="text-sidebar-foreground hover:text-sidebar-primary transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        ) : (
+          <button onClick={() => setCollapsed(!collapsed)} className="text-sidebar-foreground hover:text-sidebar-primary transition-colors">
+            {collapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
+          </button>
+        )}
+        {(!collapsed || isMobile) && (
           <div className="flex items-center gap-2">
             <Atom className="w-6 h-6 text-primary" />
             <span className="font-semibold text-foreground text-sm tracking-wide">ChemAnalyst</span>
@@ -91,14 +111,14 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-        <div className={`${collapsed ? 'hidden' : ''} px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground`}>
+      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto overscroll-contain">
+        <div className={`${collapsed && !isMobile ? 'hidden' : ''} px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground`}>
           Calculators
         </div>
         {orderedIds.map((id, idx) => (
           <div
             key={id}
-            draggable
+            draggable={!isMobile}
             onDragStart={() => handleDragStart(idx)}
             onDragEnter={() => handleDragEnter(idx)}
             onDragEnd={handleDragEnd}
@@ -106,30 +126,30 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
             className={`${dragOverIdx === idx ? 'border-t-2 border-primary' : 'border-t-2 border-transparent'}`}
           >
             <button
-              onClick={() => onSectionChange(id)}
+              onClick={() => handleSectionChange(id)}
               className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm transition-all duration-200
                 ${activeSection === id
                   ? 'bg-sidebar-accent text-sidebar-primary glow-border'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                 }`}
-              title={collapsed ? LABEL_MAP[id] : undefined}
+              title={collapsed && !isMobile ? LABEL_MAP[id] : undefined}
             >
-              {!collapsed && <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0 cursor-grab" />}
+              {!collapsed && !isMobile && <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0 cursor-grab" />}
               {ICON_MAP[id]}
-              {!collapsed && <span>{LABEL_MAP[id]}</span>}
+              {(!collapsed || isMobile) && <span>{LABEL_MAP[id]}</span>}
             </button>
           </div>
         ))}
 
         {customSections.length > 0 && (
           <>
-            <div className={`${collapsed ? 'hidden' : ''} px-3 py-2 mt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground`}>
+            <div className={`${collapsed && !isMobile ? 'hidden' : ''} px-3 py-2 mt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground`}>
               Custom
             </div>
             {customSections.map((section) => (
               <button
                 key={section.id}
-                onClick={() => onSectionChange(section.id)}
+                onClick={() => handleSectionChange(section.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all duration-200
                   ${activeSection === section.id
                     ? 'bg-sidebar-accent text-sidebar-primary glow-border'
@@ -137,7 +157,7 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
                   }`}
               >
                 <Beaker className="w-4 h-4" />
-                {!collapsed && <span>{section.name}</span>}
+                {(!collapsed || isMobile) && <span>{section.name}</span>}
               </button>
             ))}
           </>
@@ -151,9 +171,50 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
           className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-all"
         >
           <Plus className="w-4 h-4" />
-          {!collapsed && <span>Add Section</span>}
+          {(!collapsed || isMobile) && <span>Add Section</span>}
         </button>
       </div>
+    </>
+  );
+
+  // Mobile: slide-over drawer
+  if (isMobile) {
+    return (
+      <>
+        {/* Hamburger button */}
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="fixed top-3 left-3 z-50 p-2 rounded-lg bg-card border border-border text-foreground shadow-lg"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Overlay */}
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+
+        {/* Drawer */}
+        <aside
+          className={`fixed top-0 left-0 z-50 h-full w-72 max-w-[85vw] bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-out ${
+            mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          {sidebarContent}
+        </aside>
+      </>
+    );
+  }
+
+  // Desktop: fixed sidebar
+  return (
+    <aside className={`${collapsed ? 'w-16' : 'w-60'} bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 shrink-0`}>
+      {sidebarContent}
     </aside>
   );
 }
