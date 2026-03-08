@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
