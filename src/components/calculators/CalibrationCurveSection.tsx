@@ -12,6 +12,7 @@ function createCurve(overrides?: Partial<CalibrationCurveData>): CalibrationCurv
     dilutionFactor: DEFAULT_TEMPLATE.dilutionFactor,
     sampleWeight: DEFAULT_TEMPLATE.sampleWeight,
     finalVolume: DEFAULT_TEMPLATE.finalVolume,
+    formula: DEFAULT_TEMPLATE.formula,
     locked: false,
     ...overrides,
   };
@@ -34,6 +35,7 @@ export function CalibrationCurveSection() {
       dilutionFactor: source.dilutionFactor,
       sampleWeight: source.sampleWeight,
       finalVolume: source.finalVolume,
+      formula: source.formula,
       locked: false,
     });
     setCurves(prev => [...prev, copy]);

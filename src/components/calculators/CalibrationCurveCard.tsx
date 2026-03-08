@@ -21,6 +21,7 @@ export interface CalibrationCurveData {
   dilutionFactor: string;
   sampleWeight: string;
   finalVolume: string;
+  formula: string;
   locked: boolean;
   createdAt: number;
 }
@@ -43,8 +44,33 @@ export const DEFAULT_TEMPLATE: Omit<CalibrationCurveData, 'id' | 'createdAt'> = 
   dilutionFactor: '1',
   sampleWeight: '0.5',
   finalVolume: '1',
+  formula: '(C * DF * Vol) / W',
   locked: false,
 };
+
+const FORMULA_VARIABLES = [
+  { key: 'C', label: 'Concentration from curve' },
+  { key: 'DF', label: 'Dilution Factor' },
+  { key: 'Vol', label: 'Final Volume (mL)' },
+  { key: 'W', label: 'Sample Weight (g)' },
+];
+
+function evaluateFormula(formula: string, vars: Record<string, number>): number | null {
+  try {
+    // Replace variable names with values, longest first to avoid partial matches
+    let expr = formula;
+    const sorted = Object.keys(vars).sort((a, b) => b.length - a.length);
+    for (const key of sorted) {
+      expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), `(${vars[key]})`);
+    }
+    // Only allow safe characters: digits, operators, parentheses, dots, spaces
+    if (!/^[\d+\-*/().e\s]+$/.test(expr)) return null;
+    const result = new Function(`"use strict"; return (${expr})`)();
+    return typeof result === 'number' && isFinite(result) ? result : null;
+  } catch {
+    return null;
+  }
+}
 
 function linearRegression(points: { x: number; y: number }[]) {
   const n = points.length;
@@ -73,7 +99,7 @@ interface Props {
 }
 
 export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, canDelete }: Props) {
-  const { standards, samples, dilutionFactor, sampleWeight, finalVolume, locked, title } = data;
+  const { standards, samples, dilutionFactor, sampleWeight, finalVolume, formula, locked, title } = data;
   const [editingTitle, setEditingTitle] = useState(false);
 
   const regression = useMemo(() => {
@@ -93,10 +119,10 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
       if (isNaN(abs)) return { ...s, concentration: null, corrected: null, finalConc: null };
       const conc = (abs - regression.intercept) / regression.slope;
       const corrected = conc * df;
-      const finalConc = (conc * df * vol) / sw;
+      const finalConc = evaluateFormula(formula, { C: conc, DF: df, Vol: vol, W: sw });
       return { ...s, concentration: conc, corrected, finalConc };
     });
-  }, [samples, regression, dilutionFactor, sampleWeight, finalVolume]);
+  }, [samples, regression, dilutionFactor, sampleWeight, finalVolume, formula]);
 
   const chartData = useMemo(() => {
     const pts = standards
@@ -141,6 +167,7 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
       dilutionFactor: '1',
       sampleWeight: '0.5',
       finalVolume: '1',
+      formula: '(C * DF * Vol) / W',
     });
   };
 
@@ -282,7 +309,38 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
             </div>
           </div>
 
-          <p className="text-[10px] text-muted-foreground mb-2 font-mono">Final Conc = (C × DF × Vol) ÷ Sample Weight</p>
+          {/* Editable Formula */}
+          <div className="mb-3 p-3 bg-secondary/30 rounded-lg space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground uppercase font-semibold">Result Formula</span>
+              {!locked && (
+                <button
+                  onClick={() => update({ formula: '(C * DF * Vol) / W' })}
+                  className="text-[10px] text-primary hover:text-primary/80 transition-colors"
+                >
+                  Reset to default
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground font-mono whitespace-nowrap">Final Conc =</span>
+              <input
+                type="text"
+                value={formula}
+                onChange={e => update({ formula: e.target.value })}
+                disabled={locked}
+                placeholder="(C * DF * Vol) / W"
+                className="flex-1 bg-input border border-border rounded-md px-2.5 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+              />
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {FORMULA_VARIABLES.map(v => (
+                <span key={v.key} className="text-[10px] text-muted-foreground">
+                  <span className="font-mono font-bold text-primary">{v.key}</span> = {v.label}
+                </span>
+              ))}
+            </div>
+          </div>
 
           <div className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_2rem] gap-2 mb-1.5 px-1">
             <span className="text-[10px] font-semibold text-muted-foreground uppercase">#</span>
