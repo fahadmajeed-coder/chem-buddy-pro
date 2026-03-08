@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Lock, Unlock, Copy, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Lock, Unlock, Copy, RotateCcw, Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { exportCalibrationPDF, exportCalibrationCSV } from '@/lib/calibrationExport';
 
 export interface StandardPoint {
   id: string;
@@ -202,6 +203,13 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
           </p>
         </div>
         <div className="flex items-center gap-1">
+          <button onClick={() => exportCalibrationPDF(data)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Export as PDF">
+            <FileText className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => exportCalibrationCSV(data)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Export as CSV (Excel)">
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+          </button>
+          <div className="w-px h-4 bg-border mx-0.5" />
           <button onClick={handleReset} disabled={locked} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30" title="Reset">
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
