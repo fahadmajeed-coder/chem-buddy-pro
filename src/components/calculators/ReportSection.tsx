@@ -297,21 +297,65 @@ export function ReportSection() {
   const loadFromAnalyticalTests = () => {
     try {
       const raw = localStorage.getItem('chemanalyst-analytical-results');
-      if (!raw) {
-        return;
-      }
+      if (!raw) return;
       const results: AnalyticalResult[] = JSON.parse(raw);
       if (!results.length) return;
-      setEntries(results.map(r => ({
-        id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        parameter: r.formulaName + (r.sampleId ? ` (${r.sampleId})` : ''),
-        method: '',
-        result: r.isAverage ? r.result.toFixed(4) : r.result.toFixed(4),
-        unit: '',
-        greenRange: '',
-        yellowRange: '',
-        status: 'pending' as EntryStatus,
-      })));
+
+      // Build lookup of analytical results by formulaName (lowercase)
+      const analyticalMap = new Map<string, AnalyticalResult>();
+      for (const r of results) {
+        const key = r.formulaName.trim().toLowerCase();
+        analyticalMap.set(key, r);
+      }
+
+      // Check if we have existing entries with parameters (from a standard)
+      const hasExistingParams = entries.some(e => e.parameter.trim() && e.parameter !== '');
+      
+      if (hasExistingParams) {
+        // Merge: fill results into matching entries by parameter name
+        const updatedEntries = entries.map(e => {
+          const paramKey = e.parameter.trim().toLowerCase();
+          const match = analyticalMap.get(paramKey);
+          if (match) {
+            analyticalMap.delete(paramKey); // consumed
+            const result = match.result.toFixed(4);
+            return {
+              ...e,
+              result,
+              status: computeStatus(result, e.greenRange, e.yellowRange),
+            };
+          }
+          return e;
+        });
+        // Append unmatched analytical results as new rows
+        const extraEntries: ReportEntry[] = [];
+        for (const [, r] of analyticalMap) {
+          extraEntries.push({
+            id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            parameter: r.formulaName + (r.sampleId ? ` (${r.sampleId})` : ''),
+            method: '',
+            result: r.result.toFixed(4),
+            unit: '',
+            greenRange: '',
+            yellowRange: '',
+            status: 'pending' as EntryStatus,
+          });
+        }
+        setEntries([...updatedEntries, ...extraEntries]);
+      } else {
+        // No existing parameters: create fresh entries from analytical results
+        setEntries(results.map(r => ({
+          id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          parameter: r.formulaName + (r.sampleId ? ` (${r.sampleId})` : ''),
+          method: '',
+          result: r.result.toFixed(4),
+          unit: '',
+          greenRange: '',
+          yellowRange: '',
+          status: 'pending' as EntryStatus,
+        })));
+      }
+      toast.success(`Analytical results loaded and merged.`);
     } catch { /* ignore */ }
   };
 
