@@ -37,8 +37,19 @@ export function StandardsSection() {
     const tolerance = parseFloat(s.tolerance);
     const actual = parseFloat(s.actualValue);
     if (isNaN(expected) || isNaN(actual)) return 'pending';
-    const tol = isNaN(tolerance) ? 0 : tolerance;
-    return (actual >= expected - tol && actual <= expected + tol) ? 'pass' : 'fail';
+    switch (s.comparison) {
+      case '≤': return actual <= expected ? 'pass' : 'fail';
+      case '≥': return actual >= expected ? 'pass' : 'fail';
+      case '=': {
+        const tol = isNaN(tolerance) ? 0 : tolerance;
+        return actual === expected || (actual >= expected - tol && actual <= expected + tol) ? 'pass' : 'fail';
+      }
+      case 'range':
+      default: {
+        const tol = isNaN(tolerance) ? 0 : tolerance;
+        return (actual >= expected - tol && actual <= expected + tol) ? 'pass' : 'fail';
+      }
+    }
   };
 
   const passCount = standards.filter(s => getStatus(s) === 'pass').length;
