@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen } from 'lucide-react';
+import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface NavItem {
@@ -25,6 +25,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { id: 'calibration', label: 'Calibration Curve', icon: <TrendingUp className="w-4 h-4" /> },
   { id: 'standards-inventory', label: 'Std. Inventory', icon: <ClipboardList className="w-4 h-4" /> },
   { id: 'sop', label: 'SOPs', icon: <BookOpen className="w-4 h-4" /> },
+  { id: 'indicators', label: 'Indicators', icon: <Palette className="w-4 h-4" /> },
 ];
 
 const ICON_MAP: Record<string, React.ReactNode> = {};
