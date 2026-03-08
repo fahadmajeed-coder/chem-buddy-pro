@@ -121,7 +121,7 @@ export function StandardsInventory() {
         return [
           p.analysis, reading || '—', p.normal || '—', p.min || '—', p.max || '—',
           p.standard || '—', p.withDeduction || '—', p.outlier || '—',
-          status === 'good' ? '✓ Good' : status === 'fair' ? '⚠ Fair' : status === 'reject' ? '✗ Reject' : 'Pending',
+          status === 'good' ? 'GOOD' : status === 'fair' ? 'FAIR' : status === 'reject' ? 'REJECT' : 'PENDING',
         ];
       }),
       theme: 'grid',
@@ -129,10 +129,20 @@ export function StandardsInventory() {
       styles: { fontSize: 8, cellPadding: 3 },
       didParseCell: (data) => {
         if (data.section === 'body' && data.column.index === 8) {
-          const val = data.cell.raw as string;
-          if (val.startsWith('✓')) data.cell.styles.textColor = [0, 160, 80];
-          else if (val.startsWith('⚠')) data.cell.styles.textColor = [200, 160, 0];
-          else if (val.startsWith('✗')) data.cell.styles.textColor = [200, 50, 50];
+          const val = (data.cell.raw as string || '').toUpperCase();
+          if (val === 'GOOD') {
+            data.cell.styles.textColor = [255, 255, 255];
+            data.cell.styles.fillColor = [0, 160, 80];
+            data.cell.styles.fontStyle = 'bold';
+          } else if (val === 'FAIR') {
+            data.cell.styles.textColor = [60, 40, 0];
+            data.cell.styles.fillColor = [255, 200, 50];
+            data.cell.styles.fontStyle = 'bold';
+          } else if (val === 'REJECT') {
+            data.cell.styles.textColor = [255, 255, 255];
+            data.cell.styles.fillColor = [200, 50, 50];
+            data.cell.styles.fontStyle = 'bold';
+          }
         }
       },
     });
