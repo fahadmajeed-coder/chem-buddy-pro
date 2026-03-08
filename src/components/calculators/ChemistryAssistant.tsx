@@ -1,11 +1,44 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Trash2, Bot, User, Zap } from 'lucide-react';
+import { Send, Sparkles, Trash2, Bot, User, Zap, Info, X } from 'lucide-react';
 import { getChemistryResponse, suggestedPrompts } from '@/lib/chemistryEngine';
 import { streamChat, generateItem, isGenerationRequest, type ChatMessage, type GeneratedItem } from '@/lib/aiChat';
 import { addGeneratedItem } from '@/lib/aiItemStore';
 import { GeneratedItemCard } from './GeneratedItemCard';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
+
+// Track AI usage in localStorage
+function getAIUsage(): { count: number; resetDate: string } {
+  try {
+    const stored = localStorage.getItem('chemassist-ai-usage');
+    if (stored) {
+      const data = JSON.parse(stored);
+      // Reset if past reset date
+      if (new Date(data.resetDate) <= new Date()) {
+        const newData = { count: 0, resetDate: getNextResetDate() };
+        localStorage.setItem('chemassist-ai-usage', JSON.stringify(newData));
+        return newData;
+      }
+      return data;
+    }
+  } catch {}
+  const data = { count: 0, resetDate: getNextResetDate() };
+  localStorage.setItem('chemassist-ai-usage', JSON.stringify(data));
+  return data;
+}
+
+function getNextResetDate(): string {
+  const now = new Date();
+  const reset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return reset.toISOString();
+}
+
+function incrementAIUsage(): number {
+  const usage = getAIUsage();
+  usage.count++;
+  localStorage.setItem('chemassist-ai-usage', JSON.stringify(usage));
+  return usage.count;
+}
 
 interface Message {
   id: string;
@@ -31,6 +64,8 @@ export function ChemistryAssistant() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [useAI, setUseAI] = useState(true);
+  const [showInfo, setShowInfo] = useState(false);
+  const [aiUsage, setAiUsage] = useState(() => getAIUsage());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -72,6 +107,8 @@ export function ChemistryAssistant() {
     setIsTyping(true);
 
     if (useAI) {
+      const newCount = incrementAIUsage();
+      setAiUsage(getAIUsage());
       const history: ChatMessage[] = messages
         .filter(m => m.id !== 'welcome')
         .map(m => ({ role: m.role, content: m.content }));
@@ -106,7 +143,13 @@ export function ChemistryAssistant() {
           }
         } catch (e) {
           const errMsg = e instanceof Error ? e.message : 'AI generation failed';
-          toast.error(errMsg);
+          if (errMsg.includes('Rate limit')) {
+            toast.error('⏳ Rate limit reached. Wait a moment and try again, or switch to offline mode.');
+          } else if (errMsg.includes('usage limit') || errMsg.includes('credits')) {
+            toast.error('💳 AI credits exhausted. Top up in Settings → Workspace → Usage, or use offline mode.');
+          } else {
+            toast.error(errMsg);
+          }
           // Fallback to offline
           const response = getChemistryResponse(messageText);
           setMessages(prev => [...prev, {
@@ -142,7 +185,13 @@ export function ChemistryAssistant() {
           onDelta: (chunk) => upsertAssistant(chunk),
           onDone: () => setIsTyping(false),
           onError: (error) => {
-            toast.error(error);
+            if (error.includes('Rate limit')) {
+              toast.error('⏳ Rate limit reached. Wait a moment or switch to offline mode.');
+            } else if (error.includes('usage limit') || error.includes('credits')) {
+              toast.error('💳 AI credits exhausted. Top up in Settings → Workspace → Usage.');
+            } else {
+              toast.error(error);
+            }
             const response = getChemistryResponse(messageText);
             setMessages(prev => [...prev, {
               id: assistantId,
@@ -210,6 +259,13 @@ export function ChemistryAssistant() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowInfo(!showInfo)}
+            className={`p-2 rounded-lg transition-colors ${showInfo ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+            title="AI usage info"
+          >
+            <Info className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => setUseAI(!useAI)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
               useAI
@@ -228,6 +284,41 @@ export function ChemistryAssistant() {
           </button>
         </div>
       </div>
+
+      {/* Info Panel */}
+      {showInfo && (
+        <div className="mb-4 rounded-xl border border-border bg-card p-4 space-y-3 text-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <Info className="w-4 h-4 text-primary" />
+              AI Usage & Credits
+            </h3>
+            <button onClick={() => setShowInfo(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">AI Queries This Month</p>
+              <p className="text-lg font-bold text-foreground">{aiUsage.count}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Resets On</p>
+              <p className="text-lg font-bold text-foreground">
+                {new Date(aiUsage.resetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p>📦 <strong className="text-foreground">Offline mode</strong> is always free — unlimited queries using the built-in chemistry engine.</p>
+            <p>✨ <strong className="text-foreground">AI mode</strong> uses Lovable AI credits from your workspace. Includes free monthly usage, resets on the 1st of each month.</p>
+            <p>⚠️ If you see a rate limit error, wait a moment and try again. If credits run out, switch to offline mode or top up in Settings → Workspace → Usage.</p>
+            <p>💡 <strong className="text-foreground">Tip:</strong> Use offline mode for quick formula lookups and AI mode for complex questions, SOP generation, and inventory lookups.</p>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
