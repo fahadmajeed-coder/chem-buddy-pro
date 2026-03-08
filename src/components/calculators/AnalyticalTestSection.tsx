@@ -317,11 +317,6 @@ export function AnalyticalTestSection() {
     ));
   };
 
-  const handleReset = () => {
-    if (locked) return;
-    setBlocks([]);
-  };
-
   return (
     <div className="space-y-4">
       {/* Header */}
