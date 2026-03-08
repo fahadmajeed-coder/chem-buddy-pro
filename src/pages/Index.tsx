@@ -19,7 +19,13 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState('molarity');
   const [customSections, setCustomSections] = useState<{ id: string; name: string }[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [elementMw, setElementMw] = useState<number | null>(null);
   const isOnline = navigator.onLine;
+
+  const handleUseInCalculator = (target: 'molarity' | 'solution', mw: number, _name: string) => {
+    setElementMw(mw);
+    setActiveSection(target);
+  };
 
   const addCustomSection = (name: string) => {
     setCustomSections(prev => [...prev, { id: `custom-${Date.now()}`, name }]);
