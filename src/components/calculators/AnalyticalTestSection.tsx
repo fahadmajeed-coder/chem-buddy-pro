@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface FormulaVariable {
@@ -137,6 +138,37 @@ function FormulaBlockCard({
 }) {
   const [cardLocked, setCardLocked] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [showAverages, setShowAverages] = useState(false);
+
+  // Compute results for all rows
+  const rowResults = useMemo(() => {
+    return block.rows.map(row => ({
+      ...row,
+      result: evaluateFormula(formula.expression, formula.variables, row.values),
+    }));
+  }, [block.rows, formula]);
+
+  // Group by sampleId and compute averages
+  const sampleAverages = useMemo(() => {
+    if (!showAverages) return new Map<string, number>();
+    const groups = new Map<string, number[]>();
+    for (const row of rowResults) {
+      const id = row.sampleId.trim();
+      if (!id || row.result === null) continue;
+      if (!groups.has(id)) groups.set(id, []);
+      groups.get(id)!.push(row.result);
+    }
+    const avgs = new Map<string, number>();
+    for (const [id, vals] of groups) {
+      if (vals.length > 1) {
+        avgs.set(id, vals.reduce((s, v) => s + v, 0) / vals.length);
+      }
+    }
+    return avgs;
+  }, [showAverages, rowResults]);
+
+  // Track which sampleIds we've already rendered an average row for
+  const renderedAverages = useMemo(() => new Set<string>(), [block.rows]);
 
   return (
     <div className={`glass-panel rounded-lg animate-fade-in ${cardLocked ? 'glow-border' : ''}`}>
@@ -190,49 +222,84 @@ function FormulaBlockCard({
                 </tr>
               </thead>
               <tbody>
-                {block.rows.map((row) => {
+                {block.rows.map((row, idx) => {
                   const result = evaluateFormula(formula.expression, formula.variables, row.values);
+                  const sampleId = row.sampleId.trim();
+                  // Check if next row has a different sampleId (or is the last row) to render average
+                  const isLastOfGroup = showAverages && sampleId && sampleAverages.has(sampleId) &&
+                    (idx === block.rows.length - 1 || block.rows[idx + 1].sampleId.trim() !== sampleId);
+
                   return (
-                    <tr key={row.id} className="border-b border-border/50">
-                      <td className="py-2 px-1">
-                        <input
-                          type="text"
-                          value={row.sampleId}
-                          onChange={(e) => onUpdateSampleId(row.id, e.target.value)}
-                          disabled={cardLocked}
-                          placeholder="ID"
-                          className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
-                        />
-                      </td>
-                      {formula.variables.map(v => (
-                        <td key={v.id} className="py-2 px-1">
+                    <>
+                      <tr key={row.id} className="border-b border-border/50">
+                        <td className="py-2 px-1">
                           <input
-                            type="number"
-                            value={row.values[v.name] || ''}
-                            onChange={(e) => onUpdateRow(row.id, v.name, e.target.value)}
+                            type="text"
+                            value={row.sampleId}
+                            onChange={(e) => onUpdateSampleId(row.id, e.target.value)}
                             disabled={cardLocked}
-                            placeholder={v.defaultValue || '0'}
+                            placeholder="ID"
                             className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
                           />
                         </td>
-                      ))}
-                      <td className="py-2 px-2">
-                        <span className="font-mono text-sm font-bold text-primary">
-                          {result !== null ? result.toFixed(4) : '—'}
-                        </span>
-                      </td>
-                      <td className="py-2 px-1">
-                        {block.rows.length > 1 && !cardLocked && (
-                          <button onClick={() => onRemoveRow(row.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                        {formula.variables.map(v => (
+                          <td key={v.id} className="py-2 px-1">
+                            <input
+                              type="number"
+                              value={row.values[v.name] || ''}
+                              onChange={(e) => onUpdateRow(row.id, v.name, e.target.value)}
+                              disabled={cardLocked}
+                              placeholder={v.defaultValue || '0'}
+                              className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
+                            />
+                          </td>
+                        ))}
+                        <td className="py-2 px-2">
+                          <span className="font-mono text-sm font-bold text-primary">
+                            {result !== null ? result.toFixed(4) : '—'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-1">
+                          {block.rows.length > 1 && !cardLocked && (
+                            <button onClick={() => onRemoveRow(row.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {isLastOfGroup && (
+                        <tr key={`avg-${sampleId}`} className="border-b border-primary/20 bg-primary/5">
+                          <td className="py-1.5 px-2">
+                            <span className="text-xs font-semibold text-primary">Avg: {sampleId}</span>
+                          </td>
+                          {formula.variables.map(v => (
+                            <td key={v.id} className="py-1.5 px-1"></td>
+                          ))}
+                          <td className="py-1.5 px-2">
+                            <span className="font-mono text-sm font-bold text-primary">
+                              {sampleAverages.get(sampleId)!.toFixed(4)}
+                            </span>
+                          </td>
+                          <td className="py-1.5 px-1"></td>
+                        </tr>
+                      )}
+                    </>
                   );
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Average checkbox */}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`avg-${formula.id}`}
+              checked={showAverages}
+              onCheckedChange={(checked) => setShowAverages(checked === true)}
+            />
+            <label htmlFor={`avg-${formula.id}`} className="text-xs text-muted-foreground cursor-pointer select-none">
+              Show average for same Sample ID
+            </label>
           </div>
 
           {!cardLocked && (
