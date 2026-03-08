@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface FormulaVariable {
