@@ -15,6 +15,7 @@ import { ChemistryAssistant } from '@/components/calculators/ChemistryAssistant'
 import { InventoryManager } from '@/components/calculators/InventoryManager';
 import { PeriodicTable } from '@/components/calculators/PeriodicTable';
 import { FormulaBuilder } from '@/components/calculators/FormulaBuilder';
+import { CalibrationCurveSection } from '@/components/calculators/CalibrationCurveSection';
 import { Wifi, WifiOff } from 'lucide-react';
 
 const Index = () => {
@@ -47,6 +48,7 @@ const Index = () => {
     inventory: 'Chemical Inventory',
     'periodic-table': 'Periodic Table',
     formulas: 'Custom Formulas',
+    calibration: 'Calibration Curve',
   };
 
   const renderSection = () => {
@@ -64,6 +66,7 @@ const Index = () => {
       case 'inventory': return <InventoryManager />;
       case 'periodic-table': return <PeriodicTable onUseInCalculator={handleUseInCalculator} />;
       case 'formulas': return <FormulaBuilder />;
+      case 'calibration': return <CalibrationCurveSection />;
       default: {
         const custom = customSections.find(s => s.id === activeSection);
         return custom ? <CustomCalculatorSection name={custom.name} /> : null;
