@@ -14,6 +14,7 @@ import { AddSectionDialog } from '@/components/AddSectionDialog';
 import { ChemistryAssistant } from '@/components/calculators/ChemistryAssistant';
 import { InventoryManager } from '@/components/calculators/InventoryManager';
 import { PeriodicTable } from '@/components/calculators/PeriodicTable';
+import { FormulaBuilder } from '@/components/calculators/FormulaBuilder';
 import { Wifi, WifiOff } from 'lucide-react';
 
 const Index = () => {
@@ -45,6 +46,7 @@ const Index = () => {
     assistant: 'Chemistry Assistant',
     inventory: 'Chemical Inventory',
     'periodic-table': 'Periodic Table',
+    formulas: 'Custom Formulas',
   };
 
   const renderSection = () => {
@@ -61,6 +63,7 @@ const Index = () => {
       case 'assistant': return <ChemistryAssistant />;
       case 'inventory': return <InventoryManager />;
       case 'periodic-table': return <PeriodicTable onUseInCalculator={handleUseInCalculator} />;
+      case 'formulas': return <FormulaBuilder />;
       default: {
         const custom = customSections.find(s => s.id === activeSection);
         return custom ? <CustomCalculatorSection name={custom.name} /> : null;
