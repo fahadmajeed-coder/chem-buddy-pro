@@ -485,13 +485,20 @@ export function ReportSection() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
+                const date = new Date().toISOString().split('T')[0];
+                const metaRows: string[][] = [];
+                if (companyName) metaRows.push(['Company', companyName]);
+                metaRows.push(['Report Title', title || 'Certificate of Analysis']);
+                if (batchNo) metaRows.push(['Batch No', batchNo]);
+                metaRows.push(['Date', date]);
+                metaRows.push([]); // blank line
                 const headers = ['Parameter', 'Method', 'Result', 'Unit', 'Good Range', 'Fair Range', 'Status'];
                 const csvEntries = entries.filter(e => e.included);
                 const rows = csvEntries.map(e => [
                   e.parameter, e.method, e.result, e.unit, e.greenRange, e.yellowRange,
                   e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending'
                 ]);
-                const csv = [headers, ...rows].map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+                const csv = [...metaRows, headers, ...rows].map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
                 const blob = new Blob([csv], { type: 'text/csv' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
