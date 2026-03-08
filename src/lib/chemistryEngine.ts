@@ -193,6 +193,23 @@ export const suggestedPrompts = [
 export function getChemistryResponse(input: string): string {
   const trimmed = input.trim();
 
+  // Check Q&A database FIRST (before formula parsing to avoid "pH" → P+H)
+  for (const qa of qaDatabase) {
+    if (qa.patterns.some(p => p.test(trimmed))) {
+      return qa.answer;
+    }
+  }
+
+  // Check for pH calculation
+  const phMatch = trimmed.match(/pH\s*(?:of\s+)?\[?H\+?\]?\s*=?\s*([\d.eE-]+)/i) || trimmed.match(/(?:calculate|find|compute)\s+pH.*?([\d.eE-]+)\s*M/i);
+  if (phMatch) {
+    const conc = parseFloat(phMatch[1]);
+    if (conc > 0) {
+      const pH = -Math.log10(conc);
+      return `**pH Calculation:**\n\n[H⁺] = ${conc} M\npH = -log₁₀(${conc}) = **${pH.toFixed(2)}**\n\nThis solution is **${pH < 7 ? 'acidic' : pH > 7 ? 'basic' : 'neutral'}**.`;
+    }
+  }
+
   // Check for molar mass queries
   const molarMassMatch = trimmed.match(/(?:molar mass|molecular weight|MW|formula weight|mass)\s*(?:of\s+)?([A-Z][A-Za-z0-9()]+)/i);
   if (molarMassMatch) {
@@ -258,22 +275,6 @@ export function getChemistryResponse(input: string): string {
     }
   }
 
-  // Check for pH calculation
-  const phMatch = trimmed.match(/pH\s*(?:of\s+)?\[?H\+?\]?\s*=?\s*([\d.eE-]+)/i) || trimmed.match(/(?:calculate|find|compute)\s+pH.*?([\d.eE-]+)\s*M/i);
-  if (phMatch) {
-    const conc = parseFloat(phMatch[1]);
-    if (conc > 0) {
-      const pH = -Math.log10(conc);
-      return `**pH Calculation:**\n\n[H⁺] = ${conc} M\npH = -log₁₀(${conc}) = **${pH.toFixed(2)}**\n\nThis solution is **${pH < 7 ? 'acidic' : pH > 7 ? 'basic' : 'neutral'}**.`;
-    }
-  }
-
-  // Check Q&A database
-  for (const qa of qaDatabase) {
-    if (qa.patterns.some(p => p.test(trimmed))) {
-      return qa.answer;
-    }
-  }
 
   // Check if input contains any recognizable formula
   const anyFormula = trimmed.match(/([A-Z][a-z]?(?:\d+)?(?:[A-Z][a-z]?(?:\d+)?)*(?:\((?:[A-Z][a-z]?(?:\d+)?)+\)(?:\d+)?)*)/);
