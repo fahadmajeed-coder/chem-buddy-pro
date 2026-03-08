@@ -53,6 +53,8 @@ const FORMULA_VARIABLES = [
   { key: 'DF', label: 'Dilution Factor' },
   { key: 'Vol', label: 'Final Volume (mL)' },
   { key: 'W', label: 'Sample Weight (g)' },
+  { key: 'm', label: 'Slope' },
+  { key: 'b', label: 'Intercept' },
 ];
 
 function evaluateFormula(formula: string, vars: Record<string, number>): number | null {
