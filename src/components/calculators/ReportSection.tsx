@@ -369,58 +369,62 @@ export function ReportSection() {
 
   return (
     <div className="space-y-4">
-      {/* Import from Analytical Tests */}
-      {hasAnalyticalResults && (
+      {/* Unified Data Sources Panel */}
+      {(savedStandards.length > 0 || hasAnalyticalResults) && (
         <div className="glass-panel rounded-lg p-5 animate-fade-in">
-          <div className="flex items-center gap-2 mb-3">
-            <FlaskConical className="w-5 h-5 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Import from Analytical Tests</h3>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Load results sent from the Analytical Testing section. Averages are used when enabled.
-          </p>
-          <button
-            onClick={loadFromAnalyticalTests}
-            className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-          >
-            Load Analytical Results
-          </button>
-        </div>
-      )}
-      {/* Standard Template Selector */}
-      {savedStandards.length > 0 && (
-        <div className="glass-panel rounded-lg p-5 animate-fade-in">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-4">
             <Shield className="w-5 h-5 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Load from Standard Template</h3>
+            <h3 className="text-sm font-semibold text-foreground">Data Sources</h3>
+            <span className="text-[10px] text-muted-foreground ml-auto">Load from Standards and/or Analytical Tests in any order</span>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Select a saved standard to auto-fill parameters. Normal range → Good, With Deduction range → Fair, outside both → Reject.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {savedStandards.map(s => (
+
+          {/* Standards selection */}
+          {savedStandards.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                ① Standard Template <span className="normal-case font-normal">— fills parameters &amp; ranges</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {savedStandards.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => loadStandard(s.id)}
+                    className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${
+                      selectedStandardId === s.id
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-secondary/50 text-foreground border-border hover:border-primary/50 hover:bg-secondary'
+                    }`}
+                  >
+                    {s.name}
+                    <span className="ml-1.5 text-[10px] opacity-70">({s.parameters.length})</span>
+                  </button>
+                ))}
+                {selectedStandardId && (
+                  <button
+                    onClick={clearStandard}
+                    className="px-3 py-2 rounded-md text-xs font-medium border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    Clear Template
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Analytical results */}
+          {hasAnalyticalResults && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                ② Analytical Test Results <span className="normal-case font-normal">— fills result values (merges by parameter name)</span>
+              </p>
               <button
-                key={s.id}
-                onClick={() => loadStandard(s.id)}
-                className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${
-                  selectedStandardId === s.id
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-secondary/50 text-foreground border-border hover:border-primary/50 hover:bg-secondary'
-                }`}
+                onClick={loadFromAnalyticalTests}
+                className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 border border-primary/20 transition-colors"
               >
-                {s.name}
-                <span className="ml-1.5 text-[10px] opacity-70">({s.parameters.length})</span>
+                <FlaskConical className="w-3.5 h-3.5" /> Load Analytical Results
               </button>
-            ))}
-            {selectedStandardId && (
-              <button
-                onClick={clearStandard}
-                className="px-3 py-2 rounded-md text-xs font-medium border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                Clear Template
-              </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
