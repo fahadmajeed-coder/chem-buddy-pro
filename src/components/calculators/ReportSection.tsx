@@ -3,6 +3,8 @@ import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upl
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+type EntryStatus = 'good' | 'fair' | 'reject' | 'pending';
+
 interface ReportEntry {
   id: string;
   parameter: string;
@@ -10,7 +12,7 @@ interface ReportEntry {
   result: string;
   unit: string;
   specification: string;
-  status: 'pass' | 'fail' | 'pending';
+  status: EntryStatus;
 }
 
 export function ReportSection() {
