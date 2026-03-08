@@ -250,7 +250,6 @@ function FormulaBlockCard({
 }
 
 export function AnalyticalTestSection() {
-  const [locked, setLocked] = useState(false);
   const [savedFormulas] = useLocalStorage<SavedFormula[]>('chem-formulas-v2', []);
   const [blocks, setBlocks] = useState<FormulaBlock[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
