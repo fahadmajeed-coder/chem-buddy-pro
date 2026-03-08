@@ -138,6 +138,37 @@ function FormulaBlockCard({
 }) {
   const [cardLocked, setCardLocked] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [showAverages, setShowAverages] = useState(false);
+
+  // Compute results for all rows
+  const rowResults = useMemo(() => {
+    return block.rows.map(row => ({
+      ...row,
+      result: evaluateFormula(formula.expression, formula.variables, row.values),
+    }));
+  }, [block.rows, formula]);
+
+  // Group by sampleId and compute averages
+  const sampleAverages = useMemo(() => {
+    if (!showAverages) return new Map<string, number>();
+    const groups = new Map<string, number[]>();
+    for (const row of rowResults) {
+      const id = row.sampleId.trim();
+      if (!id || row.result === null) continue;
+      if (!groups.has(id)) groups.set(id, []);
+      groups.get(id)!.push(row.result);
+    }
+    const avgs = new Map<string, number>();
+    for (const [id, vals] of groups) {
+      if (vals.length > 1) {
+        avgs.set(id, vals.reduce((s, v) => s + v, 0) / vals.length);
+      }
+    }
+    return avgs;
+  }, [showAverages, rowResults]);
+
+  // Track which sampleIds we've already rendered an average row for
+  const renderedAverages = useMemo(() => new Set<string>(), [block.rows]);
 
   return (
     <div className={`glass-panel rounded-lg animate-fade-in ${cardLocked ? 'glow-border' : ''}`}>
