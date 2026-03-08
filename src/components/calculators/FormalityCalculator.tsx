@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
+import { CompoundSelector } from './CompoundSelector';
+import { ChemicalCompound } from '@/lib/chemicalInventory';
 
 export function FormalityCalculator() {
   const [mass, setMass] = useState('');
@@ -20,6 +22,11 @@ export function FormalityCalculator() {
     ? { value: formality.toFixed(4), unit: 'F (FW/L)' }
     : null;
 
+  const handleCompoundSelect = (compound: ChemicalCompound) => {
+    if (compound.molarMass) setFw(compound.molarMass.toString());
+    if (compound.purityValue) setPurity(compound.purityValue.toString());
+  };
+
   return (
     <CalculatorCard
       title="Formality Calculator"
@@ -29,6 +36,7 @@ export function FormalityCalculator() {
       onReset={() => { if (!locked) { setMass(''); setFw(''); setVolume(''); setPurity('100'); } }}
       result={result}
     >
+      <CompoundSelector onSelect={handleCompoundSelect} disabled={locked} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <InputField label="Mass of Solute" unit="g" value={mass} onChange={setMass} disabled={locked} />
         <InputField label="Formula Weight" unit="g/FW" value={fw} onChange={setFw} disabled={locked} />
