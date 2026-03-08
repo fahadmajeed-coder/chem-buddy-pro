@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Trash2, Bot, User } from 'lucide-react';
+import { Send, Sparkles, Trash2, Bot, User, ExternalLink } from 'lucide-react';
 import { getChemistryResponse, suggestedPrompts } from '@/lib/chemistryEngine';
 
 interface Message {
