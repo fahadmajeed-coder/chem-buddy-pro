@@ -19,6 +19,7 @@ import { CalibrationCurveSection } from '@/components/calculators/CalibrationCur
 import { StandardsInventory } from '@/components/calculators/StandardsInventory';
 import { SOPSection } from '@/components/calculators/SOPSection';
 import { IndicatorsInventory } from '@/components/calculators/IndicatorsInventory';
+import { CVPercentCalculator } from '@/components/calculators/CVPercentCalculator';
 import { Wifi, WifiOff } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -57,6 +58,7 @@ const Index = () => {
     'standards-inventory': 'Standards Inventory',
     sop: 'SOPs',
     indicators: 'Indicators Inventory',
+    'cv-percent': 'CV% Calculator',
   };
 
   const sections: Record<string, React.ReactNode> = {
@@ -77,6 +79,7 @@ const Index = () => {
     'standards-inventory': <StandardsInventory />,
     sop: <SOPSection />,
     indicators: <IndicatorsInventory />,
+    'cv-percent': <CVPercentCalculator />,
   };
 
   const renderSections = () => {
