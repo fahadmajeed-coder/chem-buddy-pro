@@ -1,11 +1,44 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Trash2, Bot, User, Zap } from 'lucide-react';
+import { Send, Sparkles, Trash2, Bot, User, Zap, Info, X } from 'lucide-react';
 import { getChemistryResponse, suggestedPrompts } from '@/lib/chemistryEngine';
 import { streamChat, generateItem, isGenerationRequest, type ChatMessage, type GeneratedItem } from '@/lib/aiChat';
 import { addGeneratedItem } from '@/lib/aiItemStore';
 import { GeneratedItemCard } from './GeneratedItemCard';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
+
+// Track AI usage in localStorage
+function getAIUsage(): { count: number; resetDate: string } {
+  try {
+    const stored = localStorage.getItem('chemassist-ai-usage');
+    if (stored) {
+      const data = JSON.parse(stored);
+      // Reset if past reset date
+      if (new Date(data.resetDate) <= new Date()) {
+        const newData = { count: 0, resetDate: getNextResetDate() };
+        localStorage.setItem('chemassist-ai-usage', JSON.stringify(newData));
+        return newData;
+      }
+      return data;
+    }
+  } catch {}
+  const data = { count: 0, resetDate: getNextResetDate() };
+  localStorage.setItem('chemassist-ai-usage', JSON.stringify(data));
+  return data;
+}
+
+function getNextResetDate(): string {
+  const now = new Date();
+  const reset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return reset.toISOString();
+}
+
+function incrementAIUsage(): number {
+  const usage = getAIUsage();
+  usage.count++;
+  localStorage.setItem('chemassist-ai-usage', JSON.stringify(usage));
+  return usage.count;
+}
 
 interface Message {
   id: string;
