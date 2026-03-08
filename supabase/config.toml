@@ -1,0 +1,4 @@
+project_id = "uzvsayhqxriinysdceko"
+
+[functions.chemistry-chat]
+verify_jwt = false
