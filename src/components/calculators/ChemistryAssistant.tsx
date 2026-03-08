@@ -143,7 +143,13 @@ export function ChemistryAssistant() {
           }
         } catch (e) {
           const errMsg = e instanceof Error ? e.message : 'AI generation failed';
-          toast.error(errMsg);
+          if (errMsg.includes('Rate limit')) {
+            toast.error('⏳ Rate limit reached. Wait a moment and try again, or switch to offline mode.');
+          } else if (errMsg.includes('usage limit') || errMsg.includes('credits')) {
+            toast.error('💳 AI credits exhausted. Top up in Settings → Workspace → Usage, or use offline mode.');
+          } else {
+            toast.error(errMsg);
+          }
           // Fallback to offline
           const response = getChemistryResponse(messageText);
           setMessages(prev => [...prev, {
