@@ -141,91 +141,101 @@ function FormulaBlockCard({
   blockCount: number;
 }) {
   return (
-    <CalculatorCard
-      title={formula.name}
-      subtitle={formula.description || formula.expression}
-      locked={locked}
-      onToggleLock={() => {}}
-      onReset={() => {}}
-    >
-      <div className="mb-3 p-2.5 rounded-md bg-muted/50 border border-border flex items-center justify-between gap-2">
-        <code className="text-xs font-mono text-primary truncate">{formula.expression}</code>
+    <div className="glass-panel rounded-lg animate-fade-in">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <FlaskConical className="w-3.5 h-3.5 text-primary shrink-0" />
+            <h3 className="text-sm font-semibold text-foreground truncate">{formula.name}</h3>
+          </div>
+          {formula.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{formula.description}</p>}
+        </div>
         {!locked && (
-          <button onClick={onRemoveBlock} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0" title="Remove this formula">
-            <X className="w-3.5 h-3.5" />
+          <button
+            onClick={onRemoveBlock}
+            className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors shrink-0 ml-2"
+            title="Remove this formula"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Sample</th>
-              {formula.variables.map(v => (
-                <th key={v.id} className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider" title={v.description}>
-                  {v.name}
-                </th>
-              ))}
-              <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Result</th>
-              <th className="py-2 px-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {block.rows.map((row) => {
-              const result = evaluateFormula(formula.expression, formula.variables, row.values);
-              return (
-                <tr key={row.id} className="border-b border-border/50">
-                  <td className="py-2 px-1">
-                    <input
-                      type="text"
-                      value={row.sampleId}
-                      onChange={(e) => onUpdateSampleId(row.id, e.target.value)}
-                      disabled={locked}
-                      placeholder="ID"
-                      className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
-                    />
-                  </td>
-                  {formula.variables.map(v => (
-                    <td key={v.id} className="py-2 px-1">
+      <div className="p-5 space-y-4">
+        <div className="p-2.5 rounded-md bg-muted/50 border border-border">
+          <code className="text-xs font-mono text-primary">{formula.expression}</code>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Sample</th>
+                {formula.variables.map(v => (
+                  <th key={v.id} className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider" title={v.description}>
+                    {v.name}
+                  </th>
+                ))}
+                <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Result</th>
+                <th className="py-2 px-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row) => {
+                const result = evaluateFormula(formula.expression, formula.variables, row.values);
+                return (
+                  <tr key={row.id} className="border-b border-border/50">
+                    <td className="py-2 px-1">
                       <input
-                        type="number"
-                        value={row.values[v.name] || ''}
-                        onChange={(e) => onUpdateRow(row.id, v.name, e.target.value)}
+                        type="text"
+                        value={row.sampleId}
+                        onChange={(e) => onUpdateSampleId(row.id, e.target.value)}
                         disabled={locked}
-                        placeholder={v.defaultValue || '0'}
+                        placeholder="ID"
                         className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
                       />
                     </td>
-                  ))}
-                  <td className="py-2 px-2">
-                    <span className="font-mono text-sm font-bold text-primary">
-                      {result !== null ? result.toFixed(4) : '—'}
-                    </span>
-                  </td>
-                  <td className="py-2 px-1">
-                    {block.rows.length > 1 && !locked && (
-                      <button onClick={() => onRemoveRow(row.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    {formula.variables.map(v => (
+                      <td key={v.id} className="py-2 px-1">
+                        <input
+                          type="number"
+                          value={row.values[v.name] || ''}
+                          onChange={(e) => onUpdateRow(row.id, v.name, e.target.value)}
+                          disabled={locked}
+                          placeholder={v.defaultValue || '0'}
+                          className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
+                        />
+                      </td>
+                    ))}
+                    <td className="py-2 px-2">
+                      <span className="font-mono text-sm font-bold text-primary">
+                        {result !== null ? result.toFixed(4) : '—'}
+                      </span>
+                    </td>
+                    <td className="py-2 px-1">
+                      {block.rows.length > 1 && !locked && (
+                        <button onClick={() => onRemoveRow(row.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
-      {!locked && (
-        <button
-          onClick={onAddRow}
-          className="w-full mt-3 py-2 rounded-md border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-xs transition-all"
-        >
-          <Plus className="w-3.5 h-3.5" /> Add Row
-        </button>
-      )}
-    </CalculatorCard>
+        {!locked && (
+          <button
+            onClick={onAddRow}
+            className="w-full py-2 rounded-md border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-xs transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Row
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
