@@ -3,6 +3,7 @@ export interface ChemicalCompound {
   name: string;
   formula: string;
   molarMass: number | null;
+  nFactor: number | null; // n-factor for normality (H+ for acids, OH- for bases, e- for redox)
   purity: string;
   purityValue: number | null; // midpoint numeric value for calculations
   density: number | null;
