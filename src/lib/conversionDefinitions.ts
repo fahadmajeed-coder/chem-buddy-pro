@@ -92,6 +92,7 @@ export const conversionCategories: ConversionCategory[] = [
           if (!pct || !mw || !nf) return null;
           return { value: ((pct * d * 10 * nf) / mw).toFixed(4), unit: 'N' };
         },
+      },
       {
         id: 'M_to_F', label: 'M → F', desc: 'F ≈ M (for strong electrolytes)',
         fields: [{ key: 'molarity', label: 'Molarity', unit: 'M' }],
