@@ -315,7 +315,78 @@ function FormulaBlockCard({
         </div>
       </div>
 
-      {!collapsed && (
+      {!collapsed && editing && (
+        <div className="p-5 space-y-3 border-b border-border bg-muted/20">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Name</label>
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="w-full mt-1 bg-input border border-border rounded px-3 py-1.5 text-sm text-foreground focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Description</label>
+            <input
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              className="w-full mt-1 bg-input border border-border rounded px-3 py-1.5 text-sm text-foreground focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Expression</label>
+            <input
+              value={editExpr}
+              onChange={(e) => setEditExpr(e.target.value)}
+              className="w-full mt-1 bg-input border border-border rounded px-3 py-1.5 text-sm font-mono text-foreground focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-muted-foreground">Variables</label>
+              <button
+                onClick={() => setEditVars(prev => [...prev, { id: `v-${Date.now()}`, name: '', description: '', defaultValue: '', testValue: '' }])}
+                className="p-1 rounded text-primary hover:bg-primary/10 transition-colors"
+                title="Add variable"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {editVars.map((v, i) => (
+                <div key={v.id} className="flex items-center gap-2">
+                  <input
+                    value={v.name}
+                    onChange={(e) => { const next = [...editVars]; next[i] = { ...next[i], name: e.target.value }; setEditVars(next); }}
+                    placeholder="Name"
+                    className="w-24 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
+                  />
+                  <input
+                    value={v.description}
+                    onChange={(e) => { const next = [...editVars]; next[i] = { ...next[i], description: e.target.value }; setEditVars(next); }}
+                    placeholder="Description"
+                    className="flex-1 bg-input border border-border rounded px-2 py-1 text-xs text-foreground focus:ring-1 focus:ring-primary"
+                  />
+                  <input
+                    value={v.defaultValue}
+                    onChange={(e) => { const next = [...editVars]; next[i] = { ...next[i], defaultValue: e.target.value }; setEditVars(next); }}
+                    placeholder="Default"
+                    className="w-16 bg-input border border-border rounded px-2 py-1 text-xs text-foreground focus:ring-1 focus:ring-primary"
+                  />
+                  <button
+                    onClick={() => setEditVars(prev => prev.filter((_, j) => j !== i))}
+                    className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!collapsed && !editing && (
         <div className="p-5 space-y-4">
           {formula.description && (
             <p className="text-xs text-muted-foreground">{formula.description}</p>
