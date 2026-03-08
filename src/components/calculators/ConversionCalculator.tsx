@@ -236,12 +236,32 @@ export function ConversionCalculator() {
             <InputField label="Purity of Pellet" unit="%" value={inputs.purity || ''} onChange={(v) => updateInput('purity', v)} disabled={locked} placeholder="100" />
           </>
         )}
+        {activeConv === 'pct_wv' && (
+          <>
+            <InputField label="Mass of Solute" unit="g" value={inputs.mass || ''} onChange={(v) => updateInput('mass', v)} disabled={locked} />
+            <InputField label="Volume of Solution" unit="mL" value={inputs.volume || ''} onChange={(v) => updateInput('volume', v)} disabled={locked} />
+            <InputField label="Purity" unit="%" value={inputs.purity || ''} onChange={(v) => updateInput('purity', v)} disabled={locked} placeholder="100" />
+          </>
+        )}
+        {activeConv === 'pct_ww' && (
+          <>
+            <InputField label="Mass of Solute" unit="g" value={inputs.massSolute || ''} onChange={(v) => updateInput('massSolute', v)} disabled={locked} />
+            <InputField label="Mass of Solution" unit="g" value={inputs.massSolution || ''} onChange={(v) => updateInput('massSolution', v)} disabled={locked} />
+            <InputField label="Purity" unit="%" value={inputs.purity || ''} onChange={(v) => updateInput('purity', v)} disabled={locked} placeholder="100" />
+          </>
+        )}
+        {activeConv === 'pct_vv' && (
+          <>
+            <InputField label="Volume of Solute" unit="mL" value={inputs.volSolute || ''} onChange={(v) => updateInput('volSolute', v)} disabled={locked} />
+            <InputField label="Volume of Solution" unit="mL" value={inputs.volSolution || ''} onChange={(v) => updateInput('volSolution', v)} disabled={locked} />
+          </>
+        )}
       </div>
 
       {/* Show effective mass hint for purity-affected calcs */}
-      {(['vol_for_N', 'N_from_mass'].includes(activeConv)) && inputs.purity && parseFloat(inputs.purity) < 100 && inputs.mass && (
+      {(['vol_for_N', 'N_from_mass', 'pct_wv', 'pct_ww'].includes(activeConv)) && inputs.purity && parseFloat(inputs.purity) < 100 && (inputs.mass || inputs.massSolute) && (
         <p className="text-xs text-muted-foreground mt-2 font-mono">
-          Effective mass at {inputs.purity}% purity: {(parseFloat(inputs.mass) * parseFloat(inputs.purity) / 100).toFixed(4)} g
+          Effective mass at {inputs.purity}% purity: {(parseFloat(inputs.mass || inputs.massSolute || '0') * parseFloat(inputs.purity) / 100).toFixed(4)} g
         </p>
       )}
     </CalculatorCard>
