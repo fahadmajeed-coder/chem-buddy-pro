@@ -1,7 +1,15 @@
-import { useState, useMemo, useCallback } from 'react';
-import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight, Send } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { toast } from 'sonner';
+
+export interface AnalyticalResult {
+  formulaName: string;
+  sampleId: string;
+  result: number;
+  isAverage: boolean;
+}
 
 interface FormulaVariable {
   id: string;
@@ -127,6 +135,7 @@ function FormulaBlockCard({
   onAddRow,
   onRemoveRow,
   onRemoveBlock,
+  onResultsChange,
 }: {
   formula: SavedFormula;
   block: FormulaBlock;
@@ -135,6 +144,7 @@ function FormulaBlockCard({
   onAddRow: () => void;
   onRemoveRow: (rowId: string) => void;
   onRemoveBlock: () => void;
+  onResultsChange: (results: AnalyticalResult[]) => void;
 }) {
   const [cardLocked, setCardLocked] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -166,6 +176,31 @@ function FormulaBlockCard({
     }
     return avgs;
   }, [showAverages, rowResults]);
+
+  // Report exportable results to parent
+  useEffect(() => {
+    const results: AnalyticalResult[] = [];
+    if (showAverages && sampleAverages.size > 0) {
+      // Use averages for grouped samples
+      for (const [id, avg] of sampleAverages) {
+        results.push({ formulaName: formula.name, sampleId: id, result: avg, isAverage: true });
+      }
+      // Also include ungrouped (single-occurrence) sample results
+      const groupedIds = new Set(sampleAverages.keys());
+      for (const row of rowResults) {
+        if (row.sampleId.trim() && !groupedIds.has(row.sampleId.trim()) && row.result !== null) {
+          results.push({ formulaName: formula.name, sampleId: row.sampleId.trim(), result: row.result, isAverage: false });
+        }
+      }
+    } else {
+      for (const row of rowResults) {
+        if (row.result !== null) {
+          results.push({ formulaName: formula.name, sampleId: row.sampleId.trim(), result: row.result, isAverage: false });
+        }
+      }
+    }
+    onResultsChange(results);
+  }, [rowResults, showAverages, sampleAverages, formula.name, onResultsChange]);
 
   // Track which sampleIds we've already rendered an average row for
   const renderedAverages = useMemo(() => new Set<string>(), [block.rows]);
@@ -230,8 +265,8 @@ function FormulaBlockCard({
                     (idx === block.rows.length - 1 || block.rows[idx + 1].sampleId.trim() !== sampleId);
 
                   return (
-                    <>
-                      <tr key={row.id} className="border-b border-border/50">
+                    <React.Fragment key={row.id}>
+                      <tr className="border-b border-border/50">
                         <td className="py-2 px-1">
                           <input
                             type="text"
@@ -283,7 +318,7 @@ function FormulaBlockCard({
                           <td className="py-1.5 px-1"></td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -319,10 +354,28 @@ function FormulaBlockCard({
 export function AnalyticalTestSection() {
   const [savedFormulas] = useLocalStorage<SavedFormula[]>('chem-formulas-v2', []);
   const [blocks, setBlocks] = useState<FormulaBlock[]>([]);
+  const [blockResults, setBlockResults] = useState<Record<string, AnalyticalResult[]>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showPicker, setShowPicker] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [globalLocked, setGlobalLocked] = useState(false);
+
+  const handleResultsChange = useCallback((formulaId: string, results: AnalyticalResult[]) => {
+    setBlockResults(prev => ({ ...prev, [formulaId]: results }));
+  }, []);
+
+  const allResults = useMemo(() => {
+    return Object.values(blockResults).flat();
+  }, [blockResults]);
+
+  const sendToCOA = () => {
+    if (allResults.length === 0) {
+      toast.error('No results to send. Add formulas and enter sample data first.');
+      return;
+    }
+    localStorage.setItem('chemanalyst-analytical-results', JSON.stringify(allResults));
+    toast.success(`${allResults.length} result(s) sent to COA Report section.`);
+  };
 
   const filteredFormulas = useMemo(() => {
     if (!searchQuery.trim()) return savedFormulas;
@@ -395,6 +448,15 @@ export function AnalyticalTestSection() {
             <p className="text-xs text-muted-foreground mt-0.5">Add formulas and enter sample data</p>
           </div>
           <div className="flex items-center gap-1">
+            {allResults.length > 0 && (
+              <button
+                onClick={sendToCOA}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors mr-1"
+                title="Send results to COA Report"
+              >
+                <Send className="w-3.5 h-3.5" /> Send to COA
+              </button>
+            )}
             {blocks.length > 0 && !globalLocked && (
               <button
                 onClick={() => setShowClearConfirm(true)}
@@ -516,6 +578,7 @@ export function AnalyticalTestSection() {
             onAddRow={() => addRowToBlock(block.formulaId)}
             onRemoveRow={(rowId) => removeRowFromBlock(block.formulaId, rowId)}
             onRemoveBlock={() => removeBlock(block.formulaId)}
+            onResultsChange={(results) => handleResultsChange(block.formulaId, results)}
           />
         );
       })}
