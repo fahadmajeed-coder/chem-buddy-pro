@@ -11,7 +11,8 @@ interface ReportEntry {
   method: string;
   result: string;
   unit: string;
-  specification: string;
+  greenRange: string;
+  yellowRange: string;
   status: EntryStatus;
 }
 
@@ -22,12 +23,12 @@ export function ReportSection() {
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [entries, setEntries] = useState<ReportEntry[]>([
-    { id: '1', parameter: '', method: '', result: '', unit: '', specification: '', status: 'pending' }
+    { id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending' }
   ]);
 
   const addEntry = () => {
     setEntries(prev => [...prev, {
-      id: Date.now().toString(), parameter: '', method: '', result: '', unit: '', specification: '', status: 'pending'
+      id: Date.now().toString(), parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending'
     }]);
   };
 
@@ -39,23 +40,25 @@ export function ReportSection() {
     setEntries(prev => prev.map(e => {
       if (e.id !== id) return e;
       const updated = { ...e, [field]: value };
-      if (field === 'result' || field === 'specification') {
-        const spec = updated.specification;
+      if (field === 'result' || field === 'greenRange' || field === 'yellowRange') {
         const res = parseFloat(updated.result);
-        if (spec && !isNaN(res)) {
-          const match = spec.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
-          if (match) {
-            const min = parseFloat(match[1]);
-            const max = parseFloat(match[2]);
-            const range = max - min;
-            if (res >= min && res <= max) {
-              // Fair if within outer 10% of range on either side
-              const fairMargin = range * 0.1;
-              updated.status = (res <= min + fairMargin || res >= max - fairMargin) ? 'fair' : 'good';
-            } else {
-              updated.status = 'reject';
-            }
+        const greenMatch = updated.greenRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
+        const yellowMatch = updated.yellowRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
+        if (!isNaN(res) && (greenMatch || yellowMatch)) {
+          let status: EntryStatus = 'reject';
+          if (greenMatch) {
+            const gMin = parseFloat(greenMatch[1]);
+            const gMax = parseFloat(greenMatch[2]);
+            if (res >= gMin && res <= gMax) status = 'good';
           }
+          if (status !== 'good' && yellowMatch) {
+            const yMin = parseFloat(yellowMatch[1]);
+            const yMax = parseFloat(yellowMatch[2]);
+            if (res >= yMin && res <= yMax) status = 'fair';
+          }
+          updated.status = status;
+        } else {
+          updated.status = 'pending';
         }
       }
       return updated;
@@ -118,22 +121,23 @@ export function ReportSection() {
     // Table
     autoTable(doc, {
       startY: yPos + 10,
-      head: [['Parameter', 'Method', 'Result', 'Specification', 'Status']],
+      head: [['Parameter', 'Method', 'Result', 'Good Range', 'Fair Range', 'Status']],
       body: entries.map(e => [
         e.parameter || '—',
         e.method || '—',
         `${e.result || '—'} ${e.unit}`.trim(),
-        e.specification || '—',
+        e.greenRange || '—',
+        e.yellowRange || '—',
         e.status === 'good' ? '✓ Good' : e.status === 'fair' ? '⚠ Fair' : e.status === 'reject' ? '✗ Reject' : 'Pending',
       ]),
       theme: 'grid',
       headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold' },
       styles: { fontSize: 9, cellPadding: 4 },
       columnStyles: {
-        4: { fontStyle: 'bold', halign: 'center' },
+        5: { fontStyle: 'bold', halign: 'center' },
       },
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 4) {
+        if (data.section === 'body' && data.column.index === 5) {
           const val = data.cell.raw as string;
           if (val.startsWith('✓')) data.cell.styles.textColor = [0, 160, 80];
           else if (val.startsWith('⚠')) data.cell.styles.textColor = [200, 160, 0];
@@ -222,7 +226,12 @@ export function ReportSection() {
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Method</th>
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Result</th>
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Unit</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Specification</th>
+                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success inline-block"></span> Good Range</span>
+                </th>
+                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning inline-block"></span> Fair Range</span>
+                </th>
                 <th className="text-center py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
                 <th className="py-2.5 px-3"></th>
               </tr>
@@ -230,13 +239,23 @@ export function ReportSection() {
             <tbody>
               {entries.map((entry) => (
                 <tr key={entry.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
-                  {(['parameter', 'method', 'result', 'unit', 'specification'] as const).map((field) => (
+                  {(['parameter', 'method', 'result', 'unit'] as const).map((field) => (
                     <td key={field} className="py-2 px-2">
                       <input type="text" value={entry[field]} onChange={(e) => updateEntry(entry.id, field, e.target.value)}
-                        placeholder={field === 'specification' ? 'e.g. 98.0-102.0' : field.charAt(0).toUpperCase() + field.slice(1)}
+                        placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
                         className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                     </td>
                   ))}
+                  <td className="py-2 px-2">
+                    <input type="text" value={entry.greenRange} onChange={(e) => updateEntry(entry.id, 'greenRange', e.target.value)}
+                      placeholder="e.g. 90-95"
+                      className="w-full bg-transparent border border-transparent hover:border-border focus:border-success/60 rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                  </td>
+                  <td className="py-2 px-2">
+                    <input type="text" value={entry.yellowRange} onChange={(e) => updateEntry(entry.id, 'yellowRange', e.target.value)}
+                      placeholder="e.g. 95-100"
+                      className="w-full bg-transparent border border-transparent hover:border-border focus:border-warning/60 rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                  </td>
                   <td className="py-2 px-3 text-center">{statusIcon(entry.status)}</td>
                   <td className="py-2 px-2">
                     {entries.length > 1 && (
