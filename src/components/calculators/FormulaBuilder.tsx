@@ -176,7 +176,10 @@ const OPERATIONS: Operation[] = [
 const CATEGORY_ORDER = [
   'Basic Arithmetic', 'Grouping', 'Roots & Powers', 'Rounding',
   'Logarithms & Exponentials', 'Absolute & Sign', 'Min, Max & Clamp',
-  'Statistical', 'Percentage & Ratio', 'Comparison',
+  'Statistical — Central Tendency', 'Statistical — Spread & Variability',
+  'Statistical — Error & Uncertainty', 'Statistical — Regression',
+  'Statistical — Outlier & Quality',
+  'Percentage & Ratio', 'Comparison',
   'Trigonometry', 'Chemistry Helpers', 'Unit Conversions', 'Constants',
 ];
 
