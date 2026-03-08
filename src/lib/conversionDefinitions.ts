@@ -253,6 +253,137 @@ export const conversionCategories: ConversionCategory[] = [
     ],
   },
 
+  // ─── NORMALITY & PERCENT ───
+  {
+    id: 'normality_percent',
+    label: 'Normality & %',
+    icon: '⚗️',
+    conversions: [
+      {
+        id: 'np_N_to_wv', label: 'N → %w/v', desc: '% = (N × EW) / (d × 10), EW = MW / n-factor',
+        fields: [
+          { key: 'normality', label: 'Normality', unit: 'N' },
+          { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
+          { key: 'nfactor', label: 'n-Factor', unit: '' },
+          { key: 'density', label: 'Density', unit: 'g/mL', placeholder: '1' },
+        ],
+        inventoryAutoFill: true,
+        calculate: (get) => {
+          const n = get('normality'), mw = get('mw'), nf = get('nfactor'), d = get('density') || 1;
+          if (!n || !mw || !nf) return null;
+          return { value: ((n * mw) / (nf * d * 10)).toFixed(4), unit: '%w/v' };
+        },
+      },
+      {
+        id: 'np_wv_to_N', label: '%w/v → N', desc: 'N = (% × d × 10 × n-factor) / MW',
+        fields: [
+          { key: 'percent', label: 'Concentration', unit: '%w/v' },
+          { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
+          { key: 'nfactor', label: 'n-Factor', unit: '' },
+          { key: 'density', label: 'Density', unit: 'g/mL', placeholder: '1' },
+        ],
+        inventoryAutoFill: true,
+        calculate: (get) => {
+          const pct = get('percent'), mw = get('mw'), nf = get('nfactor'), d = get('density') || 1;
+          if (!pct || !mw || !nf) return null;
+          return { value: ((pct * d * 10 * nf) / mw).toFixed(4), unit: 'N' };
+        },
+      },
+      {
+        id: 'np_N_to_ww', label: 'N → %w/w', desc: '% = (N × EW × 100) / (d × 1000)',
+        fields: [
+          { key: 'normality', label: 'Normality', unit: 'N' },
+          { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
+          { key: 'nfactor', label: 'n-Factor', unit: '' },
+          { key: 'density', label: 'Solution Density', unit: 'g/mL' },
+        ],
+        inventoryAutoFill: true,
+        calculate: (get) => {
+          const n = get('normality'), mw = get('mw'), nf = get('nfactor'), d = get('density');
+          if (!n || !mw || !nf || !d) return null;
+          const ew = mw / nf;
+          return { value: ((n * ew * 100) / (d * 1000)).toFixed(4), unit: '%w/w' };
+        },
+      },
+      {
+        id: 'np_ww_to_N', label: '%w/w → N', desc: 'N = (% × d × 1000) / (EW × 100)',
+        fields: [
+          { key: 'percent', label: 'Concentration', unit: '%w/w' },
+          { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
+          { key: 'nfactor', label: 'n-Factor', unit: '' },
+          { key: 'density', label: 'Solution Density', unit: 'g/mL' },
+        ],
+        inventoryAutoFill: true,
+        calculate: (get) => {
+          const pct = get('percent'), mw = get('mw'), nf = get('nfactor'), d = get('density');
+          if (!pct || !mw || !nf || !d) return null;
+          const ew = mw / nf;
+          return { value: ((pct * d * 1000) / (ew * 100)).toFixed(4), unit: 'N' };
+        },
+      },
+      {
+        id: 'np_N_to_ppm', label: 'N → ppm', desc: 'ppm = N × EW × 1000',
+        fields: [
+          { key: 'normality', label: 'Normality', unit: 'N' },
+          { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
+          { key: 'nfactor', label: 'n-Factor', unit: '' },
+        ],
+        inventoryAutoFill: true,
+        calculate: (get) => {
+          const n = get('normality'), mw = get('mw'), nf = get('nfactor');
+          if (!n || !mw || !nf) return null;
+          const ew = mw / nf;
+          return { value: (n * ew * 1000).toFixed(4), unit: 'ppm' };
+        },
+      },
+      {
+        id: 'np_ppm_to_N', label: 'ppm → N', desc: 'N = ppm / (EW × 1000)',
+        fields: [
+          { key: 'ppm', label: 'Concentration', unit: 'ppm' },
+          { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
+          { key: 'nfactor', label: 'n-Factor', unit: '' },
+        ],
+        inventoryAutoFill: true,
+        calculate: (get) => {
+          const ppm = get('ppm'), mw = get('mw'), nf = get('nfactor');
+          if (!ppm || !mw || !nf) return null;
+          const ew = mw / nf;
+          return { value: (ppm / (ew * 1000)).toFixed(4), unit: 'N' };
+        },
+      },
+      {
+        id: 'np_N_to_mgL', label: 'N → mg/L', desc: 'mg/L = N × EW × 1000',
+        fields: [
+          { key: 'normality', label: 'Normality', unit: 'N' },
+          { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
+          { key: 'nfactor', label: 'n-Factor', unit: '' },
+        ],
+        inventoryAutoFill: true,
+        calculate: (get) => {
+          const n = get('normality'), mw = get('mw'), nf = get('nfactor');
+          if (!n || !mw || !nf) return null;
+          const ew = mw / nf;
+          return { value: (n * ew * 1000).toFixed(4), unit: 'mg/L' };
+        },
+      },
+      {
+        id: 'np_mgL_to_N', label: 'mg/L → N', desc: 'N = (mg/L) / (EW × 1000)',
+        fields: [
+          { key: 'mgL', label: 'Concentration', unit: 'mg/L' },
+          { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
+          { key: 'nfactor', label: 'n-Factor', unit: '' },
+        ],
+        inventoryAutoFill: true,
+        calculate: (get) => {
+          const c = get('mgL'), mw = get('mw'), nf = get('nfactor');
+          if (!c || !mw || !nf) return null;
+          const ew = mw / nf;
+          return { value: (c / (ew * 1000)).toFixed(4), unit: 'N' };
+        },
+      },
+    ],
+  },
+
   // ─── DILUTION & PREP ───
   {
     id: 'dilution',
