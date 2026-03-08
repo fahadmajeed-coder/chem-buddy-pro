@@ -218,6 +218,28 @@ function FormulaBlockCard({
           <h3 className="text-sm font-semibold text-foreground truncate">{formula.name}</h3>
         </button>
         <div className="flex items-center gap-1 shrink-0 ml-2">
+          <button
+            onClick={() => {
+              const results = cardResultsRef.current;
+              if (results.length === 0) {
+                toast.error('No results to send.');
+                return;
+              }
+              // Merge with existing COA results
+              try {
+                const existing: AnalyticalResult[] = JSON.parse(localStorage.getItem('chemanalyst-analytical-results') || '[]');
+                const filtered = existing.filter(r => r.formulaName !== formula.name);
+                localStorage.setItem('chemanalyst-analytical-results', JSON.stringify([...filtered, ...results]));
+              } catch {
+                localStorage.setItem('chemanalyst-analytical-results', JSON.stringify(results));
+              }
+              toast.success(`${results.length} result(s) from "${formula.name}" sent to COA.`);
+            }}
+            className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
+            title="Send this test to COA"
+          >
+            <Send className="w-3.5 h-3.5" />
+          </button>
           {!cardLocked && (
             <button
               onClick={onRemoveBlock}
