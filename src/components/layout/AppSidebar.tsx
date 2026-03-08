@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3 } from 'lucide-react';
+import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets } from 'lucide-react';
 
 interface NavItem {
   id: string;
@@ -13,6 +13,7 @@ const navItems: NavItem[] = [
   { id: 'formality', label: 'Formality (F)', icon: <TestTubes className="w-4 h-4" /> },
   { id: 'conversion', label: 'Conversions', icon: <ArrowRightLeft className="w-4 h-4" /> },
   { id: 'solution', label: 'Solution Prep', icon: <FlaskConical className="w-4 h-4" /> },
+  { id: 'dilution', label: 'Dilution (C₁V₁)', icon: <Droplets className="w-4 h-4" /> },
   { id: 'analytical', label: 'Analytical Test', icon: <TestTubes className="w-4 h-4" /> },
   { id: 'report', label: 'Reports & COA', icon: <FileText className="w-4 h-4" /> },
   { id: 'standards', label: 'Standards', icon: <Shield className="w-4 h-4" /> },
