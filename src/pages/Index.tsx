@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Sun, Moon } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { MolarityCalculator } from '@/components/calculators/MolarityCalculator';
 import { NormalityCalculator } from '@/components/calculators/NormalityCalculator';
