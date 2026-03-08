@@ -98,17 +98,27 @@ export function ReportSection() {
     { id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending' }
   ]);
 
+  // Normalize parameter name for matching: strip trailing (sampleId), trim, lowercase
+  const normalizeParam = (name: string) => name.replace(/\s*\(.*\)\s*$/, '').trim().toLowerCase();
+
   const loadStandard = (standardId: string) => {
     const std = savedStandards.find(s => s.id === standardId);
     if (!std) return;
     setSelectedStandardId(standardId);
-    // Build new entries from standard, merging existing results by parameter name
-    const existingByParam = new Map(entries.filter(e => e.parameter.trim()).map(e => [e.parameter.trim().toLowerCase(), e]));
-    setEntries(std.parameters.map(p => {
+    // Build lookup of existing entries by normalized parameter name
+    const existingByParam = new Map<string, ReportEntry>();
+    for (const e of entries) {
+      if (e.parameter.trim()) {
+        existingByParam.set(normalizeParam(e.parameter), e);
+      }
+    }
+    const usedExistingIds = new Set<string>();
+    const stdEntries = std.parameters.map(p => {
       const greenRange = formatRangeStr(p.normalMin, p.normalMax, p.normal);
       const yellowRange = formatRangeStr(p.withDeductionMin, p.withDeductionMax, p.withDeduction);
-      const paramKey = p.analysis.trim().toLowerCase();
+      const paramKey = normalizeParam(p.analysis);
       const existing = existingByParam.get(paramKey);
+      if (existing) usedExistingIds.add(existing.id);
       return {
         id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         parameter: p.analysis,
@@ -119,7 +129,10 @@ export function ReportSection() {
         yellowRange,
         status: existing?.result ? computeStatus(existing.result, greenRange, yellowRange) : 'pending' as EntryStatus,
       };
-    }));
+    });
+    // Keep unmatched existing entries (e.g. extra analytical results not in standard)
+    const extras = entries.filter(e => e.parameter.trim() && !usedExistingIds.has(e.id));
+    setEntries([...stdEntries, ...extras]);
   };
 
   const clearStandard = () => {
@@ -302,10 +315,10 @@ export function ReportSection() {
       const results: AnalyticalResult[] = JSON.parse(raw);
       if (!results.length) return;
 
-      // Build lookup of analytical results by formulaName (lowercase)
+      // Build lookup of analytical results by normalized formulaName
       const analyticalMap = new Map<string, AnalyticalResult>();
       for (const r of results) {
-        const key = r.formulaName.trim().toLowerCase();
+        const key = normalizeParam(r.formulaName);
         analyticalMap.set(key, r);
       }
 
@@ -313,9 +326,9 @@ export function ReportSection() {
       const hasExistingParams = entries.some(e => e.parameter.trim() && e.parameter !== '');
       
       if (hasExistingParams) {
-        // Merge: fill results into matching entries by parameter name
+        // Merge: fill results into matching entries by normalized parameter name
         const updatedEntries = entries.map(e => {
-          const paramKey = e.parameter.trim().toLowerCase();
+          const paramKey = normalizeParam(e.parameter);
           const match = analyticalMap.get(paramKey);
           if (match) {
             analyticalMap.delete(paramKey); // consumed
