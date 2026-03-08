@@ -247,6 +247,13 @@ export function ChemistryAssistant() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowInfo(!showInfo)}
+            className={`p-2 rounded-lg transition-colors ${showInfo ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+            title="AI usage info"
+          >
+            <Info className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => setUseAI(!useAI)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
               useAI
@@ -265,6 +272,41 @@ export function ChemistryAssistant() {
           </button>
         </div>
       </div>
+
+      {/* Info Panel */}
+      {showInfo && (
+        <div className="mb-4 rounded-xl border border-border bg-card p-4 space-y-3 text-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <Info className="w-4 h-4 text-primary" />
+              AI Usage & Credits
+            </h3>
+            <button onClick={() => setShowInfo(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">AI Queries This Month</p>
+              <p className="text-lg font-bold text-foreground">{aiUsage.count}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Resets On</p>
+              <p className="text-lg font-bold text-foreground">
+                {new Date(aiUsage.resetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p>📦 <strong className="text-foreground">Offline mode</strong> is always free — unlimited queries using the built-in chemistry engine.</p>
+            <p>✨ <strong className="text-foreground">AI mode</strong> uses Lovable AI credits from your workspace. Includes free monthly usage, resets on the 1st of each month.</p>
+            <p>⚠️ If you see a rate limit error, wait a moment and try again. If credits run out, switch to offline mode or top up in Settings → Workspace → Usage.</p>
+            <p>💡 <strong className="text-foreground">Tip:</strong> Use offline mode for quick formula lookups and AI mode for complex questions, SOP generation, and inventory lookups.</p>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
