@@ -151,6 +151,7 @@ function FormulaBlockCard({
   const [cardLocked, setCardLocked] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [showAverages, setShowAverages] = useState(false);
+  const cardResultsRef = React.useRef<AnalyticalResult[]>([]);
 
   // Compute results for all rows
   const rowResults = useMemo(() => {
