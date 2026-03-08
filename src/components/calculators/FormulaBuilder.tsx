@@ -6,6 +6,7 @@ interface FormulaVariable {
   id: string;
   name: string;
   description: string;
+  defaultValue: string;
   testValue: string;
 }
 
@@ -321,8 +322,8 @@ function toJavaScript(expr: string): string {
 
 export function FormulaBuilder() {
   const [variables, setVariables] = useState<FormulaVariable[]>([
-    { id: 'v1', name: 'x', description: '', testValue: '' },
-    { id: 'v2', name: 'y', description: '', testValue: '' },
+    { id: 'v1', name: 'x', description: '', defaultValue: '', testValue: '' },
+    { id: 'v2', name: 'y', description: '', defaultValue: '', testValue: '' },
   ]);
   const [expression, setExpression] = useState('');
   const [formulaName, setFormulaName] = useState('');
@@ -336,6 +337,7 @@ export function FormulaBuilder() {
   const [expandedFormula, setExpandedFormula] = useState<string | null>(null);
   const [newVarName, setNewVarName] = useState('');
   const [newVarDesc, setNewVarDesc] = useState('');
+  const [newVarDefault, setNewVarDefault] = useState('');
   const expressionRef = useRef<HTMLTextAreaElement>(null);
   const [draggedVar, setDraggedVar] = useState<string | null>(null);
 
@@ -347,9 +349,10 @@ export function FormulaBuilder() {
     // Prevent reserved words
     const reserved = ['sqrt', 'cbrt', 'squared', 'cubed', 'abs', 'sign', 'negate', 'round', 'roundUp', 'roundDown', 'roundTo', 'truncate', 'log', 'log2', 'ln', 'exp', 'pow10', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'toRadians', 'toDegrees', 'hypot', 'min', 'max', 'clamp', 'average', 'median', 'geometricMean', 'harmonicMean', 'weightedAvg', 'sum', 'count', 'range', 'variance', 'sampleVariance', 'stdDev', 'sampleStdDev', 'coeffVar', 'meanAbsDev', 'sumOfSquares', 'stdError', 'relStdDev', 'confidenceInterval', 'zScore', 'tValue', 'pooledStdDev', 'propagateAdd', 'propagateMul', 'slope', 'intercept', 'rSquared', 'correlation', 'grubbsG', 'dixonQ', 'percentile', 'iqr', 'recoveryPercent', 'horwitzRSD', 'horratRatio', 'percent', 'percentOf', 'ratio', 'ppm', 'ppb', 'molarity', 'dilution', 'percentYield', 'percentError', 'percentPurity', 'normality', 'gToMg', 'mgToG', 'LToMl', 'mlToL', 'celToFah', 'fahToCel', 'celToKel', 'kelToCel', 'mod', 'E_CONST', 'AVOGADRO', 'GAS_R', 'FARADAY', 'BOLTZMANN', 'PLANCK', 'SPEED_OF_LIGHT', 'ATM_TO_PA', 'WATER_MW'];
     if (reserved.includes(name)) return;
-    setVariables(prev => [...prev, { id: `v-${Date.now()}`, name, description: newVarDesc.trim(), testValue: '' }]);
+    setVariables(prev => [...prev, { id: `v-${Date.now()}`, name, description: newVarDesc.trim(), defaultValue: newVarDefault.trim(), testValue: newVarDefault.trim() }]);
     setNewVarName('');
     setNewVarDesc('');
+    setNewVarDefault('');
   };
 
   const removeVariable = (id: string) => {
@@ -470,7 +473,7 @@ export function FormulaBuilder() {
     setFormulaName('');
     setFormulaDesc('');
     setExpression('');
-    setVariables([{ id: 'v1', name: 'x', description: '', testValue: '' }, { id: 'v2', name: 'y', description: '', testValue: '' }]);
+    setVariables([{ id: 'v1', name: 'x', description: '', defaultValue: '', testValue: '' }, { id: 'v2', name: 'y', description: '', defaultValue: '', testValue: '' }]);
     setTestResult(null);
     setTestError(null);
     setTestPassed(null);
@@ -482,7 +485,7 @@ export function FormulaBuilder() {
 
   const loadFormula = (f: SavedFormula) => {
     setExpression(f.expression);
-    setVariables(f.variables.map(v => ({ ...v, testValue: '' })));
+    setVariables(f.variables.map(v => ({ ...v, testValue: v.defaultValue || '' })));
     setFormulaName(f.name);
     setFormulaDesc(f.description);
     setTestResult(null);
@@ -536,6 +539,9 @@ export function FormulaBuilder() {
                 {v.description && (
                   <span className="text-[10px] text-muted-foreground max-w-[120px] truncate">({v.description})</span>
                 )}
+                {v.defaultValue && (
+                  <span className="text-[10px] font-mono text-accent-foreground bg-accent/30 px-1.5 py-0.5 rounded">={v.defaultValue}</span>
+                )}
                 {variables.length > 1 && (
                   <button onClick={() => removeVariable(v.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5">
                     <X className="w-3 h-3" />
@@ -564,6 +570,17 @@ export function FormulaBuilder() {
                 onChange={ev => setNewVarDesc(ev.target.value)}
                 placeholder="e.g. mass in grams"
                 className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                onKeyDown={ev => ev.key === 'Enter' && addVariable()}
+              />
+            </div>
+            <div className="w-28 space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Default (optional)</label>
+              <input
+                type="number"
+                value={newVarDefault}
+                onChange={ev => setNewVarDefault(ev.target.value)}
+                placeholder="0"
+                className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
                 onKeyDown={ev => ev.key === 'Enter' && addVariable()}
               />
             </div>
