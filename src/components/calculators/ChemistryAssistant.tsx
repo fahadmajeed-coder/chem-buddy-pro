@@ -64,6 +64,8 @@ export function ChemistryAssistant() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [useAI, setUseAI] = useState(true);
+  const [showInfo, setShowInfo] = useState(false);
+  const [aiUsage, setAiUsage] = useState(() => getAIUsage());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
