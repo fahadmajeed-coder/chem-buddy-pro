@@ -253,7 +253,7 @@ export function sopFormulaToSavedFormula(def: SOPFormulaDefinition): {
 } {
   return {
     id: `sop-${def.sopId}`,
-    name: `[SOP] ${def.name}`,
+    name: def.name,
     description: `${def.description} (Unit: ${def.unit})`,
     expression: def.expression,
     variables: def.variables,
