@@ -19,6 +19,8 @@ export interface CalibrationCurveData {
   standards: StandardPoint[];
   samples: SampleRow[];
   dilutionFactor: string;
+  sampleWeight: string;
+  finalVolume: string;
   locked: boolean;
   createdAt: number;
 }
@@ -39,6 +41,8 @@ export const DEFAULT_TEMPLATE: Omit<CalibrationCurveData, 'id' | 'createdAt'> = 
     { id: '4', name: 'Sample 4', absorbance: '0.052' },
   ],
   dilutionFactor: '1',
+  sampleWeight: '0.5',
+  finalVolume: '1',
   locked: false,
 };
 
@@ -69,7 +73,7 @@ interface Props {
 }
 
 export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, canDelete }: Props) {
-  const { standards, samples, dilutionFactor, locked, title } = data;
+  const { standards, samples, dilutionFactor, sampleWeight, finalVolume, locked, title } = data;
   const [editingTitle, setEditingTitle] = useState(false);
 
   const regression = useMemo(() => {
@@ -82,13 +86,17 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
   const sampleResults = useMemo(() => {
     if (!regression) return [];
     const df = parseFloat(dilutionFactor) || 1;
+    const sw = parseFloat(sampleWeight) || 1;
+    const vol = parseFloat(finalVolume) || 1;
     return samples.map(s => {
       const abs = parseFloat(s.absorbance);
-      if (isNaN(abs)) return { ...s, concentration: null, corrected: null };
+      if (isNaN(abs)) return { ...s, concentration: null, corrected: null, finalConc: null };
       const conc = (abs - regression.intercept) / regression.slope;
-      return { ...s, concentration: conc, corrected: conc * df };
+      const corrected = conc * df;
+      const finalConc = (conc * df * vol) / sw;
+      return { ...s, concentration: conc, corrected, finalConc };
     });
-  }, [samples, regression, dilutionFactor]);
+  }, [samples, regression, dilutionFactor, sampleWeight, finalVolume]);
 
   const chartData = useMemo(() => {
     const pts = standards
