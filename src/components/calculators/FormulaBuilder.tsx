@@ -265,8 +265,7 @@ export function FormulaBuilder() {
     if (!name || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) return;
     if (variables.some(v => v.name === name)) return;
     // Prevent reserved words
-    const reserved = ['sqrt', 'abs', 'round', 'roundUp', 'roundDown', 'log', 'ln', 'exp', 'sin', 'cos', 'tan', 'mod', 'pi', 'e'];
-    if (reserved.includes(name.toLowerCase())) return;
+    const reserved = ['sqrt', 'cbrt', 'squared', 'cubed', 'abs', 'sign', 'negate', 'round', 'roundUp', 'roundDown', 'roundTo', 'truncate', 'log', 'log2', 'ln', 'exp', 'pow10', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'toRadians', 'toDegrees', 'hypot', 'min', 'max', 'clamp', 'average', 'sum', 'count', 'range', 'percent', 'percentOf', 'ratio', 'ppm', 'ppb', 'molarity', 'dilution', 'percentYield', 'percentError', 'percentPurity', 'normality', 'gToMg', 'mgToG', 'LToMl', 'mlToL', 'celToFah', 'fahToCel', 'celToKel', 'kelToCel', 'mod', 'E_CONST', 'AVOGADRO', 'GAS_R', 'FARADAY', 'BOLTZMANN', 'PLANCK', 'SPEED_OF_LIGHT', 'ATM_TO_PA', 'WATER_MW'];
     setVariables(prev => [...prev, { id: `v-${Date.now()}`, name, description: newVarDesc.trim(), testValue: '' }]);
     setNewVarName('');
     setNewVarDesc('');
