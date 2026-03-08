@@ -147,13 +147,6 @@ function FormulaBlockCard({
           <h3 className="text-sm font-semibold text-foreground truncate">{formula.name}</h3>
         </button>
         <div className="flex items-center gap-1 shrink-0 ml-2">
-          <button
-            onClick={() => setCardLocked(l => !l)}
-            className={`p-1.5 rounded-md transition-colors ${cardLocked ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
-            title={cardLocked ? 'Unlock' : 'Lock'}
-          >
-            {cardLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-          </button>
           {!cardLocked && (
             <button
               onClick={onRemoveBlock}
@@ -163,6 +156,13 @@ function FormulaBlockCard({
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
+          <button
+            onClick={() => setCardLocked(l => !l)}
+            className={`p-1.5 rounded-md transition-colors ${cardLocked ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
+            title={cardLocked ? 'Unlock' : 'Lock'}
+          >
+            {cardLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 
