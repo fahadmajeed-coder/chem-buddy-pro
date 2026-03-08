@@ -322,8 +322,8 @@ function toJavaScript(expr: string): string {
 
 export function FormulaBuilder() {
   const [variables, setVariables] = useState<FormulaVariable[]>([
-    { id: 'v1', name: 'x', description: '', testValue: '' },
-    { id: 'v2', name: 'y', description: '', testValue: '' },
+    { id: 'v1', name: 'x', description: '', defaultValue: '', testValue: '' },
+    { id: 'v2', name: 'y', description: '', defaultValue: '', testValue: '' },
   ]);
   const [expression, setExpression] = useState('');
   const [formulaName, setFormulaName] = useState('');
@@ -337,6 +337,7 @@ export function FormulaBuilder() {
   const [expandedFormula, setExpandedFormula] = useState<string | null>(null);
   const [newVarName, setNewVarName] = useState('');
   const [newVarDesc, setNewVarDesc] = useState('');
+  const [newVarDefault, setNewVarDefault] = useState('');
   const expressionRef = useRef<HTMLTextAreaElement>(null);
   const [draggedVar, setDraggedVar] = useState<string | null>(null);
 
@@ -348,9 +349,10 @@ export function FormulaBuilder() {
     // Prevent reserved words
     const reserved = ['sqrt', 'cbrt', 'squared', 'cubed', 'abs', 'sign', 'negate', 'round', 'roundUp', 'roundDown', 'roundTo', 'truncate', 'log', 'log2', 'ln', 'exp', 'pow10', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'toRadians', 'toDegrees', 'hypot', 'min', 'max', 'clamp', 'average', 'median', 'geometricMean', 'harmonicMean', 'weightedAvg', 'sum', 'count', 'range', 'variance', 'sampleVariance', 'stdDev', 'sampleStdDev', 'coeffVar', 'meanAbsDev', 'sumOfSquares', 'stdError', 'relStdDev', 'confidenceInterval', 'zScore', 'tValue', 'pooledStdDev', 'propagateAdd', 'propagateMul', 'slope', 'intercept', 'rSquared', 'correlation', 'grubbsG', 'dixonQ', 'percentile', 'iqr', 'recoveryPercent', 'horwitzRSD', 'horratRatio', 'percent', 'percentOf', 'ratio', 'ppm', 'ppb', 'molarity', 'dilution', 'percentYield', 'percentError', 'percentPurity', 'normality', 'gToMg', 'mgToG', 'LToMl', 'mlToL', 'celToFah', 'fahToCel', 'celToKel', 'kelToCel', 'mod', 'E_CONST', 'AVOGADRO', 'GAS_R', 'FARADAY', 'BOLTZMANN', 'PLANCK', 'SPEED_OF_LIGHT', 'ATM_TO_PA', 'WATER_MW'];
     if (reserved.includes(name)) return;
-    setVariables(prev => [...prev, { id: `v-${Date.now()}`, name, description: newVarDesc.trim(), testValue: '' }]);
+    setVariables(prev => [...prev, { id: `v-${Date.now()}`, name, description: newVarDesc.trim(), defaultValue: newVarDefault.trim(), testValue: newVarDefault.trim() }]);
     setNewVarName('');
     setNewVarDesc('');
+    setNewVarDefault('');
   };
 
   const removeVariable = (id: string) => {
@@ -471,7 +473,7 @@ export function FormulaBuilder() {
     setFormulaName('');
     setFormulaDesc('');
     setExpression('');
-    setVariables([{ id: 'v1', name: 'x', description: '', testValue: '' }, { id: 'v2', name: 'y', description: '', testValue: '' }]);
+    setVariables([{ id: 'v1', name: 'x', description: '', defaultValue: '', testValue: '' }, { id: 'v2', name: 'y', description: '', defaultValue: '', testValue: '' }]);
     setTestResult(null);
     setTestError(null);
     setTestPassed(null);
@@ -483,7 +485,7 @@ export function FormulaBuilder() {
 
   const loadFormula = (f: SavedFormula) => {
     setExpression(f.expression);
-    setVariables(f.variables.map(v => ({ ...v, testValue: '' })));
+    setVariables(f.variables.map(v => ({ ...v, testValue: v.defaultValue || '' })));
     setFormulaName(f.name);
     setFormulaDesc(f.description);
     setTestResult(null);
