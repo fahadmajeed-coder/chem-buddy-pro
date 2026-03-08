@@ -229,32 +229,56 @@ export function ReportSection() {
     ];
     const finalCols = allCols.filter(c => exportColumns[c.key]);
 
-    const statusColIndex = finalCols.findIndex(c => c.key === 'status');
+    // Transpose mode: when ≤2 column types selected, pivot so parameters become columns
+    const useTranspose = finalCols.length === 2 && finalCols.some(c => c.key === 'parameter') && entries.length > 1;
 
-    autoTable(doc, {
-      startY: yPos + 10,
-      head: [finalCols.map(c => c.header)],
-      body: entries.map(e => finalCols.map(c => c.getValue(e))),
-      theme: 'grid',
-      headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 9, cellPadding: 4 },
-      ...(statusColIndex >= 0 ? { columnStyles: { [statusColIndex]: { fontStyle: 'bold', halign: 'center' } } } : {}),
-      didParseCell: (data) => {
-        if (data.section === 'body' && statusColIndex >= 0 && data.column.index === statusColIndex) {
-          const val = data.cell.raw as string;
-          if (val === 'GOOD') {
-            data.cell.styles.textColor = [255, 255, 255];
-            data.cell.styles.fillColor = [0, 160, 80];
-          } else if (val === 'FAIR') {
-            data.cell.styles.textColor = [40, 40, 40];
-            data.cell.styles.fillColor = [255, 200, 50];
-          } else if (val === 'REJECT') {
-            data.cell.styles.textColor = [255, 255, 255];
-            data.cell.styles.fillColor = [200, 50, 50];
+    if (useTranspose) {
+      const valueCol = finalCols.find(c => c.key !== 'parameter')!;
+      // Head: first cell is the value label, then each parameter name
+      const head = [valueCol.header, ...entries.map(e => e.parameter || '—')];
+      // Body: single row with each parameter's value
+      const body = [entries.map(e => valueCol.getValue(e))];
+      // Prepend the row label
+      body[0].unshift(valueCol.header);
+
+      autoTable(doc, {
+        startY: yPos + 10,
+        head: [['', ...entries.map(e => e.parameter || '—')]],
+        body: [[valueCol.header, ...entries.map(e => valueCol.getValue(e))]],
+        theme: 'grid',
+        headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+        styles: { fontSize: 9, cellPadding: 4 },
+        columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+        didParseCell: (data) => {
+          if (data.section === 'body' && valueCol.key === 'status') {
+            const val = data.cell.raw as string;
+            if (val === 'GOOD') { data.cell.styles.textColor = [255, 255, 255]; data.cell.styles.fillColor = [0, 160, 80]; }
+            else if (val === 'FAIR') { data.cell.styles.textColor = [40, 40, 40]; data.cell.styles.fillColor = [255, 200, 50]; }
+            else if (val === 'REJECT') { data.cell.styles.textColor = [255, 255, 255]; data.cell.styles.fillColor = [200, 50, 50]; }
           }
-        }
-      },
-    });
+        },
+      });
+    } else {
+      const statusColIndex = finalCols.findIndex(c => c.key === 'status');
+
+      autoTable(doc, {
+        startY: yPos + 10,
+        head: [finalCols.map(c => c.header)],
+        body: entries.map(e => finalCols.map(c => c.getValue(e))),
+        theme: 'grid',
+        headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 4 },
+        ...(statusColIndex >= 0 ? { columnStyles: { [statusColIndex]: { fontStyle: 'bold', halign: 'center' } } } : {}),
+        didParseCell: (data) => {
+          if (data.section === 'body' && statusColIndex >= 0 && data.column.index === statusColIndex) {
+            const val = data.cell.raw as string;
+            if (val === 'GOOD') { data.cell.styles.textColor = [255, 255, 255]; data.cell.styles.fillColor = [0, 160, 80]; }
+            else if (val === 'FAIR') { data.cell.styles.textColor = [40, 40, 40]; data.cell.styles.fillColor = [255, 200, 50]; }
+            else if (val === 'REJECT') { data.cell.styles.textColor = [255, 255, 255]; data.cell.styles.fillColor = [200, 50, 50]; }
+          }
+        },
+      });
+    }
 
     const pageHeight = doc.internal.pageSize.height;
     doc.setFontSize(8);
