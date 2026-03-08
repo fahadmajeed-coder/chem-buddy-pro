@@ -69,7 +69,7 @@ const Index = () => {
     <div className="flex h-screen overflow-hidden bg-background">
       <AppSidebar
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        onSectionChange={(id) => { setElementMw(null); setActiveSection(id); }}
         customSections={customSections}
         onAddSection={() => setShowAddDialog(true)}
       />
