@@ -467,10 +467,33 @@ export function ReportSection() {
             <FileText className="w-5 h-5 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Certificate of Analysis</h3>
           </div>
-          <button onClick={exportPDF}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
-            <Download className="w-3.5 h-3.5" /> Export COA
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const headers = ['Parameter', 'Method', 'Result', 'Unit', 'Good Range', 'Fair Range', 'Status'];
+                const rows = entries.map(e => [
+                  e.parameter, e.method, e.result, e.unit, e.greenRange, e.yellowRange,
+                  e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending'
+                ]);
+                const csv = [headers, ...rows].map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `COA_${batchNo || 'report'}_${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success('CSV exported');
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-secondary/80 border border-border transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" /> Export CSV
+            </button>
+            <button onClick={exportPDF}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
+              <Download className="w-3.5 h-3.5" /> Export PDF
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
