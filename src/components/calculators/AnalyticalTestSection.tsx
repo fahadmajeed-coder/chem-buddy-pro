@@ -154,6 +154,11 @@ function FormulaBlockCard({
   const [cardLocked, setCardLocked] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [showAverages, setShowAverages] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(formula.name);
+  const [editDesc, setEditDesc] = useState(formula.description);
+  const [editExpr, setEditExpr] = useState(formula.expression);
+  const [editVars, setEditVars] = useState<FormulaVariable[]>(formula.variables.map(v => ({ ...v })));
   const cardResultsRef = React.useRef<AnalyticalResult[]>([]);
 
   // Compute results for all rows
