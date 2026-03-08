@@ -96,7 +96,7 @@ export function ReportSection() {
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [entries, setEntries] = useState<ReportEntry[]>([
-    { id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending' }
+    { id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending', included: true }
   ]);
 
   // Normalize parameter name for matching: strip trailing (sampleId), trim, lowercase
@@ -129,6 +129,7 @@ export function ReportSection() {
         greenRange,
         yellowRange,
         status: existing?.result ? computeStatus(existing.result, greenRange, yellowRange) : 'pending' as EntryStatus,
+        included: existing?.included ?? true,
       };
     });
     // Keep unmatched existing entries (e.g. extra analytical results not in standard)
@@ -138,12 +139,12 @@ export function ReportSection() {
 
   const clearStandard = () => {
     setSelectedStandardId(null);
-    setEntries([{ id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending' }]);
+    setEntries([{ id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending', included: true }]);
   };
 
   const addEntry = () => {
     setEntries(prev => [...prev, {
-      id: Date.now().toString(), parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending'
+      id: Date.now().toString(), parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending', included: true
     }]);
   };
 
@@ -199,6 +200,7 @@ export function ReportSection() {
   };
 
   const exportPDF = () => {
+    const exportEntries = entries.filter(e => e.included);
     const reportTitle = title || 'Certificate of Analysis';
     const date = new Date().toISOString().split('T')[0];
     const doc = new jsPDF();
@@ -250,21 +252,18 @@ export function ReportSection() {
     const finalCols = allCols.filter(c => exportColumns[c.key]);
 
     // Transpose mode: when ≤2 column types selected, pivot so parameters become columns
-    const useTranspose = finalCols.length === 2 && finalCols.some(c => c.key === 'parameter') && entries.length > 1;
+    const useTranspose = finalCols.length === 2 && finalCols.some(c => c.key === 'parameter') && exportEntries.length > 1;
 
     if (useTranspose) {
       const valueCol = finalCols.find(c => c.key !== 'parameter')!;
-      // Head: first cell is the value label, then each parameter name
-      const head = [valueCol.header, ...entries.map(e => e.parameter || '—')];
-      // Body: single row with each parameter's value
-      const body = [entries.map(e => valueCol.getValue(e))];
-      // Prepend the row label
+      const head = [valueCol.header, ...exportEntries.map(e => e.parameter || '—')];
+      const body = [exportEntries.map(e => valueCol.getValue(e))];
       body[0].unshift(valueCol.header);
 
       autoTable(doc, {
         startY: yPos + 10,
-        head: [['', ...entries.map(e => e.parameter || '—')]],
-        body: [[valueCol.header, ...entries.map(e => valueCol.getValue(e))]],
+        head: [['', ...exportEntries.map(e => e.parameter || '—')]],
+        body: [[valueCol.header, ...exportEntries.map(e => valueCol.getValue(e))]],
         theme: 'grid',
         headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         styles: { fontSize: 9, cellPadding: 4 },
@@ -284,7 +283,7 @@ export function ReportSection() {
       autoTable(doc, {
         startY: yPos + 10,
         head: [finalCols.map(c => c.header)],
-        body: entries.map(e => finalCols.map(c => c.getValue(e))),
+        body: exportEntries.map(e => finalCols.map(c => c.getValue(e))),
         theme: 'grid',
         headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 9, cellPadding: 4 },
