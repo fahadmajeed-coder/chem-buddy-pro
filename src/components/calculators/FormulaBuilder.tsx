@@ -1,5 +1,5 @@
 import { useState, useRef, DragEvent } from 'react';
-import { Plus, Trash2, Save, Check, X, Variable, Calculator, Search, GripVertical, FlaskConical, Play, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Save, Check, X, Variable, Calculator, Search, GripVertical, FlaskConical, Play, FileText, ChevronDown, ChevronUp, Copy, Pencil } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface FormulaVariable {
@@ -340,6 +340,8 @@ export function FormulaBuilder() {
   const [newVarDefault, setNewVarDefault] = useState('');
   const expressionRef = useRef<HTMLTextAreaElement>(null);
   const [draggedVar, setDraggedVar] = useState<string | null>(null);
+  const [editingFormulaId, setEditingFormulaId] = useState<string | null>(null);
+  const [editingVarId, setEditingVarId] = useState<string | null>(null);
 
   // --- Variable Management ---
   const addVariable = () => {
@@ -462,14 +464,24 @@ export function FormulaBuilder() {
       return;
     }
     const formula: SavedFormula = {
-      id: `f-${Date.now()}`,
+      id: editingFormulaId || `f-${Date.now()}`,
       name: formulaName.trim(),
       description: formulaDesc.trim(),
       expression,
       variables: variables.map(v => ({ ...v, testValue: '' })),
-      createdAt: Date.now(),
+      createdAt: editingFormulaId
+        ? (savedFormulas.find(f => f.id === editingFormulaId)?.createdAt || Date.now())
+        : Date.now(),
     };
-    setSavedFormulas(prev => [formula, ...prev]);
+    if (editingFormulaId) {
+      setSavedFormulas(prev => prev.map(f => f.id === editingFormulaId ? formula : f));
+    } else {
+      setSavedFormulas(prev => [formula, ...prev]);
+    }
+    resetBuilder();
+  };
+
+  const resetBuilder = () => {
     setFormulaName('');
     setFormulaDesc('');
     setExpression('');
@@ -477,10 +489,12 @@ export function FormulaBuilder() {
     setTestResult(null);
     setTestError(null);
     setTestPassed(null);
+    setEditingFormulaId(null);
   };
 
   const deleteFormula = (id: string) => {
     setSavedFormulas(prev => prev.filter(f => f.id !== id));
+    if (editingFormulaId === id) resetBuilder();
   };
 
   const loadFormula = (f: SavedFormula) => {
@@ -491,6 +505,18 @@ export function FormulaBuilder() {
     setTestResult(null);
     setTestError(null);
     setTestPassed(null);
+    setEditingFormulaId(f.id);
+  };
+
+  const duplicateFormula = (f: SavedFormula) => {
+    const dup: SavedFormula = {
+      ...f,
+      id: `f-${Date.now()}`,
+      name: `${f.name} (Copy)`,
+      createdAt: Date.now(),
+      variables: f.variables.map(v => ({ ...v, id: `v-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` })),
+    };
+    setSavedFormulas(prev => [dup, ...prev]);
   };
 
   // --- Filtered operations ---
@@ -525,27 +551,56 @@ export function FormulaBuilder() {
             {variables.map(v => (
               <div
                 key={v.id}
-                draggable
+                draggable={editingVarId !== v.id}
                 onDragStart={ev => handleDragStart(ev, v.name)}
                 onDragEnd={handleDragEnd}
-                className={`group flex items-center gap-2 px-3 py-2 rounded-md border cursor-grab active:cursor-grabbing transition-all ${
-                  draggedVar === v.name
-                    ? 'border-primary bg-primary/20 scale-95'
-                    : 'border-border bg-secondary/50 hover:border-primary/40'
+                className={`group flex items-center gap-2 px-3 py-2 rounded-md border transition-all ${
+                  editingVarId === v.id
+                    ? 'border-primary bg-primary/10'
+                    : draggedVar === v.name
+                    ? 'border-primary bg-primary/20 scale-95 cursor-grab active:cursor-grabbing'
+                    : 'border-border bg-secondary/50 hover:border-primary/40 cursor-grab active:cursor-grabbing'
                 }`}
               >
-                <GripVertical className="w-3 h-3 text-muted-foreground/50" />
-                <span className="font-mono text-sm font-medium text-primary">{v.name}</span>
-                {v.description && (
-                  <span className="text-[10px] text-muted-foreground max-w-[120px] truncate">({v.description})</span>
-                )}
-                {v.defaultValue && (
-                  <span className="text-[10px] font-mono text-accent-foreground bg-accent/30 px-1.5 py-0.5 rounded">={v.defaultValue}</span>
-                )}
-                {variables.length > 1 && (
-                  <button onClick={() => removeVariable(v.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5">
-                    <X className="w-3 h-3" />
-                  </button>
+                {editingVarId === v.id ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      value={v.description}
+                      onChange={ev => updateVariable(v.id, 'description', ev.target.value)}
+                      placeholder="Description"
+                      className="w-28 bg-input border border-border rounded px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <input
+                      type="number"
+                      value={v.defaultValue}
+                      onChange={ev => updateVariable(v.id, 'defaultValue', ev.target.value)}
+                      placeholder="Default"
+                      className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <span className="font-mono text-xs font-medium text-primary">{v.name}</span>
+                    <button onClick={() => setEditingVarId(null)} className="p-0.5 text-primary hover:text-primary/80">
+                      <Check className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <GripVertical className="w-3 h-3 text-muted-foreground/50" />
+                    <span className="font-mono text-sm font-medium text-primary">{v.name}</span>
+                    {v.description && (
+                      <span className="text-[10px] text-muted-foreground max-w-[120px] truncate">({v.description})</span>
+                    )}
+                    {v.defaultValue && (
+                      <span className="text-[10px] font-mono text-accent-foreground bg-accent/30 px-1.5 py-0.5 rounded">={v.defaultValue}</span>
+                    )}
+                    <button onClick={() => setEditingVarId(v.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all p-0.5">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    {variables.length > 1 && (
+                      <button onClick={() => removeVariable(v.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             ))}
@@ -777,13 +832,26 @@ export function FormulaBuilder() {
               className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
             />
           </div>
-          <button
-            onClick={saveFormula}
-            disabled={!formulaName.trim() || !expression.trim() || testPassed !== true}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            <Save className="w-4 h-4" /> Save Formula
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={saveFormula}
+              disabled={!formulaName.trim() || !expression.trim() || testPassed !== true}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <Save className="w-4 h-4" /> {editingFormulaId ? 'Update Formula' : 'Save Formula'}
+            </button>
+            {editingFormulaId && (
+              <button
+                onClick={resetBuilder}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              >
+                <X className="w-4 h-4" /> Cancel Edit
+              </button>
+            )}
+          </div>
+          {editingFormulaId && (
+            <p className="text-[10px] text-primary">✏ Editing "{formulaName}" — changes will update the existing formula</p>
+          )}
           {testPassed !== true && expression.trim() && (
             <p className="text-[10px] text-[hsl(var(--warning))]">⚠ Test the formula first before saving</p>
           )}
@@ -820,6 +888,13 @@ export function FormulaBuilder() {
                         Edit
                       </button>
                       <button
+                        onClick={ev => { ev.stopPropagation(); duplicateFormula(f); }}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-primary transition-colors"
+                        title="Duplicate formula"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button
                         onClick={ev => { ev.stopPropagation(); deleteFormula(f.id); }}
                         className="p-1.5 rounded-md text-muted-foreground hover:text-destructive transition-colors"
                       >
@@ -836,7 +911,7 @@ export function FormulaBuilder() {
                       <div className="flex flex-wrap gap-1.5">
                         {f.variables.map(v => (
                           <span key={v.id} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-mono">
-                            {v.name}{v.description ? ` — ${v.description}` : ''}
+                            {v.name}{v.description ? ` — ${v.description}` : ''}{v.defaultValue ? ` (=${v.defaultValue})` : ''}
                           </span>
                         ))}
                       </div>
