@@ -6,10 +6,14 @@ export function MolarityCalculator() {
   const [mass, setMass] = useState('');
   const [mw, setMw] = useState('');
   const [volume, setVolume] = useState('');
+  const [purity, setPurity] = useState('100');
   const [locked, setLocked] = useState(false);
 
+  const purityFactor = parseFloat(purity) / 100 || 1;
+  const effectiveMass = parseFloat(mass) * purityFactor;
+
   const molarity = mass && mw && volume
-    ? ((parseFloat(mass) / parseFloat(mw)) / (parseFloat(volume) / 1000))
+    ? ((effectiveMass / parseFloat(mw)) / (parseFloat(volume) / 1000))
     : null;
 
   const result = molarity !== null && isFinite(molarity)
@@ -19,17 +23,23 @@ export function MolarityCalculator() {
   return (
     <CalculatorCard
       title="Molarity Calculator"
-      subtitle="M = (mass / MW) / Volume(L)"
+      subtitle="M = (mass × purity / MW) / Volume(L)"
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
-      onReset={() => { if (!locked) { setMass(''); setMw(''); setVolume(''); } }}
+      onReset={() => { if (!locked) { setMass(''); setMw(''); setVolume(''); setPurity('100'); } }}
       result={result}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <InputField label="Mass of Solute" unit="g" value={mass} onChange={setMass} disabled={locked} />
         <InputField label="Molecular Weight" unit="g/mol" value={mw} onChange={setMw} disabled={locked} />
         <InputField label="Volume of Solution" unit="mL" value={volume} onChange={setVolume} disabled={locked} />
+        <InputField label="Purity" unit="%" value={purity} onChange={setPurity} disabled={locked} />
       </div>
+      {purity && parseFloat(purity) < 100 && mass && (
+        <p className="text-xs text-muted-foreground mt-2 font-mono">
+          Effective mass at {purity}% purity: {effectiveMass.toFixed(4)} g
+        </p>
+      )}
     </CalculatorCard>
   );
 }
