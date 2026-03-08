@@ -61,28 +61,53 @@ export function ReportSection() {
     }
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setLogoDataUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const exportPDF = () => {
     const reportTitle = title || 'Certificate of Analysis';
     const date = new Date().toISOString().split('T')[0];
     const doc = new jsPDF();
 
-    // Header
+    let yPos = 14;
+
+    // Logo
+    if (logoDataUrl) {
+      try { doc.addImage(logoDataUrl, 'PNG', 14, yPos, 24, 24); } catch { /* skip */ }
+    }
+
+    // Company name & title
+    const textX = logoDataUrl ? 42 : 14;
+    if (companyName) {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 160, 145);
+      doc.text(companyName, textX, yPos + 8);
+    }
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text(reportTitle, 105, 20, { align: 'center' });
+    doc.setTextColor(30);
+    doc.text(reportTitle, textX, yPos + (companyName ? 18 : 10));
 
+    yPos = 44;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Batch No: ${batchNo || '—'}`, 14, 32);
-    doc.text(`Date: ${date}`, 196, 32, { align: 'right' });
+    doc.setTextColor(60);
+    doc.text(`Batch No: ${batchNo || '—'}`, 14, yPos);
+    doc.text(`Date: ${date}`, 196, yPos, { align: 'right' });
 
     doc.setDrawColor(0, 200, 180);
     doc.setLineWidth(0.5);
-    doc.line(14, 36, 196, 36);
+    doc.line(14, yPos + 4, 196, yPos + 4);
 
     // Table
     autoTable(doc, {
-      startY: 42,
+      startY: yPos + 10,
       head: [['Parameter', 'Method', 'Result', 'Specification', 'Status']],
       body: entries.map(e => [
         e.parameter || '—',
