@@ -7,6 +7,7 @@ import { Plus, Trash2, ArrowRightLeft, Beaker, Scale, Pipette, FlaskConical, Inf
 
 interface PrepStep {
   id: string;
+  reagentState: 'solid' | 'liquid';
   targetConc: string;
   targetUnit: string;
   targetVol: string;
@@ -162,7 +163,7 @@ const unitLabels: Record<string, string> = {
 export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProps) {
   const [locked, setLocked] = useState(false);
   const [steps, setSteps] = useState<PrepStep[]>([
-    { id: '1', targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
+    { id: '1', reagentState: 'solid', targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
   ]);
 
   useEffect(() => {
@@ -173,7 +174,7 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
 
   const addStep = () => {
     setSteps(prev => [...prev, {
-      id: Date.now().toString(),
+      id: Date.now().toString(), reagentState: 'solid',
       targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: ''
     }]);
   };
@@ -203,11 +204,16 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
     <div className="space-y-4">
       {steps.map((step, idx) => {
         const r = calcAllResults(step);
-        const primaryResult = r.massNeeded !== null
-          ? { value: r.massNeeded.toFixed(4), unit: 'g solute needed' }
-          : r.volumeOfSolute !== null
-            ? { value: r.volumeOfSolute.toFixed(4), unit: 'mL solute needed' }
-            : null;
+        const isLiquid = step.reagentState === 'liquid';
+        const primaryResult = isLiquid && r.volumeToPipette !== null
+          ? { value: r.volumeToPipette.toFixed(4), unit: 'mL to pipette' }
+          : r.massNeeded !== null && !isLiquid
+            ? { value: r.massNeeded.toFixed(4), unit: 'g solute needed' }
+            : r.volumeOfSolute !== null
+              ? { value: r.volumeOfSolute.toFixed(4), unit: 'mL solute needed' }
+              : r.massNeeded !== null
+                ? { value: r.massNeeded.toFixed(4), unit: 'g solute needed' }
+                : null;
 
         return (
           <CalculatorCard
@@ -218,7 +224,7 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
             onToggleLock={() => setLocked(!locked)}
             onReset={() => {
               if (!locked) setSteps(prev => prev.map(s => s.id === step.id
-                ? { ...s, targetConc: '', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
+                ? { ...s, reagentState: 'solid', targetConc: '', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
                 : s
               ));
             }}
@@ -226,6 +232,37 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
           >
             {/* Compound Selector */}
             <CompoundSelector onSelect={(c) => handleCompoundSelect(step.id, c)} disabled={locked} />
+
+            {/* ───── Reagent State Toggle ───── */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reagent Type:</span>
+              <div className="inline-flex rounded-lg border border-border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => !locked && updateStep(step.id, 'reagentState', 'solid')}
+                  disabled={locked}
+                  className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                    step.reagentState === 'solid'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted/30 text-muted-foreground hover:bg-muted/60'
+                  } disabled:opacity-50`}
+                >
+                  <Scale className="w-3 h-3" /> Solid
+                </button>
+                <button
+                  type="button"
+                  onClick={() => !locked && updateStep(step.id, 'reagentState', 'liquid')}
+                  disabled={locked}
+                  className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                    step.reagentState === 'liquid'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted/30 text-muted-foreground hover:bg-muted/60'
+                  } disabled:opacity-50`}
+                >
+                  <Pipette className="w-3 h-3" /> Liquid
+                </button>
+              </div>
+            </div>
 
             {/* ───── Section 1: Target Solution ───── */}
             <div className="space-y-2">
@@ -265,7 +302,7 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                 <InputField label="Molecular Weight" unit="g/mol" value={step.mw} onChange={(v) => updateStep(step.id, 'mw', v)} disabled={locked} />
                 <InputField label="n-Factor" unit="" value={step.nFactor} onChange={(v) => updateStep(step.id, 'nFactor', v)} disabled={locked} placeholder="1" />
                 <InputField label="Purity" unit="%" value={step.purity} onChange={(v) => updateStep(step.id, 'purity', v)} disabled={locked} placeholder="100" />
-                <InputField label="Density" unit="g/mL" value={step.density} onChange={(v) => updateStep(step.id, 'density', v)} disabled={locked} placeholder="Optional" />
+                <InputField label="Density" unit="g/mL" value={step.density} onChange={(v) => updateStep(step.id, 'density', v)} disabled={locked} placeholder={step.reagentState === 'liquid' ? 'Required' : 'Optional'} />
               </div>
             </div>
 
@@ -278,14 +315,45 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {/* Mass of solute */}
-                  {r.massNeeded !== null && (
+                  {/* PRIMARY: For liquids show Volume to Pipette first */}
+                  {isLiquid && r.volumeToPipette !== null && (
+                    <ResultCard
+                      icon="📐"
+                      label="Volume to Pipette"
+                      value={`${r.volumeToPipette.toFixed(4)} mL`}
+                      detail={`(${r.massNeeded!.toFixed(4)} g ÷ ${r.density} g/mL) — adjusted for ${r.purityPercent}% purity`}
+                      highlight
+                    />
+                  )}
+
+                  {/* PRIMARY: For solids show Mass to Weigh first */}
+                  {!isLiquid && r.massNeeded !== null && (
                     <ResultCard
                       icon="⚖️"
                       label="Mass of Solute to Weigh"
                       value={`${r.massNeeded.toFixed(4)} g`}
                       detail={r.purityPercent < 100 ? `(adjusted for ${r.purityPercent}% purity)` : undefined}
                       highlight
+                    />
+                  )}
+
+                  {/* Secondary: For liquids also show mass for reference */}
+                  {isLiquid && r.massNeeded !== null && (
+                    <ResultCard
+                      icon="⚖️"
+                      label="Equivalent Mass"
+                      value={`${r.massNeeded.toFixed(4)} g`}
+                      detail="For reference only"
+                    />
+                  )}
+
+                  {/* Secondary: For solids show pipette volume if density known */}
+                  {!isLiquid && r.volumeToPipette !== null && (
+                    <ResultCard
+                      icon="📐"
+                      label="Equivalent Volume"
+                      value={`${r.volumeToPipette.toFixed(4)} mL`}
+                      detail="If dissolved — for reference"
                     />
                   )}
 
@@ -296,16 +364,6 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                       label="Volume of Solute"
                       value={`${r.volumeOfSolute.toFixed(4)} mL`}
                       highlight
-                    />
-                  )}
-
-                  {/* Volume to pipette (liquid reagent) */}
-                  {r.volumeToPipette !== null && (
-                    <ResultCard
-                      icon="📐"
-                      label="Volume to Pipette"
-                      value={`${r.volumeToPipette.toFixed(4)} mL`}
-                      detail={`${r.massNeeded!.toFixed(4)} g ÷ ${r.density} g/mL`}
                     />
                   )}
 
