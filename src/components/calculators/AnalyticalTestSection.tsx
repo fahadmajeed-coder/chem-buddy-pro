@@ -255,6 +255,7 @@ export function AnalyticalTestSection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showPicker, setShowPicker] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [globalLocked, setGlobalLocked] = useState(false);
 
   const filteredFormulas = useMemo(() => {
     if (!searchQuery.trim()) return savedFormulas;
