@@ -102,7 +102,7 @@ interface Props {
 }
 
 export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, canDelete }: Props) {
-  const { standards, samples, dilutionFactor, sampleWeight, finalVolume, formula = '(C * DF * Vol) / W', locked, title } = data;
+  const { standards, samples, dilutionFactor, sampleWeight, finalVolume, formula = '(Abs * m + b) / W * 100', locked, title } = data;
   const [editingTitle, setEditingTitle] = useState(false);
 
   const regression = useMemo(() => {
@@ -170,7 +170,7 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
       dilutionFactor: '1',
       sampleWeight: '0.5',
       finalVolume: '1',
-      formula: '(C * DF * Vol) / W',
+      formula: '(Abs * m + b) / W * 100',
     });
   };
 
@@ -318,7 +318,7 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
               <span className="text-[10px] text-muted-foreground uppercase font-semibold">Result Formula</span>
               {!locked && (
                 <button
-                  onClick={() => update({ formula: '(C * DF * Vol) / W' })}
+                  onClick={() => update({ formula: '(Abs * m + b) / W * 100' })}
                   className="text-[10px] text-primary hover:text-primary/80 transition-colors"
                 >
                   Reset to default
@@ -332,7 +332,7 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
                 value={formula}
                 onChange={e => update({ formula: e.target.value })}
                 disabled={locked}
-                placeholder="(C * DF * Vol) / W"
+                placeholder="(Abs * m + b) / W * 100"
                 className="flex-1 bg-input border border-border rounded-md px-2.5 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
               />
             </div>
