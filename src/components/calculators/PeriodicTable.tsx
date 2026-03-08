@@ -9,6 +9,12 @@ import {
   calcMolarMass,
 } from '@/lib/periodicTableData';
 
+function formatTemp(kelvin: number, unit: 'K' | 'C' | 'F'): string {
+  if (unit === 'K') return `${kelvin} K`;
+  if (unit === 'C') return `${(kelvin - 273.15).toFixed(2)} °C`;
+  return `${((kelvin - 273.15) * 9 / 5 + 32).toFixed(2)} °F`;
+}
+
 interface PeriodicTableProps {
   onUseInCalculator?: (target: 'molarity' | 'normality' | 'formality' | 'solution', mw: number, name: string) => void;
 }
