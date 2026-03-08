@@ -135,6 +135,7 @@ function FormulaBlockCard({
   onAddRow,
   onRemoveRow,
   onRemoveBlock,
+  onResultsChange,
 }: {
   formula: SavedFormula;
   block: FormulaBlock;
@@ -143,6 +144,7 @@ function FormulaBlockCard({
   onAddRow: () => void;
   onRemoveRow: (rowId: string) => void;
   onRemoveBlock: () => void;
+  onResultsChange: (results: AnalyticalResult[]) => void;
 }) {
   const [cardLocked, setCardLocked] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
