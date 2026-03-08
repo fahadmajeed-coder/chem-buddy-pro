@@ -59,7 +59,7 @@ function computeResults(data: CalibrationCurveData) {
 }
 
 export function exportCalibrationPDF(data: CalibrationCurveData) {
-  const { regression, results } = computeResults(data);
+  const { results } = computeResults(data);
   const doc = new jsPDF();
   const now = new Date().toLocaleString();
 
@@ -71,27 +71,7 @@ export function exportCalibrationPDF(data: CalibrationCurveData) {
   doc.setFont('helvetica', 'normal');
   doc.text(`Generated: ${now}`, 14, 27);
 
-  // Regression info
   let y = 35;
-  if (regression) {
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Regression Results', 14, y);
-    y += 7;
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Equation: y = ${regression.slope.toFixed(6)}x + ${regression.intercept.toFixed(6)}`, 14, y); y += 5;
-    doc.text(`Slope: ${regression.slope.toFixed(6)}`, 14, y); y += 5;
-    doc.text(`Intercept: ${regression.intercept.toFixed(6)}`, 14, y); y += 5;
-    doc.text(`R²: ${regression.r2.toFixed(6)}`, 14, y); y += 5;
-    if (regression.r2 < 0.9) {
-      doc.setTextColor(200, 0, 0);
-      doc.text('⚠ Poor Linearity (R² < 0.9) — Standards need improvement', 14, y);
-      doc.setTextColor(0, 0, 0);
-      y += 5;
-    }
-    y += 3;
-  }
 
   // Standards table
   doc.setFontSize(11);
@@ -110,7 +90,7 @@ export function exportCalibrationPDF(data: CalibrationCurveData) {
 
   y = (doc as any).lastAutoTable.finalY + 10;
 
-  // Parameters - use a table for visibility
+  // Sample results table
   const checkPage = (needed: number) => {
     if (y + needed > doc.internal.pageSize.getHeight() - 15) {
       doc.addPage();
@@ -118,28 +98,7 @@ export function exportCalibrationPDF(data: CalibrationCurveData) {
     }
   };
 
-  checkPage(40);
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Sample Parameters', 14, y);
-  y += 2;
-  autoTable(doc, {
-    startY: y,
-    head: [['Parameter', 'Value']],
-    body: [
-      ['Sample Weight', `${data.sampleWeight} g`],
-      ['Dilution Factor', data.dilutionFactor],
-      ['Final Volume', `${data.finalVolume} mL`],
-      ['Formula', `Final Conc = ${data.formula}`],
-    ],
-    theme: 'grid',
-    headStyles: { fillColor: [46, 139, 87], fontSize: 8 },
-    bodyStyles: { fontSize: 8 },
-    margin: { left: 14 },
-  });
-  y = (doc as any).lastAutoTable.finalY + 8;
-
-  // Sample results table
+  checkPage(30);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('Sample Results', 14, y);
@@ -158,32 +117,16 @@ export function exportCalibrationPDF(data: CalibrationCurveData) {
 }
 
 export function exportCalibrationCSV(data: CalibrationCurveData) {
-  const { regression, results } = computeResults(data);
+  const { results } = computeResults(data);
   const lines: string[] = [];
 
   lines.push(`"${data.title}"`);
   lines.push(`"Generated","${new Date().toLocaleString()}"`);
   lines.push('');
 
-  if (regression) {
-    lines.push('"Regression Results"');
-    lines.push(`"Equation","y = ${regression.slope.toFixed(6)}x + ${regression.intercept.toFixed(6)}"`);
-    lines.push(`"Slope","${regression.slope.toFixed(6)}"`);
-    lines.push(`"Intercept","${regression.intercept.toFixed(6)}"`);
-    lines.push(`"R²","${regression.r2.toFixed(6)}"`);
-    lines.push('');
-  }
-
   lines.push('"Standard Solutions"');
   lines.push('"#","Concentration","Absorbance"');
   data.standards.forEach((s, i) => lines.push(`"${i + 1}","${s.concentration}","${s.absorbance}"`));
-  lines.push('');
-
-  lines.push('"Sample Parameters"');
-  lines.push(`"Sample Weight (g)","${data.sampleWeight}"`);
-  lines.push(`"Dilution Factor","${data.dilutionFactor}"`);
-  lines.push(`"Final Volume (mL)","${data.finalVolume}"`);
-  lines.push(`"Formula","${data.formula}"`);
   lines.push('');
 
   lines.push('"Sample Results"');
