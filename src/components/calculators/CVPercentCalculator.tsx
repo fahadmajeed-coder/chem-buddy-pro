@@ -1,28 +1,41 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Copy, Info } from 'lucide-react';
+import { RotateCcw, Copy, Info, FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const NUM_ROWS = 10;
 
+interface Observation {
+  name: string;
+  value: string;
+}
+
 export function CVPercentCalculator() {
   const isMobile = useIsMobile();
-  const [observations, setObservations] = useState<string[]>(Array(NUM_ROWS).fill(''));
+  const [sampleName, setSampleName] = useState('');
+  const [observations, setObservations] = useState<Observation[]>(
+    Array.from({ length: NUM_ROWS }, (_, i) => ({ name: `Sample ${i + 1}`, value: '' }))
+  );
 
-  const updateObs = (index: number, value: string) => {
+  const updateObs = (index: number, field: 'name' | 'value', val: string) => {
     setObservations(prev => {
       const next = [...prev];
-      next[index] = value;
+      next[index] = { ...next[index], [field]: val };
       return next;
     });
   };
 
   const stats = useMemo(() => {
-    const values = observations.map(v => parseFloat(v)).filter(v => !isNaN(v));
-    if (values.length < 2) return null;
+    const entries = observations
+      .map(o => ({ name: o.name, num: parseFloat(o.value) }))
+      .filter(e => !isNaN(e.num));
+    if (entries.length < 2) return null;
 
+    const values = entries.map(e => e.num);
     const n = values.length;
     const sum = values.reduce((a, b) => a + b, 0);
     const mean = sum / n;
@@ -30,19 +43,117 @@ export function CVPercentCalculator() {
     const stdDev = Math.sqrt(variance);
     const cv = mean !== 0 ? (stdDev / mean) * 100 : 0;
 
-    return { n, sum, mean, stdDev, cv };
+    return { n, sum, mean, stdDev, cv, entries };
   }, [observations]);
 
   const reset = () => {
-    setObservations(Array(NUM_ROWS).fill(''));
+    setSampleName('');
+    setObservations(Array.from({ length: NUM_ROWS }, (_, i) => ({ name: `Sample ${i + 1}`, value: '' })));
     toast.success('Cleared all observations');
   };
 
   const copyResults = () => {
     if (!stats) return;
-    const text = `Mean: ${stats.mean.toFixed(6)}\nStd Dev: ${stats.stdDev.toFixed(6)}\nCV%: ${stats.cv.toFixed(4)}%\nN: ${stats.n}`;
+    const text = `Sample: ${sampleName || 'Untitled'}\nMean: ${stats.mean.toFixed(6)}\nStd Dev: ${stats.stdDev.toFixed(6)}\nCV%: ${stats.cv.toFixed(4)}%\nN: ${stats.n}`;
     navigator.clipboard.writeText(text);
     toast.success('Results copied');
+  };
+
+  const exportPDF = () => {
+    if (!stats) return;
+    const doc = new jsPDF();
+    const title = sampleName || 'CV% Report';
+    const now = new Date().toLocaleString();
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, 14, 20);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${now}`, 14, 27);
+
+    let y = 35;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Observations', 14, y);
+    y += 2;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['#', 'Name', 'Value']],
+      body: observations
+        .map((o, i) => [String(i + 1), o.name, o.value || '—'])
+        .filter((_, i) => observations[i].value !== ''),
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185], fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      margin: { left: 14 },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 12;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Statistical Results', 14, y);
+    y += 2;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Parameter', 'Value']],
+      body: [
+        ['N (observations)', String(stats.n)],
+        ['Sum', stats.sum.toFixed(6)],
+        ['Mean (μ)', stats.mean.toFixed(6)],
+        ['Std Dev (σ)', stats.stdDev.toFixed(6)],
+        ['CV%', `${stats.cv.toFixed(4)}%`],
+        ['Assessment', stats.cv <= 2 ? 'Excellent (≤2%)' : stats.cv <= 5 ? 'Acceptable (≤5%)' : 'High variability (>5%)'],
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185], fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      margin: { left: 14 },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Formulas: Mean = Σ Obs / N  |  Std Dev = √(Σ(Xi−μ)²/(N−1))  |  CV% = (σ/μ)×100', 14, y);
+
+    doc.save(`${title.replace(/\s+/g, '_')}_CV.pdf`);
+    toast.success('PDF exported');
+  };
+
+  const exportExcel = () => {
+    if (!stats) return;
+    const title = sampleName || 'CV% Report';
+    const lines: string[] = [];
+
+    lines.push(`"${title}"`);
+    lines.push(`"Generated","${new Date().toLocaleString()}"`);
+    lines.push('');
+    lines.push('"Observations"');
+    lines.push('"#","Name","Value"');
+    observations.forEach((o, i) => {
+      if (o.value) lines.push(`"${i + 1}","${o.name}","${o.value}"`);
+    });
+    lines.push('');
+    lines.push('"Statistical Results"');
+    lines.push('"Parameter","Value"');
+    lines.push(`"N","${stats.n}"`);
+    lines.push(`"Sum","${stats.sum.toFixed(6)}"`);
+    lines.push(`"Mean","${stats.mean.toFixed(6)}"`);
+    lines.push(`"Std Dev","${stats.stdDev.toFixed(6)}"`);
+    lines.push(`"CV%","${stats.cv.toFixed(4)}%"`);
+    lines.push(`"Assessment","${stats.cv <= 2 ? 'Excellent' : stats.cv <= 5 ? 'Acceptable' : 'High variability'}"`);
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, '_')}_CV.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV exported');
   };
 
   return (
@@ -61,44 +172,77 @@ export function CVPercentCalculator() {
         </CardContent>
       </Card>
 
-      {/* Input card */}
+      {/* Sample name */}
+      <Card>
+        <CardContent className={isMobile ? 'p-3' : 'p-4'}>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Sample / Test Name</label>
+          <input
+            type="text"
+            value={sampleName}
+            onChange={(e) => setSampleName(e.target.value)}
+            placeholder="e.g. Iron content in sample A"
+            className="w-full mt-1 bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Observations */}
       <Card>
         <CardHeader className={`flex flex-row items-center justify-between ${isMobile ? 'p-3 pb-2' : 'p-4 pb-3'}`}>
           <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Observations</CardTitle>
           <div className="flex gap-1.5">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reset}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reset} title="Reset">
               <RotateCcw className="w-3.5 h-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={copyResults} disabled={!stats}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={copyResults} disabled={!stats} title="Copy">
               <Copy className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={exportPDF} disabled={!stats} title="Export PDF">
+              <FileDown className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={exportExcel} disabled={!stats} title="Export CSV">
+              <FileSpreadsheet className="w-3.5 h-3.5" />
             </Button>
           </div>
         </CardHeader>
         <CardContent className={isMobile ? 'px-3 pb-3' : 'px-4 pb-4'}>
-          <div className={`grid gap-2 ${isMobile ? 'grid-cols-2' : 'grid-cols-5'}`}>
-            {observations.map((val, i) => (
-              <div key={i} className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  X{i + 1}
-                </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  value={val}
-                  onChange={(e) => updateObs(i, e.target.value)}
-                  placeholder="0"
-                  className="w-full bg-input border border-border rounded-md px-2.5 py-1.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-                />
+          <div className="space-y-2">
+            {observations.map((obs, i) => (
+              <div key={i} className={`grid gap-2 ${isMobile ? 'grid-cols-[1fr_80px]' : 'grid-cols-[40px_1fr_120px]'} items-end`}>
+                {!isMobile && (
+                  <span className="text-[10px] font-mono text-muted-foreground pb-2">#{i + 1}</span>
+                )}
+                <div className="space-y-1">
+                  {i === 0 && <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Name</label>}
+                  <input
+                    type="text"
+                    value={obs.name}
+                    onChange={(e) => updateObs(i, 'name', e.target.value)}
+                    placeholder={`Sample ${i + 1}`}
+                    className="w-full bg-input border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  {i === 0 && <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Value</label>}
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={obs.value}
+                    onChange={(e) => updateObs(i, 'value', e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-input border border-border rounded-md px-2.5 py-1.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                  />
+                </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Results card */}
+      {/* Results */}
       <Card className={stats ? 'border-primary/30' : ''}>
         <CardHeader className={isMobile ? 'p-3 pb-2' : 'p-4 pb-3'}>
-          <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Results</CardTitle>
+          <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Results{sampleName ? ` — ${sampleName}` : ''}</CardTitle>
         </CardHeader>
         <CardContent className={isMobile ? 'px-3 pb-3' : 'px-4 pb-4'}>
           {!stats ? (
