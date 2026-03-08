@@ -344,28 +344,38 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
             </div>
           </div>
 
-          <div className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_2rem] gap-2 mb-1.5 px-1">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase">#</span>
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase">Name</span>
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase">Absorbance</span>
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase">Conc. (C)</span>
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase">C × DF</span>
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase">Final Conc</span>
-            <span />
-          </div>
-          {sampleResults.map((s, i) => (
-            <div key={s.id} className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_2rem] gap-2 items-center mb-1.5">
-              <span className="text-xs text-muted-foreground font-mono text-center">{i + 1}</span>
-              <input type="text" value={s.name} onChange={e => updateSample(s.id, 'name', e.target.value)} disabled={locked} className="bg-input border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
-              <input type="number" value={samples.find(x => x.id === s.id)?.absorbance || ''} onChange={e => updateSample(s.id, 'absorbance', e.target.value)} disabled={locked} placeholder="0.000" className="bg-input border border-border rounded-md px-2.5 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
-              <span className="text-xs font-mono font-bold text-primary px-1">{s.concentration !== null ? s.concentration.toFixed(6) : '—'}</span>
-              <span className="text-xs font-mono font-bold text-foreground px-1">{s.corrected !== null ? s.corrected.toFixed(6) : '—'}</span>
-              <span className="text-xs font-mono font-bold text-accent-foreground px-1">{s.finalConc !== null ? s.finalConc.toFixed(6) : '—'}</span>
-              <button onClick={() => update({ samples: samples.filter(x => x.id !== s.id) })} disabled={locked || samples.length <= 1} className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-30">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+          <div className="border border-border rounded-lg overflow-hidden">
+            {/* Header row */}
+            <div className="grid grid-cols-[2.5rem_minmax(80px,1.5fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_2rem] bg-secondary/50">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 text-center border-r border-border">#</span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 border-r border-border">Name</span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 border-r border-border">Absorbance</span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 border-r border-border">Conc. (C)</span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 border-r border-border">C × DF</span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 border-r border-border">Final Conc</span>
+              <span className="py-2" />
             </div>
-          ))}
+            {/* Data rows */}
+            {sampleResults.map((s, i) => (
+              <div key={s.id} className="grid grid-cols-[2.5rem_minmax(80px,1.5fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_2rem] items-center border-t border-border">
+                <span className="text-xs text-muted-foreground font-mono text-center py-2 border-r border-border">{i + 1}</span>
+                <div className="px-1 py-1 border-r border-border">
+                  <input type="text" value={s.name} onChange={e => updateSample(s.id, 'name', e.target.value)} disabled={locked} className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
+                </div>
+                <div className="px-1 py-1 border-r border-border">
+                  <input type="number" value={samples.find(x => x.id === s.id)?.absorbance || ''} onChange={e => updateSample(s.id, 'absorbance', e.target.value)} disabled={locked} placeholder="0.000" className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
+                </div>
+                <span className="text-xs font-mono font-bold text-primary px-2 py-2 border-r border-border">{s.concentration !== null ? s.concentration.toFixed(6) : '—'}</span>
+                <span className="text-xs font-mono font-bold text-foreground px-2 py-2 border-r border-border">{s.corrected !== null ? s.corrected.toFixed(6) : '—'}</span>
+                <span className="text-xs font-mono font-bold text-accent-foreground px-2 py-2 border-r border-border">{s.finalConc !== null ? s.finalConc.toFixed(6) : '—'}</span>
+                <div className="flex justify-center">
+                  <button onClick={() => update({ samples: samples.filter(x => x.id !== s.id) })} disabled={locked || samples.length <= 1} className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-30">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
