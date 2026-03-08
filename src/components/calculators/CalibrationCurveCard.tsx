@@ -21,6 +21,7 @@ export interface CalibrationCurveData {
   dilutionFactor: string;
   sampleWeight: string;
   finalVolume: string;
+  formula: string;
   locked: boolean;
   createdAt: number;
 }
