@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
+import { MolarMassLookup } from './MolarMassLookup';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 import { Plus, Trash2, ArrowRightLeft, Beaker, Scale, Pipette, FlaskConical, Info } from 'lucide-react';
 
@@ -298,6 +299,7 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                 <FlaskConical className="w-3.5 h-3.5 text-primary" />
                 <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Reagent Properties</span>
               </div>
+              <MolarMassLookup onSelect={(mwVal) => updateStep(step.id, 'mw', mwVal.toString())} disabled={locked} />
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <InputField label="Molecular Weight" unit="g/mol" value={step.mw} onChange={(v) => updateStep(step.id, 'mw', v)} disabled={locked} />
                 <InputField label="n-Factor" unit="" value={step.nFactor} onChange={(v) => updateStep(step.id, 'nFactor', v)} disabled={locked} placeholder="1" />

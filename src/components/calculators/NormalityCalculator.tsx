@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
+import { MolarMassLookup } from './MolarMassLookup';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 
 interface NormalityCalculatorProps {
@@ -65,6 +66,7 @@ export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
       result={result}
     >
       <CompoundSelector onSelect={handleCompoundSelect} disabled={locked} />
+      <MolarMassLookup onSelect={(mw) => setMw(mw.toString())} disabled={locked} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <InputField label="Mass of Solute" unit="g" value={mass} onChange={setMass} disabled={locked} />
         <InputField label="Molecular Weight" unit="g/mol" value={mw} onChange={setMw} disabled={locked} />

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
+import { MolarMassLookup } from './MolarMassLookup';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 import { conversionCategories, ConversionDef } from '@/lib/conversionDefinitions';
 
@@ -127,6 +128,22 @@ export function ConversionCalculator() {
       {activeConv.inventoryAutoFill && (
         <div className="mb-4">
           <CompoundSelector onSelect={handleCompoundSelect} disabled={locked} />
+        </div>
+      )}
+
+      {/* MW from Formula — show when any field has 'mw' key */}
+      {activeConv.fields.some(f => f.key === 'mw' || f.key === 'mwA' || f.key === 'mwB' || f.key === 'mwSolute' || f.key === 'mwSolvent' || f.key === 'mwAcid' || f.key === 'mwSalt') && (
+        <div className="mb-4">
+          <MolarMassLookup
+            onSelect={(mwVal) => {
+              // Auto-fill the first mw-like field
+              const mwField = activeConv.fields.find(f => f.key === 'mw' || f.key === 'mwSolute' || f.key === 'mwAcid' || f.key === 'mwA');
+              if (mwField) {
+                updateInput(mwField.key, mwVal.toString());
+              }
+            }}
+            disabled={locked}
+          />
         </div>
       )}
 

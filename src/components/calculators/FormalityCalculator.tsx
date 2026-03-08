@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
+import { MolarMassLookup } from './MolarMassLookup';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 
 interface FormalityCalculatorProps {
@@ -60,6 +61,7 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
       result={result}
     >
       <CompoundSelector onSelect={handleCompoundSelect} disabled={locked} />
+      <MolarMassLookup onSelect={(mw) => setFw(mw.toString())} disabled={locked} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <InputField label="Mass of Solute" unit="g" value={mass} onChange={setMass} disabled={locked} />
         <InputField label="Formula Weight" unit="g/FW" value={fw} onChange={setFw} disabled={locked} />
