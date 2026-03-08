@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Shield, CheckCircle2, AlertCircle, XCircle, Clock, Download } from 'lucide-react';
+import { Search, Shield, Download } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -7,13 +7,20 @@ import autoTable from 'jspdf-autotable';
 interface AnalysisParam {
   id: string;
   analysis: string;
-  normal: string;
+  normalMin?: string;
+  normalMax?: string;
   min: string;
   max: string;
   standard: string;
-  withDeduction: string;
-  outlier: string;
+  withDeductionMin?: string;
+  withDeductionMax?: string;
+  outlierMin?: string;
+  outlierMax?: string;
   reason: string;
+  // Legacy compat
+  normal?: string;
+  withDeduction?: string;
+  outlier?: string;
 }
 
 interface SavedStandard {
@@ -24,13 +31,19 @@ interface SavedStandard {
   createdAt: number;
 }
 
-type ResultStatus = 'good' | 'fair' | 'reject' | 'pending';
+const formatRange = (min?: string, max?: string, legacy?: string) => {
+  const a = min || '';
+  const b = max || '';
+  if (a && b) return `${a}–${b}`;
+  if (a) return `≥${a}`;
+  if (b) return `≤${b}`;
+  return legacy || '—';
+};
 
 export function StandardsInventory() {
   const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [readings, setReadings] = useState<Record<string, string>>({});
 
   const filtered = search
     ? savedStandards.filter(s =>
@@ -41,68 +54,9 @@ export function StandardsInventory() {
 
   const selected = savedStandards.find(s => s.id === selectedId);
 
-  const updateReading = (paramId: string, value: string) => {
-    setReadings(prev => ({ ...prev, [paramId]: value }));
-  };
-
-  const getStatus = (param: AnalysisParam): ResultStatus => {
-    const reading = parseFloat(readings[param.id] || '');
-    if (isNaN(reading)) return 'pending';
-
-    const min = parseFloat(param.min);
-    const max = parseFloat(param.max);
-    const std = parseFloat(param.standard);
-    const ded = parseFloat(param.withDeduction);
-    const out = parseFloat(param.outlier);
-
-    // Check outlier first (reject)
-    if (!isNaN(out) && reading >= out) return 'reject';
-
-    // Check standard range (good)
-    if (!isNaN(min) && !isNaN(max)) {
-      if (reading >= min && reading <= max) {
-        // Within min-max, check if within standard
-        if (!isNaN(std)) {
-          if (!isNaN(ded)) {
-            // Standard and deduction defined: within std = good, within ded = fair
-            if (reading <= std) return 'good';
-            if (reading <= ded) return 'fair';
-            return 'reject';
-          }
-          if (reading <= std) return 'good';
-          return 'fair';
-        }
-        return 'good';
-      }
-      return 'reject';
-    }
-
-    // Only standard defined
-    if (!isNaN(std)) {
-      if (!isNaN(ded)) {
-        if (reading <= std) return 'good';
-        if (reading <= ded) return 'fair';
-        return 'reject';
-      }
-      if (reading <= std) return 'good';
-      return 'fair';
-    }
-
-    return 'pending';
-  };
-
-  const statusIcon = (status: ResultStatus) => {
-    switch (status) {
-      case 'good': return <CheckCircle2 className="w-4 h-4 text-success" />;
-      case 'fair': return <AlertCircle className="w-4 h-4 text-warning" />;
-      case 'reject': return <XCircle className="w-4 h-4 text-destructive" />;
-      default: return <Clock className="w-4 h-4 text-muted-foreground" />;
-    }
-  };
-
   const exportPDF = () => {
     if (!selected) return;
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(30);
@@ -114,33 +68,29 @@ export function StandardsInventory() {
 
     autoTable(doc, {
       startY: 34,
-      head: [['Analysis', 'Normal', 'Min', 'Max', 'Standard', 'With Ded.', 'Outlier', 'Status']],
-      body: selected.parameters.map(p => {
-        const status = getStatus(p);
-        return [
-          p.analysis, p.normal || '—', p.min || '—', p.max || '—',
-          p.standard || '—', p.withDeduction || '—', p.outlier || '—',
-          status === 'good' ? 'GOOD' : status === 'fair' ? 'FAIR' : status === 'reject' ? 'REJECT' : 'PENDING',
-        ];
-      }),
+      head: [['Analysis', 'Normal Range', 'Min', 'Max', 'Standard', 'With Ded. Range', 'Outlier Range', 'Reason']],
+      body: selected.parameters.map(p => [
+        p.analysis,
+        formatRange(p.normalMin, p.normalMax, p.normal),
+        p.min || '—',
+        p.max || '—',
+        p.standard || '—',
+        formatRange(p.withDeductionMin, p.withDeductionMax, p.withDeduction),
+        formatRange(p.outlierMin, p.outlierMax, p.outlier),
+        p.reason || '—',
+      ]),
       theme: 'grid',
       headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold', fontSize: 8 },
       styles: { fontSize: 8, cellPadding: 3 },
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 7) {
-          const val = (data.cell.raw as string || '').toUpperCase();
-          if (val === 'GOOD') {
-            data.cell.styles.textColor = [255, 255, 255];
-            data.cell.styles.fillColor = [0, 160, 80];
-            data.cell.styles.fontStyle = 'bold';
-          } else if (val === 'FAIR') {
-            data.cell.styles.textColor = [60, 40, 0];
-            data.cell.styles.fillColor = [255, 200, 50];
-            data.cell.styles.fontStyle = 'bold';
-          } else if (val === 'REJECT') {
-            data.cell.styles.textColor = [255, 255, 255];
-            data.cell.styles.fillColor = [200, 50, 50];
-            data.cell.styles.fontStyle = 'bold';
+        if (data.section === 'body') {
+          // Color the With Ded. column
+          if (data.column.index === 5) {
+            data.cell.styles.textColor = [200, 160, 0];
+          }
+          // Color the Outlier column
+          if (data.column.index === 6) {
+            data.cell.styles.textColor = [200, 50, 50];
           }
         }
       },
@@ -179,7 +129,7 @@ export function StandardsInventory() {
               {filtered.map(s => (
                 <button
                   key={s.id}
-                  onClick={() => { setSelectedId(s.id); setReadings({}); }}
+                  onClick={() => setSelectedId(s.id)}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-all border ${
                     selectedId === s.id
                       ? 'bg-primary text-primary-foreground border-primary'
@@ -195,7 +145,7 @@ export function StandardsInventory() {
         )}
       </div>
 
-      {/* Selected Standard — Test Sheet */}
+      {/* Selected Standard — View Sheet */}
       {selected && (
         <div className="glass-panel rounded-lg overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-border">
@@ -211,56 +161,34 @@ export function StandardsInventory() {
             </button>
           </div>
 
-          {/* Summary */}
-          <div className="px-5 py-3 border-b border-border bg-secondary/20">
-            <div className="grid grid-cols-4 gap-3 text-center">
-              {(['good', 'fair', 'reject', 'pending'] as ResultStatus[]).map(status => {
-                const count = selected.parameters.filter(p => getStatus(p) === status).length;
-                const colors: Record<ResultStatus, string> = {
-                  good: 'text-success', fair: 'text-warning', reject: 'text-destructive', pending: 'text-muted-foreground',
-                };
-                const labels: Record<ResultStatus, string> = { good: 'Good', fair: 'Fair', reject: 'Reject', pending: 'Pending' };
-                return (
-                  <div key={status}>
-                    <div className={`font-mono text-xl font-bold ${colors[status]}`}>{count}</div>
-                    <div className="text-[10px] text-muted-foreground">{labels[status]}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Test Table */}
+          {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-secondary/30">
                   <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Analysis</th>
-                  <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Normal</th>
+                  <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Normal Range</th>
                   <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Min</th>
                   <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Max</th>
                   <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Standard</th>
-                  <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">With Ded.</th>
-                  <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Outlier</th>
-                  <th className="text-center py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="text-left py-2.5 px-3 text-xs font-medium text-warning uppercase tracking-wider">With Ded. Range</th>
+                  <th className="text-left py-2.5 px-3 text-xs font-medium text-destructive uppercase tracking-wider">Outlier Range</th>
+                  <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Reason</th>
                 </tr>
               </thead>
               <tbody>
-                {selected.parameters.map(p => {
-                  const status = getStatus(p);
-                  return (
-                    <tr key={p.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
-                      <td className="py-2 px-3 text-xs font-medium text-foreground">{p.analysis}</td>
-                      <td className="py-2 px-3 text-xs font-mono text-muted-foreground">{p.normal || '—'}</td>
-                      <td className="py-2 px-3 text-xs font-mono text-muted-foreground">{p.min || '—'}</td>
-                      <td className="py-2 px-3 text-xs font-mono text-muted-foreground">{p.max || '—'}</td>
-                      <td className="py-2 px-3 text-xs font-mono text-primary">{p.standard || '—'}</td>
-                      <td className="py-2 px-3 text-xs font-mono text-warning">{p.withDeduction || '—'}</td>
-                      <td className="py-2 px-3 text-xs font-mono text-destructive">{p.outlier || '—'}</td>
-                      <td className="py-2 px-3 text-center">{statusIcon(status)}</td>
-                    </tr>
-                  );
-                })}
+                {selected.parameters.map(p => (
+                  <tr key={p.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
+                    <td className="py-2 px-3 text-xs font-medium text-foreground">{p.analysis}</td>
+                    <td className="py-2 px-3 text-xs font-mono text-muted-foreground">{formatRange(p.normalMin, p.normalMax, p.normal)}</td>
+                    <td className="py-2 px-3 text-xs font-mono text-muted-foreground">{p.min || '—'}</td>
+                    <td className="py-2 px-3 text-xs font-mono text-muted-foreground">{p.max || '—'}</td>
+                    <td className="py-2 px-3 text-xs font-mono text-primary">{p.standard || '—'}</td>
+                    <td className="py-2 px-3 text-xs font-mono text-warning">{formatRange(p.withDeductionMin, p.withDeductionMax, p.withDeduction)}</td>
+                    <td className="py-2 px-3 text-xs font-mono text-destructive">{formatRange(p.outlierMin, p.outlierMax, p.outlier)}</td>
+                    <td className="py-2 px-3 text-xs text-muted-foreground">{p.reason || '—'}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
