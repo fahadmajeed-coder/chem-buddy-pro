@@ -17,6 +17,7 @@ export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
   const [volume, setVolume] = useState('');
   const [purity, setPurity] = useState('100');
   const [density, setDensity] = useState('');
+  const [targetConc, setTargetConc] = useState('');
   const [reagentState, setReagentState] = useState<'solid' | 'liquid'>('solid');
   const [locked, setLocked] = useState(false);
 
@@ -25,12 +26,20 @@ export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
   }, [initialMw]);
 
   const purityFactor = parseFloat(purity) / 100 || 1;
-  const massVal = parseFloat(mass);
   const mwVal = parseFloat(mw);
   const volVal = parseFloat(volume);
   const densityVal = parseFloat(density);
   const nFactorVal = parseFloat(nFactor) || 1;
   const eqWeight = mwVal / nFactorVal;
+  const targetConcVal = parseFloat(targetConc);
+  const isLiquid = reagentState === 'liquid';
+
+  // For liquid: auto-calculate mass from target normality
+  const autoMass = isLiquid && targetConcVal > 0 && eqWeight > 0 && volVal > 0
+    ? (targetConcVal * eqWeight * (volVal / 1000)) / purityFactor
+    : null;
+
+  const massVal = isLiquid ? (autoMass ?? 0) : parseFloat(mass);
 
   const normality = massVal && mwVal && volVal && nFactorVal
     ? ((massVal * purityFactor / eqWeight) / (volVal / 1000))
@@ -44,7 +53,6 @@ export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
     ? (massVal / densityVal)
     : null;
 
-  const isLiquid = reagentState === 'liquid';
   const result = isLiquid && volumeToPipette !== null && normality !== null
     ? { value: volumeToPipette.toFixed(4), unit: 'mL to pipette' }
     : normality !== null && isFinite(normality)
@@ -64,7 +72,7 @@ export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
       subtitle="N = (mass × purity × n-factor / MW) / Volume(L)"
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
-      onReset={() => { if (!locked) { setMass(''); setMw(''); setNFactor('1'); setVolume(''); setPurity('100'); setDensity(''); setReagentState('solid'); } }}
+      onReset={() => { if (!locked) { setMass(''); setMw(''); setNFactor('1'); setVolume(''); setPurity('100'); setDensity(''); setTargetConc(''); setReagentState('solid'); } }}
       result={result}
     >
       <CompoundSelector onSelect={handleCompoundSelect} disabled={locked} />
@@ -86,7 +94,11 @@ export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-        <InputField label={isLiquid ? "Mass (or calculate)" : "Mass of Solute"} unit="g" value={mass} onChange={setMass} disabled={locked} />
+        {isLiquid ? (
+          <InputField label="Target Concentration" unit="N" value={targetConc} onChange={setTargetConc} disabled={locked} placeholder="Desired N" />
+        ) : (
+          <InputField label="Mass of Solute" unit="g" value={mass} onChange={setMass} disabled={locked} />
+        )}
         <InputField label="Molecular Weight" unit="g/mol" value={mw} onChange={setMw} disabled={locked} />
         <InputField label="n-Factor" unit="" value={nFactor} onChange={setNFactor} disabled={locked} placeholder="1" />
         <InputField label="Volume of Solution" unit="mL" value={volume} onChange={setVolume} disabled={locked} />
@@ -109,13 +121,23 @@ export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
             </p>
           </div>
         )}
+        {isLiquid && autoMass !== null && autoMass > 0 && (
+          <div className="p-2 bg-accent/30 border border-accent/20 rounded-md">
+            <p className="text-xs font-medium text-foreground">
+              ⚖️ Required mass: <span className="text-primary font-bold">{autoMass.toFixed(4)} g</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              = {targetConcVal} N × {eqWeight.toFixed(3)} g/eq × {(volVal / 1000).toFixed(4)} L / {(purityFactor * 100).toFixed(1)}%
+            </p>
+          </div>
+        )}
         {isLiquid && volumeToPipette !== null && (
           <div className="p-2 bg-accent/30 border border-accent/20 rounded-md">
             <p className="text-xs font-medium text-foreground">
               📐 Volume to pipette: <span className="text-primary font-bold">{volumeToPipette.toFixed(4)} mL</span>
             </p>
             <p className="text-[10px] text-muted-foreground font-mono">
-              = {massVal} g / {densityVal} g/mL
+              = {massVal.toFixed(4)} g / {densityVal} g/mL
             </p>
           </div>
         )}
