@@ -293,5 +293,5 @@ export function getChemistryResponse(input: string): string {
   }
 
   // Default response
-  return `I can help with:\n\n- **Molar mass calculations** — try "molar mass of H2SO4"\n- **Compound info** — try "tell me about NaCl" or just type "H2O"\n- **Element lookup** — try "element Fe"\n- **pH calculations** — try "pH of 0.001 M"\n- **Chemistry concepts** — try "what is molarity?", "how does titration work?", "what is pH?""\n\nType a chemical formula or ask a chemistry question!`;
+  return `__SEARCH_ONLINE__I couldn't find a specific answer for that.\n\nI can help with:\n- **Molar mass calculations** — try "molar mass of H2SO4"\n- **Compound info** — try "tell me about NaCl" or just type "H2O"\n- **Element lookup** — try "element Fe"\n- **pH calculations** — try "pH of 0.001 M"\n- **Chemistry concepts** — try "what is molarity?"\n\nOr click **Search Online** below to ask ChatGPT!`;
 }
