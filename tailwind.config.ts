@@ -99,4 +99,6 @@ export default {
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
         "fade-in": "fade-in 0.3s ease-out",
       },
-    },
+  },
+  plugins: [require("tailwindcss-animate")],
+} satisfies Config;
