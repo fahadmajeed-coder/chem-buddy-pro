@@ -3,7 +3,7 @@ import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
-import { Plus, Trash2, ArrowRightLeft } from 'lucide-react';
+import { Plus, Trash2, ArrowRightLeft, Beaker, Scale, Pipette, FlaskConical, Info } from 'lucide-react';
 
 interface PrepStep {
   id: string;
@@ -20,16 +20,15 @@ interface SolutionPrepCalculatorProps {
   initialMw?: number | null;
 }
 
-/** Given a concentration in `fromUnit`, compute equivalents in all other units */
+/** Convert concentration to Molarity as pivot, then to all other units */
 function convertConcentration(
   conc: number,
   fromUnit: string,
   mw: number,
   density: number,
   nFactor: number,
-  purity: number // 0-1
+  purity: number
 ): Record<string, number | null> {
-  // First convert everything to Molarity (M) as the pivot
   let molarity: number | null = null;
 
   switch (fromUnit) {
@@ -41,44 +40,124 @@ function convertConcentration(
       if (nFactor > 0) molarity = conc / nFactor;
       break;
     case '%w/v':
-      // %w/v = (mass_g / vol_mL) × 100 → mass_g/L = conc×10 → M = (conc×10)/MW
       if (mw > 0) molarity = (conc * 10) / mw;
       break;
     case '%w/w':
-      // %w/w needs density: mass_solute_per_L = conc/100 × density × 1000
       if (mw > 0 && density > 0) molarity = (conc * density * 10) / mw;
       break;
     case '%v/v':
-      // Can't convert %v/v to M without solute density/MW — return null for molar types
       break;
   }
 
-  const results: Record<string, number | null> = {};
-
-  // M
-  results['M'] = molarity;
-  // F (same as M for this purpose)
-  results['F'] = molarity;
-  // N
-  results['N'] = molarity !== null ? molarity * nFactor : null;
-  // %w/v = M × MW / 10
-  results['%w/v'] = molarity !== null && mw > 0 ? (molarity * mw) / 10 : null;
-  // %w/w = (M × MW) / (density × 1000) × 100 = M × MW / (density × 10)
-  results['%w/w'] = molarity !== null && mw > 0 && density > 0
-    ? (molarity * mw) / (density * 10) : null;
-  // %v/v — only from %v/v input
-  results['%v/v'] = fromUnit === '%v/v' ? conc : null;
-
-  // mg/mL = M × MW (or %w/v × 10)
-  results['mg/mL'] = molarity !== null && mw > 0 ? molarity * mw : null;
-  // ppm = mg/L = molarity × MW × 1000... actually ppm ≈ mg/L for dilute = %w/v × 10000
-  results['ppm'] = results['mg/mL'] !== null ? results['mg/mL'] * 1000 : null;
-
-  // Remove the source unit from display
-  // Don't — we'll filter in rendering
-
-  return results;
+  const r: Record<string, number | null> = {};
+  r['M'] = molarity;
+  r['F'] = molarity;
+  r['N'] = molarity !== null ? molarity * nFactor : null;
+  r['%w/v'] = molarity !== null && mw > 0 ? (molarity * mw) / 10 : null;
+  r['%w/w'] = molarity !== null && mw > 0 && density > 0 ? (molarity * mw) / (density * 10) : null;
+  r['%v/v'] = fromUnit === '%v/v' ? conc : null;
+  r['mg/mL'] = molarity !== null && mw > 0 ? molarity * mw : null;
+  r['ppm'] = r['mg/mL'] !== null ? r['mg/mL'] * 1000 : null;
+  r['µg/mL'] = r['mg/mL'] !== null ? r['mg/mL'] * 1000 : null;
+  r['g/L'] = r['mg/mL'] !== null ? r['mg/mL'] : null;
+  return r;
 }
+
+/** Calculate all practical results for solution preparation */
+function calcAllResults(step: PrepStep) {
+  const conc = parseFloat(step.targetConc);
+  const vol = parseFloat(step.targetVol);
+  const mw = parseFloat(step.mw);
+  const purityPercent = parseFloat(step.purity) || 100;
+  const purity = purityPercent / 100;
+  const nf = parseFloat(step.nFactor) || 1;
+  const density = parseFloat(step.density);
+  const isPercentMode = step.targetUnit.startsWith('%');
+
+  // Stock concentration from density & purity
+  const stockConc = !isPercentMode && density > 0 && mw > 0 && purity > 0
+    ? (step.targetUnit === 'N'
+      ? (density * purity * 1000 * nf) / mw
+      : (density * purity * 1000) / mw)
+    : null;
+
+  // Equivalent weight
+  const eqWeight = mw > 0 && nf > 0 ? mw / nf : null;
+
+  // Mass of solute needed (before purity correction — this IS corrected for purity)
+  let massNeeded: number | null = null;
+  let volumeOfSolute: number | null = null; // for %v/v
+
+  if (conc > 0 && vol > 0) {
+    switch (step.targetUnit) {
+      case 'M':
+      case 'F':
+        if (mw > 0) massNeeded = (conc * (vol / 1000) * mw) / purity;
+        break;
+      case 'N':
+        if (mw > 0) massNeeded = (conc * (vol / 1000) * mw) / (nf * purity);
+        break;
+      case '%w/v':
+        massNeeded = (conc * vol) / (100 * purity);
+        break;
+      case '%w/w':
+        if (density > 0) {
+          const totalMass = vol * density;
+          massNeeded = (conc * totalMass) / (100 * purity);
+        }
+        break;
+      case '%v/v':
+        volumeOfSolute = (conc * vol) / 100;
+        break;
+    }
+  }
+
+  // Volume to pipette (if reagent is liquid with known density)
+  const volumeToPipette = massNeeded !== null && density > 0 ? massNeeded / density : null;
+
+  // Pure solute mass (what actually ends up in solution)
+  const pureSoluteMass = massNeeded !== null ? massNeeded * purity : null;
+
+  // Solvent volume (total vol - solute vol)
+  const solventVolume = vol > 0 && volumeToPipette !== null
+    ? vol - volumeToPipette
+    : vol > 0 && volumeOfSolute !== null
+      ? vol - volumeOfSolute
+      : null;
+
+  // mg/mL equivalent for %w/v
+  const mgPerMl = step.targetUnit === '%w/v' && conc > 0 ? conc * 10 : null;
+
+  // Moles of solute
+  const molesOfSolute = pureSoluteMass !== null && mw > 0 ? pureSoluteMass / mw : null;
+
+  // Equivalents of solute
+  const equivalents = molesOfSolute !== null ? molesOfSolute * nf : null;
+
+  // Unit conversions
+  const conversions = conc > 0
+    ? convertConcentration(conc, step.targetUnit, mw, density, nf, purity)
+    : null;
+
+  return {
+    conc, vol, mw, purity, purityPercent, nf, density, isPercentMode,
+    stockConc, eqWeight, massNeeded, volumeOfSolute, volumeToPipette,
+    pureSoluteMass, solventVolume, mgPerMl, molesOfSolute, equivalents, conversions
+  };
+}
+
+const unitLabels: Record<string, string> = {
+  'M': 'Molarity (M)',
+  'F': 'Formality (F)',
+  'N': 'Normality (N)',
+  '%w/v': '% w/v',
+  '%w/w': '% w/w',
+  '%v/v': '% v/v',
+  'mg/mL': 'mg/mL',
+  'ppm': 'ppm (mg/L)',
+  'µg/mL': 'µg/mL',
+  'g/L': 'g/L',
+};
 
 export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProps) {
   const [locked, setLocked] = useState(false);
@@ -120,94 +199,21 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
     }));
   };
 
-  const calcResult = (step: PrepStep): { value: number; unit: string } | null => {
-    const conc = parseFloat(step.targetConc);
-    const vol = parseFloat(step.targetVol);
-    const mw = parseFloat(step.mw);
-    const purity = parseFloat(step.purity) / 100 || 1;
-    const nf = parseFloat(step.nFactor) || 1;
-    const density = parseFloat(step.density);
-
-    if (!conc || !vol) return null;
-
-    switch (step.targetUnit) {
-      case 'M':
-      case 'F': {
-        if (!mw || !purity) return null;
-        const mass = (conc * (vol / 1000) * mw) / purity;
-        return { value: mass, unit: 'g required' };
-      }
-      case 'N': {
-        if (!mw || !purity) return null;
-        const mass = (conc * (vol / 1000) * mw) / (nf * purity);
-        return { value: mass, unit: 'g required' };
-      }
-      case '%w/v': {
-        const mass = (conc * vol) / (100 * purity);
-        return { value: mass, unit: 'g required' };
-      }
-      case '%w/w': {
-        if (!density) return null;
-        const totalMass = vol * density;
-        const mass = (conc * totalMass) / (100 * purity);
-        return { value: mass, unit: 'g required' };
-      }
-      case '%v/v': {
-        const soluteVol = (conc * vol) / 100;
-        return { value: soluteVol, unit: 'mL required' };
-      }
-      default:
-        return null;
-    }
-  };
-
-  const unitLabels: Record<string, string> = {
-    'M': 'Molarity (M)',
-    'F': 'Formality (F)',
-    'N': 'Normality (N)',
-    '%w/v': '% w/v',
-    '%w/w': '% w/w',
-    '%v/v': '% v/v',
-    'mg/mL': 'mg/mL',
-    'ppm': 'ppm (mg/L)',
-  };
-
   return (
     <div className="space-y-4">
       {steps.map((step, idx) => {
-        const calcRes = calcResult(step);
-        const result = calcRes ? { value: calcRes.value.toFixed(4), unit: calcRes.unit } : null;
-        const mass = calcRes?.unit === 'g required' ? calcRes.value : null;
-        const purityVal = parseFloat(step.purity);
-        const purityFactor = purityVal / 100;
-        const densityVal = parseFloat(step.density);
-        const mwVal = parseFloat(step.mw);
-        const nfVal = parseFloat(step.nFactor) || 1;
-
-        const volumeToPipette = mass && densityVal > 0 ? mass / densityVal : null;
-
-        const isPercentMode = step.targetUnit.startsWith('%');
-        const stockConc = !isPercentMode && densityVal > 0 && mwVal > 0 && purityFactor > 0
-          ? (step.targetUnit === 'N'
-            ? (densityVal * purityFactor * 1000 * nfVal) / mwVal
-            : (densityVal * purityFactor * 1000) / mwVal)
-          : null;
-
-        const mgPerMl = step.targetUnit === '%w/v' && parseFloat(step.targetConc)
-          ? parseFloat(step.targetConc) * 10
-          : null;
-
-        // Unit conversions
-        const concVal = parseFloat(step.targetConc);
-        const conversions = concVal > 0
-          ? convertConcentration(concVal, step.targetUnit, mwVal, densityVal, nfVal, purityFactor)
-          : null;
+        const r = calcAllResults(step);
+        const primaryResult = r.massNeeded !== null
+          ? { value: r.massNeeded.toFixed(4), unit: 'g solute needed' }
+          : r.volumeOfSolute !== null
+            ? { value: r.volumeOfSolute.toFixed(4), unit: 'mL solute needed' }
+            : null;
 
         return (
           <CalculatorCard
             key={step.id}
             title={`Solution Preparation ${steps.length > 1 ? `#${idx + 1}` : ''}`}
-            subtitle="Calculate solute mass for desired solution"
+            subtitle="Complete solution making guide — mass, volume & conversions"
             locked={locked}
             onToggleLock={() => setLocked(!locked)}
             onReset={() => {
@@ -216,120 +222,194 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                 : s
               ));
             }}
-            result={result}
+            result={primaryResult}
           >
+            {/* Compound Selector */}
             <CompoundSelector onSelect={(c) => handleCompoundSelect(step.id, c)} disabled={locked} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              <InputField label="Target Concentration" unit={step.targetUnit} value={step.targetConc} onChange={(v) => updateStep(step.id, 'targetConc', v)} disabled={locked} />
-              <InputField label={step.targetUnit === '%v/v' ? 'Total Volume' : 'Volume Required'} unit="mL" value={step.targetVol} onChange={(v) => updateStep(step.id, 'targetVol', v)} disabled={locked} />
-              {!isPercentMode && (
-                <InputField label="Molecular Weight" unit="g/mol" value={step.mw} onChange={(v) => updateStep(step.id, 'mw', v)} disabled={locked} />
-              )}
-              {step.targetUnit !== '%v/v' && (
-                <InputField label="Purity" unit="%" value={step.purity} onChange={(v) => updateStep(step.id, 'purity', v)} disabled={locked} />
-              )}
-              <InputField label="Density" unit="g/mL" value={step.density} onChange={(v) => updateStep(step.id, 'density', v)} disabled={locked} placeholder={step.targetUnit === '%w/w' ? 'Required' : 'Optional'} />
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <select
-                value={step.targetUnit}
-                onChange={(e) => updateStep(step.id, 'targetUnit', e.target.value)}
-                disabled={locked}
-                className="bg-input border border-border rounded-md px-2 py-1.5 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
-              >
-                <option value="M">Molarity (M)</option>
-                <option value="N">Normality (N)</option>
-                <option value="F">Formality (F)</option>
-                <option value="%w/v">% w/v</option>
-                <option value="%w/w">% w/w</option>
-                <option value="%v/v">% v/v</option>
-              </select>
-              {step.targetUnit === 'N' && (
-                <div className="flex items-center gap-1">
-                  <label className="text-xs text-muted-foreground">n-Factor:</label>
-                  <input
-                    type="number"
-                    value={step.nFactor}
-                    onChange={(e) => updateStep(step.id, 'nFactor', e.target.value)}
+
+            {/* ───── Section 1: Target Solution ───── */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Beaker className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Target Solution</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Concentration Unit</label>
+                  <select
+                    value={step.targetUnit}
+                    onChange={(e) => updateStep(step.id, 'targetUnit', e.target.value)}
                     disabled={locked}
-                    className="w-16 bg-input border border-border rounded-md px-2 py-1.5 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary disabled:opacity-50"
-                    placeholder="1"
-                  />
+                    className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm font-mono text-foreground focus:ring-1 focus:ring-primary disabled:opacity-50"
+                  >
+                    <option value="M">Molarity (M)</option>
+                    <option value="N">Normality (N)</option>
+                    <option value="F">Formality (F)</option>
+                    <option value="%w/v">% w/v</option>
+                    <option value="%w/w">% w/w</option>
+                    <option value="%v/v">% v/v</option>
+                  </select>
                 </div>
-              )}
-              {steps.length > 1 && (
-                <button onClick={() => removeStep(step.id)} className="p-1.5 text-destructive hover:bg-destructive/10 rounded-md transition-colors">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            <div className="mt-2 space-y-1">
-              {step.targetUnit === 'N' && mwVal > 0 && nfVal > 0 && (
-                <p className="text-xs text-muted-foreground font-mono">
-                  Eq. Weight: {mwVal} / {nfVal} = {(mwVal / nfVal).toFixed(3)} g/eq
-                </p>
-              )}
-              {mgPerMl !== null && (
-                <p className="text-xs text-muted-foreground font-mono">
-                  {parseFloat(step.targetConc)}% w/v = {mgPerMl.toFixed(2)} mg/mL
-                </p>
-              )}
-              {stockConc !== null && (
-                <div className="p-2 bg-primary/5 border border-primary/20 rounded-md">
-                  <p className="text-xs font-medium text-primary">
-                    Stock concentration (from density & purity): {stockConc.toFixed(4)} {step.targetUnit}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    = ({densityVal} × {(purityFactor * 100).toFixed(1)}% × 1000{step.targetUnit === 'N' ? ` × ${nfVal}` : ''}) / {mwVal}
-                  </p>
-                </div>
-              )}
-              {volumeToPipette !== null && (
-                <div className="p-2 bg-accent/30 border border-accent/20 rounded-md">
-                  <p className="text-xs font-medium text-foreground">
-                    📐 Volume to pipette: <span className="text-primary font-bold">{volumeToPipette.toFixed(4)} mL</span>
-                  </p>
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    = {mass!.toFixed(4)} g / {densityVal} g/mL
-                  </p>
-                </div>
-              )}
-              {purityVal < 100 && mass && (
-                <p className="text-xs text-muted-foreground font-mono">
-                  Effective mass at {step.purity}% purity: {(mass * purityFactor).toFixed(4)} g
-                </p>
-              )}
+                <InputField label="Required Concentration" unit={step.targetUnit} value={step.targetConc} onChange={(v) => updateStep(step.id, 'targetConc', v)} disabled={locked} />
+                <InputField label="Required Volume" unit="mL" value={step.targetVol} onChange={(v) => updateStep(step.id, 'targetVol', v)} disabled={locked} />
+              </div>
             </div>
 
-            {/* Unit Conversion Panel */}
-            {conversions && (
-              <div className="mt-3 p-3 bg-muted/40 border border-border rounded-lg">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <ArrowRightLeft className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs font-semibold text-foreground">Equivalent Concentrations</span>
+            {/* ───── Section 2: Reagent Properties ───── */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <FlaskConical className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Reagent Properties</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <InputField label="Molecular Weight" unit="g/mol" value={step.mw} onChange={(v) => updateStep(step.id, 'mw', v)} disabled={locked} />
+                <InputField label="n-Factor" unit="" value={step.nFactor} onChange={(v) => updateStep(step.id, 'nFactor', v)} disabled={locked} placeholder="1" />
+                <InputField label="Purity" unit="%" value={step.purity} onChange={(v) => updateStep(step.id, 'purity', v)} disabled={locked} placeholder="100" />
+                <InputField label="Density" unit="g/mL" value={step.density} onChange={(v) => updateStep(step.id, 'density', v)} disabled={locked} placeholder="Optional" />
+              </div>
+            </div>
+
+            {/* ───── Section 3: Results ───── */}
+            {(r.massNeeded !== null || r.volumeOfSolute !== null || r.stockConc !== null) && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Preparation Results</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {Object.entries(conversions)
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Mass of solute */}
+                  {r.massNeeded !== null && (
+                    <ResultCard
+                      icon="⚖️"
+                      label="Mass of Solute to Weigh"
+                      value={`${r.massNeeded.toFixed(4)} g`}
+                      detail={r.purityPercent < 100 ? `(adjusted for ${r.purityPercent}% purity)` : undefined}
+                      highlight
+                    />
+                  )}
+
+                  {/* Volume of solute (%v/v) */}
+                  {r.volumeOfSolute !== null && (
+                    <ResultCard
+                      icon="🧪"
+                      label="Volume of Solute"
+                      value={`${r.volumeOfSolute.toFixed(4)} mL`}
+                      highlight
+                    />
+                  )}
+
+                  {/* Volume to pipette (liquid reagent) */}
+                  {r.volumeToPipette !== null && (
+                    <ResultCard
+                      icon="📐"
+                      label="Volume to Pipette"
+                      value={`${r.volumeToPipette.toFixed(4)} mL`}
+                      detail={`${r.massNeeded!.toFixed(4)} g ÷ ${r.density} g/mL`}
+                    />
+                  )}
+
+                  {/* Pure solute mass */}
+                  {r.pureSoluteMass !== null && r.purityPercent < 100 && (
+                    <ResultCard
+                      icon="💎"
+                      label="Pure Solute in Solution"
+                      value={`${r.pureSoluteMass.toFixed(4)} g`}
+                      detail={`Actual active mass at ${r.purityPercent}%`}
+                    />
+                  )}
+
+                  {/* Moles of solute */}
+                  {r.molesOfSolute !== null && (
+                    <ResultCard
+                      icon="🔬"
+                      label="Moles of Solute"
+                      value={`${r.molesOfSolute.toFixed(6)} mol`}
+                      detail={r.equivalents !== null && r.nf !== 1 ? `= ${r.equivalents.toFixed(6)} eq` : undefined}
+                    />
+                  )}
+
+                  {/* Solvent volume */}
+                  {r.solventVolume !== null && r.solventVolume > 0 && (
+                    <ResultCard
+                      icon="💧"
+                      label="Solvent to Add"
+                      value={`${r.solventVolume.toFixed(2)} mL`}
+                      detail="Make up to final volume"
+                    />
+                  )}
+
+                  {/* Stock concentration */}
+                  {r.stockConc !== null && (
+                    <ResultCard
+                      icon="📦"
+                      label="Stock Reagent Concentration"
+                      value={`${r.stockConc.toFixed(4)} ${step.targetUnit}`}
+                      detail={`(ρ=${r.density} × ${r.purityPercent}% × 1000${step.targetUnit === 'N' ? ` × n=${r.nf}` : ''}) / MW=${r.mw}`}
+                    />
+                  )}
+
+                  {/* Equivalent weight */}
+                  {r.eqWeight !== null && step.targetUnit === 'N' && (
+                    <ResultCard
+                      icon="⚗️"
+                      label="Equivalent Weight"
+                      value={`${r.eqWeight.toFixed(3)} g/eq`}
+                      detail={`MW ${r.mw} ÷ n-factor ${r.nf}`}
+                    />
+                  )}
+
+                  {/* mg/mL for %w/v */}
+                  {r.mgPerMl !== null && (
+                    <ResultCard
+                      icon="📊"
+                      label="Concentration"
+                      value={`${r.mgPerMl.toFixed(2)} mg/mL`}
+                      detail={`= ${r.conc}% w/v × 10`}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ───── Section 4: Equivalent Concentrations ───── */}
+            {r.conversions && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Equivalent Concentrations</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {Object.entries(r.conversions)
                     .filter(([unit]) => unit !== step.targetUnit && !(step.targetUnit === 'M' && unit === 'F') && !(step.targetUnit === 'F' && unit === 'M'))
                     .map(([unit, val]) => (
-                      <div key={unit} className="flex items-baseline gap-1.5 p-1.5 bg-background rounded border border-border/50">
-                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">{unitLabels[unit] || unit}</span>
-                        <span className="text-xs font-mono font-medium text-foreground">
+                      <div key={unit} className="flex flex-col p-2 bg-muted/40 rounded-md border border-border/50">
+                        <span className="text-[10px] text-muted-foreground font-medium">{unitLabels[unit] || unit}</span>
+                        <span className="text-sm font-mono font-semibold text-foreground">
                           {val !== null ? val.toFixed(4) : '—'}
                         </span>
                       </div>
                     ))}
                 </div>
-                {(!mwVal || mwVal <= 0) && !isPercentMode && (
-                  <p className="text-[10px] text-muted-foreground mt-1.5 italic">
-                    Enter MW for more conversions
+                {(!r.mw || r.mw <= 0) && !r.isPercentMode && (
+                  <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                    <Info className="w-3 h-3" /> Enter MW for molar conversions
                   </p>
                 )}
-                {(!densityVal || densityVal <= 0) && (
-                  <p className="text-[10px] text-muted-foreground mt-1 italic">
-                    Enter density for %w/w conversion
+                {(!r.density || r.density <= 0) && (
+                  <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                    <Info className="w-3 h-3" /> Enter density for %w/w & pipette volume
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Delete button for multi-step */}
+            {steps.length > 1 && (
+              <div className="flex justify-end">
+                <button onClick={() => removeStep(step.id)} className="flex items-center gap-1 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+                  <Trash2 className="w-3 h-3" /> Remove
+                </button>
               </div>
             )}
           </CalculatorCard>
@@ -341,6 +421,30 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
       >
         <Plus className="w-4 h-4" /> Add Another Solution
       </button>
+    </div>
+  );
+}
+
+/** Small result display card */
+function ResultCard({ icon, label, value, detail, highlight }: {
+  icon: string;
+  label: string;
+  value: string;
+  detail?: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`p-3 rounded-lg border ${highlight ? 'bg-primary/5 border-primary/20' : 'bg-muted/30 border-border/50'}`}>
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="text-sm">{icon}</span>
+        <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+      </div>
+      <p className={`text-sm font-mono font-bold ${highlight ? 'text-primary' : 'text-foreground'}`}>
+        {value}
+      </p>
+      {detail && (
+        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{detail}</p>
+      )}
     </div>
   );
 }
