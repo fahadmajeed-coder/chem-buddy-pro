@@ -16,6 +16,9 @@ interface ReportEntry {
 export function ReportSection() {
   const [title, setTitle] = useState('');
   const [batchNo, setBatchNo] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [entries, setEntries] = useState<ReportEntry[]>([
     { id: '1', parameter: '', method: '', result: '', unit: '', specification: '', status: 'pending' }
   ]);
