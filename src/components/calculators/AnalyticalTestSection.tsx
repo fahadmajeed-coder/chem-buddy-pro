@@ -577,6 +577,7 @@ export function AnalyticalTestSection() {
   const [blocks, setBlocks] = useState<FormulaBlock[]>([]);
   const [blockResults, setBlockResults] = useState<Record<string, AnalyticalResult[]>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [blockSearchQuery, setBlockSearchQuery] = useState('');
   const [showPicker, setShowPicker] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [globalLocked, setGlobalLocked] = useState(false);
