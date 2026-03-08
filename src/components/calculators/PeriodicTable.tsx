@@ -9,6 +9,12 @@ import {
   calcMolarMass,
 } from '@/lib/periodicTableData';
 
+function formatTemp(kelvin: number, unit: 'K' | 'C' | 'F'): string {
+  if (unit === 'K') return `${kelvin} K`;
+  if (unit === 'C') return `${(kelvin - 273.15).toFixed(2)} °C`;
+  return `${((kelvin - 273.15) * 9 / 5 + 32).toFixed(2)} °F`;
+}
+
 interface PeriodicTableProps {
   onUseInCalculator?: (target: 'molarity' | 'normality' | 'formality' | 'solution', mw: number, name: string) => void;
 }
@@ -19,6 +25,7 @@ export function PeriodicTable({ onUseInCalculator }: PeriodicTableProps) {
   const [filterCategory, setFilterCategory] = useState<ElementCategory | 'all'>('all');
   const [filterState, setFilterState] = useState<'all' | 'solid' | 'liquid' | 'gas'>('all');
   const [formula, setFormula] = useState('');
+  const [tempUnit, setTempUnit] = useState<'K' | 'C' | 'F'>('K');
 
   const filtered = useMemo(() => {
     let list = elements;
@@ -206,11 +213,34 @@ export function PeriodicTable({ onUseInCalculator }: PeriodicTableProps) {
                 <InfoItem icon={<Atom className="w-3.5 h-3.5" />} label="Atomic Mass" value={`${selected.atomicMass} u`} />
                 <InfoItem icon={<Atom className="w-3.5 h-3.5" />} label="Atomic Weight" value={`${selected.atomicMass} Da`} />
                 <InfoItem icon={<Zap className="w-3.5 h-3.5" />} label="Electronegativity" value={selected.electronegativity?.toString() || '—'} />
-                <InfoItem icon={<Thermometer className="w-3.5 h-3.5" />} label="Melting Point" value={selected.meltingPoint ? `${selected.meltingPoint} K` : '—'} />
-                <InfoItem icon={<Thermometer className="w-3.5 h-3.5" />} label="Boiling Point" value={selected.boilingPoint ? `${selected.boilingPoint} K` : '—'} />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    <Thermometer className="w-3.5 h-3.5" />Melting Point
+                  </p>
+                  <p className="text-sm font-medium text-foreground">{selected.meltingPoint ? formatTemp(selected.meltingPoint, tempUnit) : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    <Thermometer className="w-3.5 h-3.5" />Boiling Point
+                  </p>
+                  <p className="text-sm font-medium text-foreground">{selected.boilingPoint ? formatTemp(selected.boilingPoint, tempUnit) : '—'}</p>
+                </div>
                 <InfoItem label="Density" value={selected.density ? `${selected.density} g/cm³` : '—'} />
                 <InfoItem label="Oxidation States" value={selected.oxidationStates} />
                 <InfoItem label="Discovered" value={selected.yearDiscovered} />
+              </div>
+
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Temp Unit:</span>
+                {(['K', 'C', 'F'] as const).map(u => (
+                  <button
+                    key={u}
+                    onClick={() => setTempUnit(u)}
+                    className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${tempUnit === u ? 'bg-primary text-primary-foreground' : 'bg-muted/30 text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {u === 'K' ? 'K' : u === 'C' ? '°C' : '°F'}
+                  </button>
+                ))}
               </div>
 
               <div className="mt-3 p-2 bg-muted/30 rounded-md">
