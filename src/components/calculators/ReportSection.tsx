@@ -362,6 +362,30 @@ export function ReportSection() {
         </div>
       </div>
 
+      {/* Export Column Toggles */}
+      <div className="glass-panel rounded-lg p-5 animate-fade-in">
+        <div className="flex items-center gap-2 mb-3">
+          <Settings2 className="w-5 h-5 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Export Columns</h3>
+          <span className="text-[10px] text-muted-foreground ml-auto">Toggle columns to include in PDF</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {(Object.keys(exportColumns) as (keyof typeof exportColumns)[]).map(col => (
+            <label key={col} className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={exportColumns[col]}
+                onChange={() => toggleColumn(col)}
+                className="rounded border-border text-primary focus:ring-primary w-3.5 h-3.5"
+              />
+              <span className={`text-xs font-medium ${exportColumns[col] ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
+                {columnLabels[col]}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       {/* Entries Table */}
       <div className="glass-panel rounded-lg overflow-hidden animate-fade-in">
         <div className="overflow-x-auto">
@@ -402,7 +426,21 @@ export function ReportSection() {
                       placeholder="e.g. 95-100"
                       className="w-full bg-transparent border border-transparent hover:border-border focus:border-warning/60 rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                   </td>
-                  <td className="py-2 px-3 text-center">{statusIcon(entry.status)}</td>
+                  <td className="py-2 px-2 text-center">
+                    <div className="flex items-center gap-1 justify-center">
+                      {statusIcon(entry.status)}
+                      <select
+                        value={entry.status}
+                        onChange={(e) => setStatus(entry.id, e.target.value as EntryStatus)}
+                        className="bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-1 py-0.5 text-[10px] font-medium text-foreground focus:ring-0 focus:outline-none transition-colors cursor-pointer appearance-none"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="good">Good</option>
+                        <option value="fair">Fair</option>
+                        <option value="reject">Reject</option>
+                      </select>
+                    </div>
+                  </td>
                   <td className="py-2 px-2">
                     {entries.length > 1 && (
                       <button onClick={() => removeEntry(entry.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
