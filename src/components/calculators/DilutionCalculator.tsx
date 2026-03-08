@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
+import { MolarMassLookup } from './MolarMassLookup';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 
 type SolveFor = 'V1' | 'C2' | 'V2';
@@ -186,6 +187,7 @@ export function DilutionCalculator({ initialMw }: DilutionCalculatorProps) {
       </div>
 
       {/* Supporting inputs for stock calc */}
+      <MolarMassLookup onSelect={(mwVal) => setMw(mwVal.toString())} disabled={locked} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <InputField label="Molecular Weight" unit="g/mol" value={mw} onChange={setMw} disabled={locked} />
         <InputField label="Purity" unit="%" value={purity} onChange={setPurity} disabled={locked} />
