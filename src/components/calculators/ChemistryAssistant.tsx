@@ -132,13 +132,15 @@ export function ChemistryAssistant() {
                   <div dangerouslySetInnerHTML={{ __html: renderMarkdown(displayContent) }} />
                 </div>
                 {isSearchOnline && (
-                  <button
-                    onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(lastUserMsg)}`, '_blank')}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 border border-border transition-colors"
+                  <a
+                    href={`https://chatgpt.com/?q=${encodeURIComponent(lastUserMsg)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 border border-border transition-colors"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     Search on ChatGPT
-                  </button>
+                  </a>
                 )}
               </div>
             </div>
