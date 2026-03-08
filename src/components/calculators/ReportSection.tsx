@@ -62,10 +62,11 @@ export function ReportSection() {
     }));
   };
 
-  const statusIcon = (status: string) => {
+  const statusIcon = (status: EntryStatus) => {
     switch (status) {
-      case 'pass': return <CheckCircle2 className="w-4 h-4 text-success" />;
-      case 'fail': return <AlertCircle className="w-4 h-4 text-destructive" />;
+      case 'good': return <CheckCircle2 className="w-4 h-4 text-success" />;
+      case 'fair': return <AlertCircle className="w-4 h-4 text-warning" />;
+      case 'reject': return <AlertCircle className="w-4 h-4 text-destructive" />;
       default: return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
   };
