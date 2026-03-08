@@ -6,6 +6,7 @@ interface FormulaVariable {
   id: string;
   name: string;
   description: string;
+  defaultValue: string;
   testValue: string;
 }
 
