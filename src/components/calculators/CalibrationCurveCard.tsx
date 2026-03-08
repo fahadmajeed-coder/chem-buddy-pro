@@ -44,8 +44,33 @@ export const DEFAULT_TEMPLATE: Omit<CalibrationCurveData, 'id' | 'createdAt'> = 
   dilutionFactor: '1',
   sampleWeight: '0.5',
   finalVolume: '1',
+  formula: '(C * DF * Vol) / W',
   locked: false,
 };
+
+const FORMULA_VARIABLES = [
+  { key: 'C', label: 'Concentration from curve' },
+  { key: 'DF', label: 'Dilution Factor' },
+  { key: 'Vol', label: 'Final Volume (mL)' },
+  { key: 'W', label: 'Sample Weight (g)' },
+];
+
+function evaluateFormula(formula: string, vars: Record<string, number>): number | null {
+  try {
+    // Replace variable names with values, longest first to avoid partial matches
+    let expr = formula;
+    const sorted = Object.keys(vars).sort((a, b) => b.length - a.length);
+    for (const key of sorted) {
+      expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), `(${vars[key]})`);
+    }
+    // Only allow safe characters: digits, operators, parentheses, dots, spaces
+    if (!/^[\d+\-*/().e\s]+$/.test(expr)) return null;
+    const result = new Function(`"use strict"; return (${expr})`)();
+    return typeof result === 'number' && isFinite(result) ? result : null;
+  } catch {
+    return null;
+  }
+}
 
 function linearRegression(points: { x: number; y: number }[]) {
   const n = points.length;

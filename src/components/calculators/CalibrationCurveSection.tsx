@@ -12,6 +12,7 @@ function createCurve(overrides?: Partial<CalibrationCurveData>): CalibrationCurv
     dilutionFactor: DEFAULT_TEMPLATE.dilutionFactor,
     sampleWeight: DEFAULT_TEMPLATE.sampleWeight,
     finalVolume: DEFAULT_TEMPLATE.finalVolume,
+    formula: DEFAULT_TEMPLATE.formula,
     locked: false,
     ...overrides,
   };
