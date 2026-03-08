@@ -315,10 +315,10 @@ export function ReportSection() {
       const results: AnalyticalResult[] = JSON.parse(raw);
       if (!results.length) return;
 
-      // Build lookup of analytical results by formulaName (lowercase)
+      // Build lookup of analytical results by normalized formulaName
       const analyticalMap = new Map<string, AnalyticalResult>();
       for (const r of results) {
-        const key = r.formulaName.trim().toLowerCase();
+        const key = normalizeParam(r.formulaName);
         analyticalMap.set(key, r);
       }
 
@@ -326,9 +326,9 @@ export function ReportSection() {
       const hasExistingParams = entries.some(e => e.parameter.trim() && e.parameter !== '');
       
       if (hasExistingParams) {
-        // Merge: fill results into matching entries by parameter name
+        // Merge: fill results into matching entries by normalized parameter name
         const updatedEntries = entries.map(e => {
-          const paramKey = e.parameter.trim().toLowerCase();
+          const paramKey = normalizeParam(e.parameter);
           const match = analyticalMap.get(paramKey);
           if (match) {
             analyticalMap.delete(paramKey); // consumed
