@@ -124,7 +124,7 @@ export function ReportSection() {
         e.method || '—',
         `${e.result || '—'} ${e.unit}`.trim(),
         e.specification || '—',
-        e.status === 'pass' ? '✓ Pass' : e.status === 'fail' ? '✗ Fail' : 'Pending',
+        e.status === 'good' ? '✓ Good' : e.status === 'fair' ? '⚠ Fair' : e.status === 'reject' ? '✗ Reject' : 'Pending',
       ]),
       theme: 'grid',
       headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold' },
@@ -136,6 +136,7 @@ export function ReportSection() {
         if (data.section === 'body' && data.column.index === 4) {
           const val = data.cell.raw as string;
           if (val.startsWith('✓')) data.cell.styles.textColor = [0, 160, 80];
+          else if (val.startsWith('⚠')) data.cell.styles.textColor = [200, 160, 0];
           else if (val.startsWith('✗')) data.cell.styles.textColor = [200, 50, 50];
         }
       },
