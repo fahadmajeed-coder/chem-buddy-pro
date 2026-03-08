@@ -98,13 +98,36 @@ export function StandardsSection() {
                 const status = getStatus(s);
                 return (
                   <tr key={s.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
-                    {(['name', 'expectedValue', 'tolerance', 'actualValue', 'unit'] as const).map((field) => (
+                    {(['name', 'expectedValue', 'tolerance'] as const).map((field) => (
                       <td key={field} className="py-2 px-2">
                         <input
-                          type={field === 'name' || field === 'unit' ? 'text' : 'number'}
+                          type={field === 'name' ? 'text' : 'number'}
                           value={s[field]}
                           onChange={(e) => updateStandard(s.id, field, e.target.value)}
                           placeholder={field === 'name' ? 'Name' : '0'}
+                          className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
+                        />
+                      </td>
+                    ))}
+                    <td className="py-2 px-2">
+                      <select
+                        value={s.comparison}
+                        onChange={(e) => updateStandard(s.id, 'comparison', e.target.value)}
+                        className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-1 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center"
+                      >
+                        <option value="range">± Range</option>
+                        <option value="≤">≤ Max</option>
+                        <option value="≥">≥ Min</option>
+                        <option value="=">=  Equal</option>
+                      </select>
+                    </td>
+                    {(['actualValue', 'unit'] as const).map((field) => (
+                      <td key={field} className="py-2 px-2">
+                        <input
+                          type={field === 'unit' ? 'text' : 'number'}
+                          value={s[field]}
+                          onChange={(e) => updateStandard(s.id, field, e.target.value)}
+                          placeholder={field === 'unit' ? 'Unit' : '0'}
                           className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
                         />
                       </td>
