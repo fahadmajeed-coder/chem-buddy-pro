@@ -218,25 +218,32 @@ export function ReportSection() {
     doc.setLineWidth(0.5);
     doc.line(14, yPos + 4, 196, yPos + 4);
 
+    // Build dynamic columns based on export toggles
+    const colDefs: { key: keyof typeof exportColumns; header: string; getValue: (e: ReportEntry) => string }[] = [
+      { key: 'parameter', header: 'Parameter', getValue: e => e.parameter || '—' },
+      { key: 'method', header: 'Method', getValue: e => e.method || '—' },
+      { key: 'result', header: 'Result', getValue: e => `${e.result || '—'} ${e.unit}`.trim() },
+      { key: 'unit', header: 'Unit', getValue: e => e.unit || '—' },
+      { key: 'greenRange', header: 'Good Range (Normal)', getValue: e => e.greenRange || '—' },
+      { key: 'yellowRange', header: 'Fair Range (With Ded.)', getValue: e => e.yellowRange || '—' },
+      { key: 'status', header: 'Status', getValue: e => e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending' },
+    ].filter(c => exportColumns[c.key]);
+
+    // If result+unit both enabled, merge them; if only result, skip unit column
+    const finalCols = colDefs.filter(c => c.key !== 'unit');
+
+    const statusColIndex = finalCols.findIndex(c => c.key === 'status');
+
     autoTable(doc, {
       startY: yPos + 10,
-      head: [['Parameter', 'Method', 'Result', 'Good Range (Normal)', 'Fair Range (With Ded.)', 'Status']],
-      body: entries.map(e => [
-        e.parameter || '—',
-        e.method || '—',
-        `${e.result || '—'} ${e.unit}`.trim(),
-        e.greenRange || '—',
-        e.yellowRange || '—',
-        e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending',
-      ]),
+      head: [finalCols.map(c => c.header)],
+      body: entries.map(e => finalCols.map(c => c.getValue(e))),
       theme: 'grid',
       headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold' },
       styles: { fontSize: 9, cellPadding: 4 },
-      columnStyles: {
-        5: { fontStyle: 'bold', halign: 'center' },
-      },
+      ...(statusColIndex >= 0 ? { columnStyles: { [statusColIndex]: { fontStyle: 'bold', halign: 'center' } } } : {}),
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 5) {
+        if (data.section === 'body' && statusColIndex >= 0 && data.column.index === statusColIndex) {
           const val = data.cell.raw as string;
           if (val === 'GOOD') {
             data.cell.styles.textColor = [255, 255, 255];
