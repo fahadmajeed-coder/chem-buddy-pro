@@ -538,7 +538,8 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
   );
 }
 
-const convertUnits = ['M', 'N', 'F', '%w/v', '%w/w', '%v/v', 'mg/mL', 'ppm', 'µg/mL', 'g/L'] as const;
+
+/** Small result display card */
 
 /** Inline quick unit converter */
 function QuickUnitConverter({ step, locked }: { step: PrepStep; locked: boolean }) {
