@@ -3,7 +3,7 @@ import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ArrowRightLeft } from 'lucide-react';
 
 interface PrepStep {
   id: string;
@@ -18,6 +18,66 @@ interface PrepStep {
 
 interface SolutionPrepCalculatorProps {
   initialMw?: number | null;
+}
+
+/** Given a concentration in `fromUnit`, compute equivalents in all other units */
+function convertConcentration(
+  conc: number,
+  fromUnit: string,
+  mw: number,
+  density: number,
+  nFactor: number,
+  purity: number // 0-1
+): Record<string, number | null> {
+  // First convert everything to Molarity (M) as the pivot
+  let molarity: number | null = null;
+
+  switch (fromUnit) {
+    case 'M':
+    case 'F':
+      molarity = conc;
+      break;
+    case 'N':
+      if (nFactor > 0) molarity = conc / nFactor;
+      break;
+    case '%w/v':
+      // %w/v = (mass_g / vol_mL) × 100 → mass_g/L = conc×10 → M = (conc×10)/MW
+      if (mw > 0) molarity = (conc * 10) / mw;
+      break;
+    case '%w/w':
+      // %w/w needs density: mass_solute_per_L = conc/100 × density × 1000
+      if (mw > 0 && density > 0) molarity = (conc * density * 10) / mw;
+      break;
+    case '%v/v':
+      // Can't convert %v/v to M without solute density/MW — return null for molar types
+      break;
+  }
+
+  const results: Record<string, number | null> = {};
+
+  // M
+  results['M'] = molarity;
+  // F (same as M for this purpose)
+  results['F'] = molarity;
+  // N
+  results['N'] = molarity !== null ? molarity * nFactor : null;
+  // %w/v = M × MW / 10
+  results['%w/v'] = molarity !== null && mw > 0 ? (molarity * mw) / 10 : null;
+  // %w/w = (M × MW) / (density × 1000) × 100 = M × MW / (density × 10)
+  results['%w/w'] = molarity !== null && mw > 0 && density > 0
+    ? (molarity * mw) / (density * 10) : null;
+  // %v/v — only from %v/v input
+  results['%v/v'] = fromUnit === '%v/v' ? conc : null;
+
+  // mg/mL = M × MW (or %w/v × 10)
+  results['mg/mL'] = molarity !== null && mw > 0 ? molarity * mw : null;
+  // ppm = mg/L = molarity × MW × 1000... actually ppm ≈ mg/L for dilute = %w/v × 10000
+  results['ppm'] = results['mg/mL'] !== null ? results['mg/mL'] * 1000 : null;
+
+  // Remove the source unit from display
+  // Don't — we'll filter in rendering
+
+  return results;
 }
 
 export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProps) {
@@ -83,25 +143,33 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
         return { value: mass, unit: 'g required' };
       }
       case '%w/v': {
-        // mass(g) = (% × volume_mL) / 100, adjusted for purity
         const mass = (conc * vol) / (100 * purity);
         return { value: mass, unit: 'g required' };
       }
       case '%w/w': {
-        // For %w/w we need total solution mass. If density given: total_mass = vol × density
         if (!density) return null;
         const totalMass = vol * density;
         const mass = (conc * totalMass) / (100 * purity);
         return { value: mass, unit: 'g required' };
       }
       case '%v/v': {
-        // volume of solute(mL) = (% × total_volume) / 100
         const soluteVol = (conc * vol) / 100;
         return { value: soluteVol, unit: 'mL required' };
       }
       default:
         return null;
     }
+  };
+
+  const unitLabels: Record<string, string> = {
+    'M': 'Molarity (M)',
+    'F': 'Formality (F)',
+    'N': 'Normality (N)',
+    '%w/v': '% w/v',
+    '%w/w': '% w/w',
+    '%v/v': '% v/v',
+    'mg/mL': 'mg/mL',
+    'ppm': 'ppm (mg/L)',
   };
 
   return (
@@ -114,22 +182,25 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
         const purityFactor = purityVal / 100;
         const densityVal = parseFloat(step.density);
         const mwVal = parseFloat(step.mw);
-        const nfVal = parseFloat(step.nFactor);
+        const nfVal = parseFloat(step.nFactor) || 1;
 
-        // Volume to pipette for liquid reagents
         const volumeToPipette = mass && densityVal > 0 ? mass / densityVal : null;
 
-        // Stock concentration from density & purity (only for M/N/F modes)
         const isPercentMode = step.targetUnit.startsWith('%');
         const stockConc = !isPercentMode && densityVal > 0 && mwVal > 0 && purityFactor > 0
           ? (step.targetUnit === 'N'
-            ? (densityVal * purityFactor * 1000 * (nfVal || 1)) / mwVal
+            ? (densityVal * purityFactor * 1000 * nfVal) / mwVal
             : (densityVal * purityFactor * 1000) / mwVal)
           : null;
-        
-        // For %w/v: also show mg/mL equivalent
+
         const mgPerMl = step.targetUnit === '%w/v' && parseFloat(step.targetConc)
           ? parseFloat(step.targetConc) * 10
+          : null;
+
+        // Unit conversions
+        const concVal = parseFloat(step.targetConc);
+        const conversions = concVal > 0
+          ? convertConcentration(concVal, step.targetUnit, mwVal, densityVal, nfVal, purityFactor)
           : null;
 
         return (
@@ -229,6 +300,38 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                 </p>
               )}
             </div>
+
+            {/* Unit Conversion Panel */}
+            {conversions && (
+              <div className="mt-3 p-3 bg-muted/40 border border-border rounded-lg">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-semibold text-foreground">Equivalent Concentrations</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {Object.entries(conversions)
+                    .filter(([unit]) => unit !== step.targetUnit && !(step.targetUnit === 'M' && unit === 'F') && !(step.targetUnit === 'F' && unit === 'M'))
+                    .map(([unit, val]) => (
+                      <div key={unit} className="flex items-baseline gap-1.5 p-1.5 bg-background rounded border border-border/50">
+                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">{unitLabels[unit] || unit}</span>
+                        <span className="text-xs font-mono font-medium text-foreground">
+                          {val !== null ? val.toFixed(4) : '—'}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+                {(!mwVal || mwVal <= 0) && !isPercentMode && (
+                  <p className="text-[10px] text-muted-foreground mt-1.5 italic">
+                    Enter MW for more conversions
+                  </p>
+                )}
+                {(!densityVal || densityVal <= 0) && (
+                  <p className="text-[10px] text-muted-foreground mt-1 italic">
+                    Enter density for %w/w conversion
+                  </p>
+                )}
+              </div>
+            )}
           </CalculatorCard>
         );
       })}
