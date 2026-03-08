@@ -63,6 +63,37 @@ export const conversionCategories: ConversionCategory[] = [
         },
       },
       {
+        id: 'N_to_percent', label: 'N → %w/v', desc: '% = (N × MW) / (n-factor × d × 10)',
+        fields: [
+          { key: 'normality', label: 'Normality', unit: 'N' },
+          { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
+          { key: 'nfactor', label: 'n-Factor', unit: '' },
+          { key: 'density', label: 'Density', unit: 'g/mL', placeholder: '1' },
+        ],
+        inventoryAutoFill: true,
+        calculate: (get) => {
+          const n = get('normality'), mw = get('mw'), nf = get('nfactor'), d = get('density') || 1;
+          if (!n || !mw || !nf) return null;
+          const ew = mw / nf;
+          return { value: ((n * ew) / (d * 10)).toFixed(4), unit: '%w/v' };
+        },
+      },
+      {
+        id: 'percent_to_N', label: '%w/v → N', desc: 'N = (% × d × 10 × n-factor) / MW',
+        fields: [
+          { key: 'percent', label: 'Concentration', unit: '%' },
+          { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
+          { key: 'nfactor', label: 'n-Factor', unit: '' },
+          { key: 'density', label: 'Density', unit: 'g/mL', placeholder: '1' },
+        ],
+        inventoryAutoFill: true,
+        calculate: (get) => {
+          const pct = get('percent'), mw = get('mw'), nf = get('nfactor'), d = get('density') || 1;
+          if (!pct || !mw || !nf) return null;
+          return { value: ((pct * d * 10 * nf) / mw).toFixed(4), unit: 'N' };
+        },
+      },
+      {
         id: 'M_to_F', label: 'M → F', desc: 'F ≈ M (for strong electrolytes)',
         fields: [{ key: 'molarity', label: 'Molarity', unit: 'M' }],
         calculate: (get) => {
