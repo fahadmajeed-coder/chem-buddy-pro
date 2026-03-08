@@ -60,28 +60,56 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
     }));
   };
 
-  const calcMass = (step: PrepStep) => {
+  const calcResult = (step: PrepStep): { value: number; unit: string } | null => {
     const conc = parseFloat(step.targetConc);
     const vol = parseFloat(step.targetVol);
     const mw = parseFloat(step.mw);
-    const purity = parseFloat(step.purity) / 100;
+    const purity = parseFloat(step.purity) / 100 || 1;
     const nf = parseFloat(step.nFactor) || 1;
-    if (!conc || !vol || !mw || !purity) return null;
-    const volL = vol / 1000;
+    const density = parseFloat(step.density);
 
-    // For Normality: mass = (N × V(L) × MW) / (n-factor × purity)
-    // For Molarity/Formality: mass = (M × V(L) × MW) / purity
-    const mass = step.targetUnit === 'N'
-      ? (conc * volL * mw) / (nf * purity)
-      : (conc * volL * mw) / purity;
-    return mass;
+    if (!conc || !vol) return null;
+
+    switch (step.targetUnit) {
+      case 'M':
+      case 'F': {
+        if (!mw || !purity) return null;
+        const mass = (conc * (vol / 1000) * mw) / purity;
+        return { value: mass, unit: 'g required' };
+      }
+      case 'N': {
+        if (!mw || !purity) return null;
+        const mass = (conc * (vol / 1000) * mw) / (nf * purity);
+        return { value: mass, unit: 'g required' };
+      }
+      case '%w/v': {
+        // mass(g) = (% × volume_mL) / 100, adjusted for purity
+        const mass = (conc * vol) / (100 * purity);
+        return { value: mass, unit: 'g required' };
+      }
+      case '%w/w': {
+        // For %w/w we need total solution mass. If density given: total_mass = vol × density
+        if (!density) return null;
+        const totalMass = vol * density;
+        const mass = (conc * totalMass) / (100 * purity);
+        return { value: mass, unit: 'g required' };
+      }
+      case '%v/v': {
+        // volume of solute(mL) = (% × total_volume) / 100
+        const soluteVol = (conc * vol) / 100;
+        return { value: soluteVol, unit: 'mL required' };
+      }
+      default:
+        return null;
+    }
   };
 
   return (
     <div className="space-y-4">
       {steps.map((step, idx) => {
-        const mass = calcMass(step);
-        const result = mass !== null ? { value: mass.toFixed(4), unit: 'g required' } : null;
+        const calcRes = calcResult(step);
+        const result = calcRes ? { value: calcRes.value.toFixed(4), unit: calcRes.unit } : null;
+        const mass = calcRes?.unit === 'g required' ? calcRes.value : null;
         const purityVal = parseFloat(step.purity);
         const purityFactor = purityVal / 100;
         const densityVal = parseFloat(step.density);
@@ -91,11 +119,17 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
         // Volume to pipette for liquid reagents
         const volumeToPipette = mass && densityVal > 0 ? mass / densityVal : null;
 
-        // Stock concentration from density & purity
-        const stockConc = densityVal > 0 && mwVal > 0 && purityFactor > 0
+        // Stock concentration from density & purity (only for M/N/F modes)
+        const isPercentMode = step.targetUnit.startsWith('%');
+        const stockConc = !isPercentMode && densityVal > 0 && mwVal > 0 && purityFactor > 0
           ? (step.targetUnit === 'N'
             ? (densityVal * purityFactor * 1000 * (nfVal || 1)) / mwVal
             : (densityVal * purityFactor * 1000) / mwVal)
+          : null;
+        
+        // For %w/v: also show mg/mL equivalent
+        const mgPerMl = step.targetUnit === '%w/v' && parseFloat(step.targetConc)
+          ? parseFloat(step.targetConc) * 10
           : null;
 
         return (
@@ -116,10 +150,14 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
             <CompoundSelector onSelect={(c) => handleCompoundSelect(step.id, c)} disabled={locked} />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <InputField label="Target Concentration" unit={step.targetUnit} value={step.targetConc} onChange={(v) => updateStep(step.id, 'targetConc', v)} disabled={locked} />
-              <InputField label="Volume Required" unit="mL" value={step.targetVol} onChange={(v) => updateStep(step.id, 'targetVol', v)} disabled={locked} />
-              <InputField label="Molecular Weight" unit="g/mol" value={step.mw} onChange={(v) => updateStep(step.id, 'mw', v)} disabled={locked} />
-              <InputField label="Purity" unit="%" value={step.purity} onChange={(v) => updateStep(step.id, 'purity', v)} disabled={locked} />
-              <InputField label="Density" unit="g/mL" value={step.density} onChange={(v) => updateStep(step.id, 'density', v)} disabled={locked} placeholder="Optional" />
+              <InputField label={step.targetUnit === '%v/v' ? 'Total Volume' : 'Volume Required'} unit="mL" value={step.targetVol} onChange={(v) => updateStep(step.id, 'targetVol', v)} disabled={locked} />
+              {!isPercentMode && (
+                <InputField label="Molecular Weight" unit="g/mol" value={step.mw} onChange={(v) => updateStep(step.id, 'mw', v)} disabled={locked} />
+              )}
+              {step.targetUnit !== '%v/v' && (
+                <InputField label="Purity" unit="%" value={step.purity} onChange={(v) => updateStep(step.id, 'purity', v)} disabled={locked} />
+              )}
+              <InputField label="Density" unit="g/mL" value={step.density} onChange={(v) => updateStep(step.id, 'density', v)} disabled={locked} placeholder={step.targetUnit === '%w/w' ? 'Required' : 'Optional'} />
             </div>
             <div className="flex items-center gap-2 mt-2">
               <select
@@ -131,6 +169,9 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                 <option value="M">Molarity (M)</option>
                 <option value="N">Normality (N)</option>
                 <option value="F">Formality (F)</option>
+                <option value="%w/v">% w/v</option>
+                <option value="%w/w">% w/w</option>
+                <option value="%v/v">% v/v</option>
               </select>
               {step.targetUnit === 'N' && (
                 <div className="flex items-center gap-1">
