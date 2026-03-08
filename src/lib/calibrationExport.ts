@@ -110,17 +110,34 @@ export function exportCalibrationPDF(data: CalibrationCurveData) {
 
   y = (doc as any).lastAutoTable.finalY + 10;
 
-  // Parameters
+  // Parameters - use a table for visibility
+  const checkPage = (needed: number) => {
+    if (y + needed > doc.internal.pageSize.getHeight() - 15) {
+      doc.addPage();
+      y = 20;
+    }
+  };
+
+  checkPage(40);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('Sample Parameters', 14, y);
-  y += 7;
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Sample Weight: ${data.sampleWeight} g`, 14, y); y += 5;
-  doc.text(`Dilution Factor: ${data.dilutionFactor}`, 14, y); y += 5;
-  doc.text(`Final Volume: ${data.finalVolume} mL`, 14, y); y += 5;
-  doc.text(`Formula: Final Conc = ${data.formula}`, 14, y); y += 8;
+  y += 2;
+  autoTable(doc, {
+    startY: y,
+    head: [['Parameter', 'Value']],
+    body: [
+      ['Sample Weight', `${data.sampleWeight} g`],
+      ['Dilution Factor', data.dilutionFactor],
+      ['Final Volume', `${data.finalVolume} mL`],
+      ['Formula', `Final Conc = ${data.formula}`],
+    ],
+    theme: 'grid',
+    headStyles: { fillColor: [46, 139, 87], fontSize: 8 },
+    bodyStyles: { fontSize: 8 },
+    margin: { left: 14 },
+  });
+  y = (doc as any).lastAutoTable.finalY + 8;
 
   // Sample results table
   doc.setFontSize(11);
