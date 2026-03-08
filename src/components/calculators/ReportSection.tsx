@@ -218,19 +218,16 @@ export function ReportSection() {
     doc.setLineWidth(0.5);
     doc.line(14, yPos + 4, 196, yPos + 4);
 
-    // Build dynamic columns based on export toggles
-    const colDefs: { key: keyof typeof exportColumns; header: string; getValue: (e: ReportEntry) => string }[] = [
-      { key: 'parameter', header: 'Parameter', getValue: e => e.parameter || '—' },
-      { key: 'method', header: 'Method', getValue: e => e.method || '—' },
-      { key: 'result', header: 'Result', getValue: e => `${e.result || '—'} ${e.unit}`.trim() },
-      { key: 'unit', header: 'Unit', getValue: e => e.unit || '—' },
-      { key: 'greenRange', header: 'Good Range (Normal)', getValue: e => e.greenRange || '—' },
-      { key: 'yellowRange', header: 'Fair Range (With Ded.)', getValue: e => e.yellowRange || '—' },
-      { key: 'status', header: 'Status', getValue: e => e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending' },
-    ].filter(c => exportColumns[c.key]);
-
-    // If result+unit both enabled, merge them; if only result, skip unit column
-    const finalCols = colDefs.filter(c => c.key !== 'unit');
+    type ColKey = keyof typeof exportColumns;
+    const allCols: { key: ColKey; header: string; getValue: (e: ReportEntry) => string }[] = [
+      { key: 'parameter' as ColKey, header: 'Parameter', getValue: (e: ReportEntry) => e.parameter || '—' },
+      { key: 'method' as ColKey, header: 'Method', getValue: (e: ReportEntry) => e.method || '—' },
+      { key: 'result' as ColKey, header: 'Result', getValue: (e: ReportEntry) => `${e.result || '—'} ${e.unit}`.trim() },
+      { key: 'greenRange' as ColKey, header: 'Good Range (Normal)', getValue: (e: ReportEntry) => e.greenRange || '—' },
+      { key: 'yellowRange' as ColKey, header: 'Fair Range (With Ded.)', getValue: (e: ReportEntry) => e.yellowRange || '—' },
+      { key: 'status' as ColKey, header: 'Status', getValue: (e: ReportEntry) => e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending' },
+    ];
+    const finalCols = allCols.filter(c => exportColumns[c.key]);
 
     const statusColIndex = finalCols.findIndex(c => c.key === 'status');
 
