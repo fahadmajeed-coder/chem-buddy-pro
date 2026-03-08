@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield } from 'lucide-react';
+import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield, Settings2 } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -77,6 +77,16 @@ export function ReportSection() {
   const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
   const [selectedStandardId, setSelectedStandardId] = useState<string | null>(null);
 
+  const [exportColumns, setExportColumns] = useState({
+    parameter: true,
+    method: true,
+    result: true,
+    unit: true,
+    greenRange: true,
+    yellowRange: true,
+    status: true,
+  });
+
   const [title, setTitle] = useState('');
   const [batchNo, setBatchNo] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -125,11 +135,16 @@ export function ReportSection() {
     setEntries(prev => prev.map(e => {
       if (e.id !== id) return e;
       const updated = { ...e, [field]: value };
+      // Only auto-compute status if not manually overridden via dropdown
       if (field === 'result' || field === 'greenRange' || field === 'yellowRange') {
         updated.status = computeStatus(updated.result, updated.greenRange, updated.yellowRange);
       }
       return updated;
     }));
+  };
+
+  const setStatus = (id: string, status: EntryStatus) => {
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, status } : e));
   };
 
   const statusIcon = (status: EntryStatus) => {
@@ -139,6 +154,20 @@ export function ReportSection() {
       case 'reject': return <AlertCircle className="w-4 h-4 text-destructive" />;
       default: return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
+  };
+
+  const toggleColumn = (col: keyof typeof exportColumns) => {
+    setExportColumns(prev => ({ ...prev, [col]: !prev[col] }));
+  };
+
+  const columnLabels: Record<keyof typeof exportColumns, string> = {
+    parameter: 'Parameter',
+    method: 'Method',
+    result: 'Result',
+    unit: 'Unit',
+    greenRange: 'Good Range',
+    yellowRange: 'Fair Range',
+    status: 'Status',
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,25 +218,29 @@ export function ReportSection() {
     doc.setLineWidth(0.5);
     doc.line(14, yPos + 4, 196, yPos + 4);
 
+    type ColKey = keyof typeof exportColumns;
+    const allCols: { key: ColKey; header: string; getValue: (e: ReportEntry) => string }[] = [
+      { key: 'parameter' as ColKey, header: 'Parameter', getValue: (e: ReportEntry) => e.parameter || '—' },
+      { key: 'method' as ColKey, header: 'Method', getValue: (e: ReportEntry) => e.method || '—' },
+      { key: 'result' as ColKey, header: 'Result', getValue: (e: ReportEntry) => `${e.result || '—'} ${e.unit}`.trim() },
+      { key: 'greenRange' as ColKey, header: 'Good Range (Normal)', getValue: (e: ReportEntry) => e.greenRange || '—' },
+      { key: 'yellowRange' as ColKey, header: 'Fair Range (With Ded.)', getValue: (e: ReportEntry) => e.yellowRange || '—' },
+      { key: 'status' as ColKey, header: 'Status', getValue: (e: ReportEntry) => e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending' },
+    ];
+    const finalCols = allCols.filter(c => exportColumns[c.key]);
+
+    const statusColIndex = finalCols.findIndex(c => c.key === 'status');
+
     autoTable(doc, {
       startY: yPos + 10,
-      head: [['Parameter', 'Method', 'Result', 'Good Range (Normal)', 'Fair Range (With Ded.)', 'Status']],
-      body: entries.map(e => [
-        e.parameter || '—',
-        e.method || '—',
-        `${e.result || '—'} ${e.unit}`.trim(),
-        e.greenRange || '—',
-        e.yellowRange || '—',
-        e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending',
-      ]),
+      head: [finalCols.map(c => c.header)],
+      body: entries.map(e => finalCols.map(c => c.getValue(e))),
       theme: 'grid',
       headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold' },
       styles: { fontSize: 9, cellPadding: 4 },
-      columnStyles: {
-        5: { fontStyle: 'bold', halign: 'center' },
-      },
+      ...(statusColIndex >= 0 ? { columnStyles: { [statusColIndex]: { fontStyle: 'bold', halign: 'center' } } } : {}),
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 5) {
+        if (data.section === 'body' && statusColIndex >= 0 && data.column.index === statusColIndex) {
           const val = data.cell.raw as string;
           if (val === 'GOOD') {
             data.cell.styles.textColor = [255, 255, 255];
@@ -329,6 +362,30 @@ export function ReportSection() {
         </div>
       </div>
 
+      {/* Export Column Toggles */}
+      <div className="glass-panel rounded-lg p-5 animate-fade-in">
+        <div className="flex items-center gap-2 mb-3">
+          <Settings2 className="w-5 h-5 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Export Columns</h3>
+          <span className="text-[10px] text-muted-foreground ml-auto">Toggle columns to include in PDF</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {(Object.keys(exportColumns) as (keyof typeof exportColumns)[]).map(col => (
+            <label key={col} className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={exportColumns[col]}
+                onChange={() => toggleColumn(col)}
+                className="rounded border-border text-primary focus:ring-primary w-3.5 h-3.5"
+              />
+              <span className={`text-xs font-medium ${exportColumns[col] ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
+                {columnLabels[col]}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       {/* Entries Table */}
       <div className="glass-panel rounded-lg overflow-hidden animate-fade-in">
         <div className="overflow-x-auto">
@@ -369,7 +426,21 @@ export function ReportSection() {
                       placeholder="e.g. 95-100"
                       className="w-full bg-transparent border border-transparent hover:border-border focus:border-warning/60 rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                   </td>
-                  <td className="py-2 px-3 text-center">{statusIcon(entry.status)}</td>
+                  <td className="py-2 px-2 text-center">
+                    <div className="flex items-center gap-1 justify-center">
+                      {statusIcon(entry.status)}
+                      <select
+                        value={entry.status}
+                        onChange={(e) => setStatus(entry.id, e.target.value as EntryStatus)}
+                        className="bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-1 py-0.5 text-[10px] font-medium text-foreground focus:ring-0 focus:outline-none transition-colors cursor-pointer appearance-none"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="good">Good</option>
+                        <option value="fair">Fair</option>
+                        <option value="reject">Reject</option>
+                      </select>
+                    </div>
+                  </td>
                   <td className="py-2 px-2">
                     {entries.length > 1 && (
                       <button onClick={() => removeEntry(entry.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
