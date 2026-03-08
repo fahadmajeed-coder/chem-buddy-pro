@@ -186,16 +186,6 @@ export function DilutionCalculator({ initialMw }: DilutionCalculatorProps) {
         </div>
       </div>
 
-      {/* Supporting inputs for stock calc */}
-      <MolarMassLookup onSelect={(mwVal) => setMw(mwVal.toString())} disabled={locked} />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <InputField label="Molecular Weight" unit="g/mol" value={mw} onChange={setMw} disabled={locked} />
-        <InputField label="Purity" unit="%" value={purity} onChange={setPurity} disabled={locked} />
-        <InputField label="Density" unit="g/mL" value={density} onChange={setDensity} disabled={locked} placeholder="Optional" />
-        {unit === 'N' && (
-          <InputField label="n-Factor" unit="" value={nFactor} onChange={setNFactor} disabled={locked} />
-        )}
-      </div>
 
       {/* Equation display */}
       {calcRes && (
