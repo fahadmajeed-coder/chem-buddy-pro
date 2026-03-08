@@ -35,6 +35,7 @@ export function CalibrationCurveSection() {
       dilutionFactor: source.dilutionFactor,
       sampleWeight: source.sampleWeight,
       finalVolume: source.finalVolume,
+      formula: source.formula,
       locked: false,
     });
     setCurves(prev => [...prev, copy]);
