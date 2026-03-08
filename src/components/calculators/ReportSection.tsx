@@ -77,6 +77,16 @@ export function ReportSection() {
   const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
   const [selectedStandardId, setSelectedStandardId] = useState<string | null>(null);
 
+  const [exportColumns, setExportColumns] = useState({
+    parameter: true,
+    method: true,
+    result: true,
+    unit: true,
+    greenRange: true,
+    yellowRange: true,
+    status: true,
+  });
+
   const [title, setTitle] = useState('');
   const [batchNo, setBatchNo] = useState('');
   const [companyName, setCompanyName] = useState('');
