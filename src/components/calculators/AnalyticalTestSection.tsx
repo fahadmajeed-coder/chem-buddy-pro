@@ -255,6 +255,7 @@ export function AnalyticalTestSection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showPicker, setShowPicker] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [globalLocked, setGlobalLocked] = useState(false);
 
   const filteredFormulas = useMemo(() => {
     if (!searchQuery.trim()) return savedFormulas;
@@ -327,7 +328,7 @@ export function AnalyticalTestSection() {
             <p className="text-xs text-muted-foreground mt-0.5">Add formulas and enter sample data</p>
           </div>
           <div className="flex items-center gap-1">
-            {blocks.length > 0 && (
+            {blocks.length > 0 && !globalLocked && (
               <button
                 onClick={() => setShowClearConfirm(true)}
                 className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
@@ -336,7 +337,7 @@ export function AnalyticalTestSection() {
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
-            {savedFormulas.length > 0 && savedFormulas.length > blocks.length && (
+            {savedFormulas.length > 0 && savedFormulas.length > blocks.length && !globalLocked && (
               <button
                 onClick={() => setShowPicker(p => !p)}
                 className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
@@ -345,6 +346,13 @@ export function AnalyticalTestSection() {
                 <Plus className="w-4 h-4" />
               </button>
             )}
+            <button
+              onClick={() => setGlobalLocked(l => !l)}
+              className={`p-1.5 rounded-md transition-colors ${globalLocked ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
+              title={globalLocked ? 'Unlock All' : 'Lock All'}
+            >
+              {globalLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+            </button>
           </div>
         </div>
 
