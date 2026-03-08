@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { CalculatorCard } from './CalculatorCard';
-import { Plus, Trash2, FlaskConical, Search, X } from 'lucide-react';
+import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface FormulaVariable {
