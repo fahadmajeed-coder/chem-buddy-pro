@@ -15,12 +15,12 @@ interface StandardEntry {
 
 export function StandardsSection() {
   const [standards, setStandards] = useState<StandardEntry[]>([
-    { id: '1', name: '', expectedValue: '', tolerance: '', actualValue: '', unit: '' }
+    { id: '1', name: '', expectedValue: '', tolerance: '', actualValue: '', unit: '', comparison: 'range' }
   ]);
 
   const addStandard = () => {
     setStandards(prev => [...prev, {
-      id: Date.now().toString(), name: '', expectedValue: '', tolerance: '', actualValue: '', unit: ''
+      id: Date.now().toString(), name: '', expectedValue: '', tolerance: '', actualValue: '', unit: '', comparison: 'range'
     }]);
   };
 
