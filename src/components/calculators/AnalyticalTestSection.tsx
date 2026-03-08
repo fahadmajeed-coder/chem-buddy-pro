@@ -327,16 +327,84 @@ function FormulaBlockCard({
             </table>
           </div>
 
-          {/* Average checkbox */}
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id={`avg-${formula.id}`}
-              checked={showAverages}
-              onCheckedChange={(checked) => setShowAverages(checked === true)}
-            />
-            <label htmlFor={`avg-${formula.id}`} className="text-xs text-muted-foreground cursor-pointer select-none">
-              Show average for same Sample ID
-            </label>
+          {/* Average checkbox & Export */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id={`avg-${formula.id}`}
+                checked={showAverages}
+                onCheckedChange={(checked) => setShowAverages(checked === true)}
+              />
+              <label htmlFor={`avg-${formula.id}`} className="text-xs text-muted-foreground cursor-pointer select-none">
+                Show average for same Sample ID
+              </label>
+            </div>
+            <button
+              onClick={() => {
+                const date = new Date().toISOString().split('T')[0];
+                const doc = new jsPDF();
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(30);
+                doc.text(`${formula.name} — Test Report`, 14, 20);
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(100);
+                doc.text(`Formula: ${formula.expression}`, 14, 28);
+                doc.text(`Date: ${date}`, 196, 28, { align: 'right' });
+
+                const head = ['Sample ID', ...formula.variables.map(v => v.name), 'Result'];
+                const body: string[][] = [];
+                const renderedAvgIds = new Set<string>();
+
+                for (let i = 0; i < rowResults.length; i++) {
+                  const row = rowResults[i];
+                  body.push([
+                    row.sampleId || '—',
+                    ...formula.variables.map(v => row.values[v.name] || '—'),
+                    row.result !== null ? row.result.toFixed(4) : '—',
+                  ]);
+                  // Add average row after last of group
+                  const sid = row.sampleId.trim();
+                  if (showAverages && sid && sampleAverages.has(sid) && !renderedAvgIds.has(sid)) {
+                    const isLast = i === rowResults.length - 1 || rowResults[i + 1].sampleId.trim() !== sid;
+                    if (isLast) {
+                      renderedAvgIds.add(sid);
+                      body.push([
+                        `Avg: ${sid}`,
+                        ...formula.variables.map(() => ''),
+                        sampleAverages.get(sid)!.toFixed(4),
+                      ]);
+                    }
+                  }
+                }
+
+                autoTable(doc, {
+                  startY: 34,
+                  head: [head],
+                  body,
+                  theme: 'grid',
+                  headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+                  styles: { fontSize: 9, cellPadding: 3 },
+                  didParseCell: (data) => {
+                    if (data.section === 'body') {
+                      const raw = data.cell.raw as string;
+                      if (raw && raw.startsWith('Avg:')) {
+                        data.cell.styles.fontStyle = 'bold';
+                        data.cell.styles.fillColor = [230, 245, 243];
+                      }
+                    }
+                  },
+                });
+
+                doc.save(`${formula.name}_Report_${date}.pdf`);
+                toast.success(`Exported ${formula.name} report`);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-secondary/80 border border-border transition-colors"
+              title="Export this test as PDF"
+            >
+              <Download className="w-3.5 h-3.5" /> Export PDF
+            </button>
           </div>
 
           {!cardLocked && (
