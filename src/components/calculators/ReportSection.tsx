@@ -554,6 +554,15 @@ export function ReportSection() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/30">
+                <th className="py-2.5 px-2 text-center">
+                  <input
+                    type="checkbox"
+                    checked={entries.every(e => e.included)}
+                    onChange={(e) => setEntries(prev => prev.map(en => ({ ...en, included: e.target.checked })))}
+                    className="rounded border-border text-primary focus:ring-primary w-3.5 h-3.5"
+                    title="Select/Deselect all for export"
+                  />
+                </th>
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Parameter</th>
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Method</th>
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Result</th>
@@ -570,7 +579,15 @@ export function ReportSection() {
             </thead>
             <tbody>
               {entries.map((entry) => (
-                <tr key={entry.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
+                <tr key={entry.id} className={`border-b border-border/50 transition-colors ${entry.included ? 'hover:bg-secondary/20' : 'opacity-40'}`}>
+                  <td className="py-2 px-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={entry.included}
+                      onChange={(e) => setEntries(prev => prev.map(en => en.id === entry.id ? { ...en, included: e.target.checked } : en))}
+                      className="rounded border-border text-primary focus:ring-primary w-3.5 h-3.5"
+                    />
+                  </td>
                   {(['parameter', 'method', 'result', 'unit'] as const).map((field) => (
                     <td key={field} className="py-2 px-2">
                       <input type="text" value={entry[field]} onChange={(e) => updateEntry(entry.id, field, e.target.value)}
