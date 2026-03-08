@@ -15,7 +15,6 @@ interface PrepStep {
   nFactor: string;
   purity: string;
   density: string;
-  resultUnit: string;
 }
 
 interface SolutionPrepCalculatorProps {
