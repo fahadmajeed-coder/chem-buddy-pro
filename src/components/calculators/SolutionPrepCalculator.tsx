@@ -198,6 +198,11 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                   Eq. Weight: {mwVal} / {nfVal} = {(mwVal / nfVal).toFixed(3)} g/eq
                 </p>
               )}
+              {mgPerMl !== null && (
+                <p className="text-xs text-muted-foreground font-mono">
+                  {parseFloat(step.targetConc)}% w/v = {mgPerMl.toFixed(2)} mg/mL
+                </p>
+              )}
               {stockConc !== null && (
                 <div className="p-2 bg-primary/5 border border-primary/20 rounded-md">
                   <p className="text-xs font-medium text-primary">
@@ -214,7 +219,7 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
                     📐 Volume to pipette: <span className="text-primary font-bold">{volumeToPipette.toFixed(4)} mL</span>
                   </p>
                   <p className="text-[10px] text-muted-foreground font-mono">
-                    = {mass.toFixed(4)} g / {densityVal} g/mL
+                    = {mass!.toFixed(4)} g / {densityVal} g/mL
                   </p>
                 </div>
               )}
