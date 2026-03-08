@@ -1,7 +1,15 @@
-import { useState, useMemo, useCallback } from 'react';
-import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight, Send } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { toast } from 'sonner';
+
+export interface AnalyticalResult {
+  formulaName: string;
+  sampleId: string;
+  result: number;
+  isAverage: boolean;
+}
 
 interface FormulaVariable {
   id: string;
