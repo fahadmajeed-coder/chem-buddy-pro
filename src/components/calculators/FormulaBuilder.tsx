@@ -832,13 +832,26 @@ export function FormulaBuilder() {
               className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
             />
           </div>
-          <button
-            onClick={saveFormula}
-            disabled={!formulaName.trim() || !expression.trim() || testPassed !== true}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            <Save className="w-4 h-4" /> Save Formula
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={saveFormula}
+              disabled={!formulaName.trim() || !expression.trim() || testPassed !== true}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <Save className="w-4 h-4" /> {editingFormulaId ? 'Update Formula' : 'Save Formula'}
+            </button>
+            {editingFormulaId && (
+              <button
+                onClick={resetBuilder}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              >
+                <X className="w-4 h-4" /> Cancel Edit
+              </button>
+            )}
+          </div>
+          {editingFormulaId && (
+            <p className="text-[10px] text-primary">✏ Editing "{formulaName}" — changes will update the existing formula</p>
+          )}
           {testPassed !== true && expression.trim() && (
             <p className="text-[10px] text-[hsl(var(--warning))]">⚠ Test the formula first before saving</p>
           )}
