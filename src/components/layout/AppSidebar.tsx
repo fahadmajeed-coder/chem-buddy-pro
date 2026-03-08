@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package } from 'lucide-react';
+import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3 } from 'lucide-react';
 
 interface NavItem {
   id: string;
@@ -18,6 +18,7 @@ const navItems: NavItem[] = [
   { id: 'standards', label: 'Standards', icon: <Shield className="w-4 h-4" /> },
   { id: 'assistant', label: 'AI Assistant', icon: <Sparkles className="w-4 h-4" /> },
   { id: 'inventory', label: 'Inventory', icon: <Package className="w-4 h-4" /> },
+  { id: 'periodic-table', label: 'Periodic Table', icon: <Grid3X3 className="w-4 h-4" /> },
 ];
 
 interface AppSidebarProps {
