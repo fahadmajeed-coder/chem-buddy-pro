@@ -202,6 +202,7 @@ function FormulaBlockCard({
         }
       }
     }
+    cardResultsRef.current = results;
     onResultsChange(results);
   }, [rowResults, showAverages, sampleAverages, formula.name, onResultsChange]);
 
