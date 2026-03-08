@@ -5,6 +5,7 @@ import { NormalityCalculator } from '@/components/calculators/NormalityCalculato
 import { FormalityCalculator } from '@/components/calculators/FormalityCalculator';
 import { ConversionCalculator } from '@/components/calculators/ConversionCalculator';
 import { SolutionPrepCalculator } from '@/components/calculators/SolutionPrepCalculator';
+import { DilutionCalculator } from '@/components/calculators/DilutionCalculator';
 import { AnalyticalTestSection } from '@/components/calculators/AnalyticalTestSection';
 import { ReportSection } from '@/components/calculators/ReportSection';
 import { StandardsSection } from '@/components/calculators/StandardsSection';
@@ -37,6 +38,7 @@ const Index = () => {
     formality: 'Formality Calculator',
     conversion: 'Unit Conversions',
     solution: 'Solution Preparation',
+    dilution: 'Dilution Calculator',
     analytical: 'Analytical Testing',
     report: 'Reports & Certificate of Analysis',
     standards: 'Standards Matching',
@@ -52,6 +54,7 @@ const Index = () => {
       case 'formality': return <FormalityCalculator initialMw={elementMw} />;
       case 'conversion': return <ConversionCalculator />;
       case 'solution': return <SolutionPrepCalculator initialMw={elementMw} />;
+      case 'dilution': return <DilutionCalculator initialMw={elementMw} />;
       case 'analytical': return <AnalyticalTestSection />;
       case 'report': return <ReportSection />;
       case 'standards': return <StandardsSection />;
