@@ -629,7 +629,6 @@ export function AnalyticalTestSection() {
       formulaId,
       rows: [{ id: Date.now().toString(), sampleId: '', values: makeDefaultValues(formula) }],
     }]);
-    setShowPicker(false);
     setSearchQuery('');
   };
 
