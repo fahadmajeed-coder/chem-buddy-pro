@@ -346,12 +346,11 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
 
           <div className="border border-border rounded-lg overflow-hidden">
             {/* Header row */}
-            <div className="grid grid-cols-[2.5rem_minmax(80px,1.5fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_2rem] bg-secondary/50">
+            <div className="grid grid-cols-[2.5rem_minmax(80px,1.5fr)_minmax(80px,1fr)_minmax(80px,1fr)_2rem] bg-secondary/50">
               <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 text-center border-r border-border">#</span>
               <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 border-r border-border">Name</span>
               <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 border-r border-border">Absorbance</span>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 border-r border-border">Conc. (C)</span>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 border-r border-border">Final Conc</span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-2 border-r border-border">Result</span>
               <span className="py-2" />
             </div>
             {/* Data rows */}
