@@ -81,21 +81,23 @@ export function ConversionCalculator() {
         return null;
       }
       case 'vol_for_N': {
-        // V(mL) = (mass × purity / Eq.Wt) / N × 1000
-        const mass = get('mass'); const eqWt = get('eqWt'); const n = get('normality');
+        // V(mL) = (mass × purity / (MW/n)) / N × 1000
+        const mass = get('mass'); const mw = get('mw'); const nf = get('nfactor') || 1; const n = get('normality');
+        const eqWt = mw / nf;
         const effectiveMass = mass * (getPurity() / 100);
-        return mass && eqWt && n ? { value: ((effectiveMass / eqWt) / n * 1000).toFixed(2), unit: 'mL' } : null;
+        return mass && mw && n ? { value: ((effectiveMass / eqWt) / n * 1000).toFixed(2), unit: 'mL' } : null;
       }
       case 'N_from_mass': {
-        // N = (mass × purity / Eq.Wt) / V(L)
-        const mass = get('mass'); const eqWt = get('eqWt'); const vol = get('volume');
+        // N = (mass × purity / (MW/n)) / V(L)
+        const mass = get('mass'); const mw = get('mw'); const nf = get('nfactor') || 1; const vol = get('volume');
+        const eqWt = mw / nf;
         const effectiveMass = mass * (getPurity() / 100);
-        return mass && eqWt && vol ? { value: ((effectiveMass / eqWt) / (vol / 1000)).toFixed(4), unit: 'N' } : null;
+        return mass && mw && vol ? { value: ((effectiveMass / eqWt) / (vol / 1000)).toFixed(4), unit: 'N' } : null;
       }
       case 'N_from_pct': {
-        // N = (% × density × 10) / Eq.Wt
-        const pct = get('percent'); const density = get('density'); const eqWt = get('eqWt');
-        return pct && density && eqWt ? { value: ((pct * density * 10) / eqWt).toFixed(4), unit: 'N' } : null;
+        // N = (% × density × 10 × n) / MW
+        const pct = get('percent'); const density = get('density'); const mw = get('mw'); const nf = get('nfactor') || 1;
+        return pct && density && mw ? { value: ((pct * density * 10 * nf) / mw).toFixed(4), unit: 'N' } : null;
       }
       case 'vol_pct_to_pct': {
         // V₁(mL) = (C₂% × V₂ × d₂) / (C₁% × d₁)
