@@ -205,51 +205,15 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
       {steps.map((step, idx) => {
         const r = calcAllResults(step);
         const isLiquid = step.reagentState === 'liquid';
-
-        // Base result in grams
-        const baseGrams = r.massNeeded;
-        const baseVolSolute = r.volumeOfSolute;
-
-        // Convert result based on selected resultUnit
-        const convertResult = (): { value: string; unit: string } | null => {
-          const unit = step.resultUnit;
-          if (unit === 'mL (solute)' && baseVolSolute !== null) {
-            return { value: baseVolSolute.toFixed(4), unit: 'mL solute' };
-          }
-          if (baseGrams === null) {
-            if (baseVolSolute !== null) return { value: baseVolSolute.toFixed(4), unit: 'mL solute' };
-            return null;
-          }
-          switch (unit) {
-            case 'g': return { value: baseGrams.toFixed(4), unit: 'g' };
-            case 'mg': return { value: (baseGrams * 1000).toFixed(4), unit: 'mg' };
-            case 'µg': return { value: (baseGrams * 1e6).toFixed(2), unit: 'µg' };
-            case 'kg': return { value: (baseGrams / 1000).toFixed(6), unit: 'kg' };
-            case 'mol': {
-              if (r.mw > 0) return { value: (baseGrams * r.purity / r.mw).toFixed(6), unit: 'mol' };
-              return null;
-            }
-            case 'mmol': {
-              if (r.mw > 0) return { value: (baseGrams * r.purity / r.mw * 1000).toFixed(4), unit: 'mmol' };
-              return null;
-            }
-            case 'mL': {
-              if (r.density > 0) return { value: (baseGrams / r.density).toFixed(4), unit: 'mL' };
-              return null;
-            }
-            case 'µL': {
-              if (r.density > 0) return { value: (baseGrams / r.density * 1000).toFixed(2), unit: 'µL' };
-              return null;
-            }
-            case 'eq': {
-              if (r.mw > 0) return { value: (baseGrams * r.purity * r.nf / r.mw).toFixed(6), unit: 'eq' };
-              return null;
-            }
-            default: return { value: baseGrams.toFixed(4), unit: 'g' };
-          }
-        };
-
-        const primaryResult = convertResult();
+        const primaryResult = isLiquid && r.volumeToPipette !== null
+          ? { value: r.volumeToPipette.toFixed(4), unit: 'mL to pipette' }
+          : r.massNeeded !== null && !isLiquid
+            ? { value: r.massNeeded.toFixed(4), unit: 'g solute needed' }
+            : r.volumeOfSolute !== null
+              ? { value: r.volumeOfSolute.toFixed(4), unit: 'mL solute needed' }
+              : r.massNeeded !== null
+                ? { value: r.massNeeded.toFixed(4), unit: 'g solute needed' }
+                : null;
 
         return (
           <CalculatorCard
@@ -260,28 +224,11 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
             onToggleLock={() => setLocked(!locked)}
             onReset={() => {
               if (!locked) setSteps(prev => prev.map(s => s.id === step.id
-                ? { ...s, reagentState: 'solid', targetConc: '', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '', resultUnit: 'g' }
+                ? { ...s, reagentState: 'solid', targetConc: '', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
                 : s
               ));
             }}
             result={primaryResult}
-            resultUnitSelector={
-              <select
-                value={step.resultUnit}
-                onChange={(e) => updateStep(step.id, 'resultUnit', e.target.value)}
-                className="bg-input border border-border rounded-md px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
-              >
-                <option value="g">g</option>
-                <option value="mg">mg</option>
-                <option value="µg">µg</option>
-                <option value="kg">kg</option>
-                <option value="mol">mol</option>
-                <option value="mmol">mmol</option>
-                <option value="eq">eq</option>
-                <option value="mL">mL (vol)</option>
-                <option value="µL">µL</option>
-              </select>
-            }
           >
             {/* Compound Selector */}
             <CompoundSelector onSelect={(c) => handleCompoundSelect(step.id, c)} disabled={locked} />
