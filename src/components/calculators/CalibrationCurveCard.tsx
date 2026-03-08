@@ -257,33 +257,48 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-foreground">Unknown Samples</span>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-muted-foreground uppercase font-semibold">DF</span>
-                <input type="number" value={dilutionFactor} onChange={e => update({ dilutionFactor: e.target.value })} disabled={locked} className="w-14 bg-input border border-border rounded-md px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
-              </div>
-              {!locked && (
-                <button onClick={() => update({ samples: [...samples, { id: Date.now().toString(), name: `Sample ${samples.length + 1}`, absorbance: '' }] })} className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors">
-                  <Plus className="w-3 h-3" /> Add
-                </button>
-              )}
+            {!locked && (
+              <button onClick={() => update({ samples: [...samples, { id: Date.now().toString(), name: `Sample ${samples.length + 1}`, absorbance: '' }] })} className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors">
+                <Plus className="w-3 h-3" /> Add Sample
+              </button>
+            )}
+          </div>
+
+          {/* Sample Parameters */}
+          <div className="grid grid-cols-3 gap-3 mb-3 p-3 bg-secondary/30 rounded-lg">
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-muted-foreground uppercase font-semibold">Sample Weight (g)</span>
+              <input type="number" value={sampleWeight} onChange={e => update({ sampleWeight: e.target.value })} disabled={locked} placeholder="0.5" className="bg-input border border-border rounded-md px-2.5 py-1.5 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-muted-foreground uppercase font-semibold">Dilution Factor</span>
+              <input type="number" value={dilutionFactor} onChange={e => update({ dilutionFactor: e.target.value })} disabled={locked} className="bg-input border border-border rounded-md px-2.5 py-1.5 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-muted-foreground uppercase font-semibold">Final Volume (mL)</span>
+              <input type="number" value={finalVolume} onChange={e => update({ finalVolume: e.target.value })} disabled={locked} placeholder="1" className="bg-input border border-border rounded-md px-2.5 py-1.5 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
             </div>
           </div>
-          <div className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_2rem] gap-2 mb-1.5 px-1">
+
+          <p className="text-[10px] text-muted-foreground mb-2 font-mono">Final Conc = (C × DF × Vol) ÷ Sample Weight</p>
+
+          <div className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_2rem] gap-2 mb-1.5 px-1">
             <span className="text-[10px] font-semibold text-muted-foreground uppercase">#</span>
             <span className="text-[10px] font-semibold text-muted-foreground uppercase">Name</span>
             <span className="text-[10px] font-semibold text-muted-foreground uppercase">Absorbance</span>
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase">Conc.</span>
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase">Corrected</span>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase">Conc. (C)</span>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase">C × DF</span>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase">Final Conc</span>
             <span />
           </div>
           {sampleResults.map((s, i) => (
-            <div key={s.id} className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_2rem] gap-2 items-center mb-1.5">
+            <div key={s.id} className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_2rem] gap-2 items-center mb-1.5">
               <span className="text-xs text-muted-foreground font-mono text-center">{i + 1}</span>
               <input type="text" value={s.name} onChange={e => updateSample(s.id, 'name', e.target.value)} disabled={locked} className="bg-input border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
               <input type="number" value={samples.find(x => x.id === s.id)?.absorbance || ''} onChange={e => updateSample(s.id, 'absorbance', e.target.value)} disabled={locked} placeholder="0.000" className="bg-input border border-border rounded-md px-2.5 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
-              <span className="text-xs font-mono font-bold text-primary px-2">{s.concentration !== null ? s.concentration.toFixed(6) : '—'}</span>
-              <span className="text-xs font-mono font-bold text-accent-foreground px-2">{s.corrected !== null ? s.corrected.toFixed(6) : '—'}</span>
+              <span className="text-xs font-mono font-bold text-primary px-1">{s.concentration !== null ? s.concentration.toFixed(6) : '—'}</span>
+              <span className="text-xs font-mono font-bold text-foreground px-1">{s.corrected !== null ? s.corrected.toFixed(6) : '—'}</span>
+              <span className="text-xs font-mono font-bold text-accent-foreground px-1">{s.finalConc !== null ? s.finalConc.toFixed(6) : '—'}</span>
               <button onClick={() => update({ samples: samples.filter(x => x.id !== s.id) })} disabled={locked || samples.length <= 1} className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-30">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
