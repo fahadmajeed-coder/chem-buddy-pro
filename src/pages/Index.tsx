@@ -53,28 +53,34 @@ const Index = () => {
     'standards-inventory': 'Standards Inventory',
   };
 
-  const renderSection = () => {
-    switch (activeSection) {
-      case 'molarity': return <MolarityCalculator initialMw={elementMw} />;
-      case 'normality': return <NormalityCalculator initialMw={elementMw} />;
-      case 'formality': return <FormalityCalculator initialMw={elementMw} />;
-      case 'conversion': return <ConversionCalculator />;
-      case 'solution': return <SolutionPrepCalculator initialMw={elementMw} />;
-      case 'dilution': return <DilutionCalculator initialMw={elementMw} />;
-      case 'analytical': return <AnalyticalTestSection />;
-      case 'report': return <ReportSection />;
-      case 'standards': return <StandardsSection />;
-      case 'assistant': return <ChemistryAssistant />;
-      case 'inventory': return <InventoryManager />;
-      case 'periodic-table': return <PeriodicTable onUseInCalculator={handleUseInCalculator} />;
-      case 'formulas': return <FormulaBuilder />;
-      case 'calibration': return <CalibrationCurveSection />;
-      case 'standards-inventory': return <StandardsInventory />;
-      default: {
-        const custom = customSections.find(s => s.id === activeSection);
-        return custom ? <CustomCalculatorSection name={custom.name} /> : null;
-      }
-    }
+  const sections: Record<string, React.ReactNode> = {
+    molarity: <MolarityCalculator initialMw={elementMw} />,
+    normality: <NormalityCalculator initialMw={elementMw} />,
+    formality: <FormalityCalculator initialMw={elementMw} />,
+    conversion: <ConversionCalculator />,
+    solution: <SolutionPrepCalculator initialMw={elementMw} />,
+    dilution: <DilutionCalculator initialMw={elementMw} />,
+    analytical: <AnalyticalTestSection />,
+    report: <ReportSection />,
+    standards: <StandardsSection />,
+    assistant: <ChemistryAssistant />,
+    inventory: <InventoryManager />,
+    'periodic-table': <PeriodicTable onUseInCalculator={handleUseInCalculator} />,
+    formulas: <FormulaBuilder />,
+    calibration: <CalibrationCurveSection />,
+    'standards-inventory': <StandardsInventory />,
+  };
+
+  const renderSections = () => {
+    const allSections = [
+      ...Object.entries(sections),
+      ...customSections.map(s => [s.id, <CustomCalculatorSection key={s.id} name={s.name} />] as const),
+    ];
+    return allSections.map(([id, component]) => (
+      <div key={id} style={{ display: activeSection === id ? 'block' : 'none' }}>
+        {component}
+      </div>
+    ));
   };
 
   return (
