@@ -1,9 +1,36 @@
 import { useState, useRef } from 'react';
-import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2 } from 'lucide-react';
+import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield } from 'lucide-react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 type EntryStatus = 'good' | 'fair' | 'reject' | 'pending';
+
+interface AnalysisParam {
+  id: string;
+  analysis: string;
+  normalMin?: string;
+  normalMax?: string;
+  min: string;
+  max: string;
+  standard: string;
+  withDeductionMin?: string;
+  withDeductionMax?: string;
+  outlierMin?: string;
+  outlierMax?: string;
+  reason: string;
+  normal?: string;
+  withDeduction?: string;
+  outlier?: string;
+}
+
+interface SavedStandard {
+  id: string;
+  name: string;
+  description: string;
+  parameters: AnalysisParam[];
+  createdAt: number;
+}
 
 interface ReportEntry {
   id: string;
@@ -16,7 +43,40 @@ interface ReportEntry {
   status: EntryStatus;
 }
 
+const formatRangeStr = (min?: string, max?: string, legacy?: string) => {
+  const a = min || '';
+  const b = max || '';
+  if (a && b) return `${a}–${b}`;
+  if (a) return `≥${a}`;
+  if (b) return `≤${b}`;
+  return legacy || '';
+};
+
+const computeStatus = (result: string, greenRange: string, yellowRange: string): EntryStatus => {
+  const res = parseFloat(result);
+  const greenMatch = greenRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
+  const yellowMatch = yellowRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
+  if (!isNaN(res) && (greenMatch || yellowMatch)) {
+    let status: EntryStatus = 'reject';
+    if (greenMatch) {
+      const gMin = parseFloat(greenMatch[1]);
+      const gMax = parseFloat(greenMatch[2]);
+      if (res >= gMin && res <= gMax) status = 'good';
+    }
+    if (status !== 'good' && yellowMatch) {
+      const yMin = parseFloat(yellowMatch[1]);
+      const yMax = parseFloat(yellowMatch[2]);
+      if (res >= yMin && res <= yMax) status = 'fair';
+    }
+    return status;
+  }
+  return 'pending';
+};
+
 export function ReportSection() {
+  const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
+  const [selectedStandardId, setSelectedStandardId] = useState<string | null>(null);
+
   const [title, setTitle] = useState('');
   const [batchNo, setBatchNo] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -25,6 +85,31 @@ export function ReportSection() {
   const [entries, setEntries] = useState<ReportEntry[]>([
     { id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending' }
   ]);
+
+  const loadStandard = (standardId: string) => {
+    const std = savedStandards.find(s => s.id === standardId);
+    if (!std) return;
+    setSelectedStandardId(standardId);
+    setEntries(std.parameters.map(p => {
+      const greenRange = formatRangeStr(p.normalMin, p.normalMax, p.normal);
+      const yellowRange = formatRangeStr(p.withDeductionMin, p.withDeductionMax, p.withDeduction);
+      return {
+        id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        parameter: p.analysis,
+        method: '',
+        result: '',
+        unit: '',
+        greenRange,
+        yellowRange,
+        status: 'pending' as EntryStatus,
+      };
+    }));
+  };
+
+  const clearStandard = () => {
+    setSelectedStandardId(null);
+    setEntries([{ id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending' }]);
+  };
 
   const addEntry = () => {
     setEntries(prev => [...prev, {
@@ -41,25 +126,7 @@ export function ReportSection() {
       if (e.id !== id) return e;
       const updated = { ...e, [field]: value };
       if (field === 'result' || field === 'greenRange' || field === 'yellowRange') {
-        const res = parseFloat(updated.result);
-        const greenMatch = updated.greenRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
-        const yellowMatch = updated.yellowRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
-        if (!isNaN(res) && (greenMatch || yellowMatch)) {
-          let status: EntryStatus = 'reject';
-          if (greenMatch) {
-            const gMin = parseFloat(greenMatch[1]);
-            const gMax = parseFloat(greenMatch[2]);
-            if (res >= gMin && res <= gMax) status = 'good';
-          }
-          if (status !== 'good' && yellowMatch) {
-            const yMin = parseFloat(yellowMatch[1]);
-            const yMax = parseFloat(yellowMatch[2]);
-            if (res >= yMin && res <= yMax) status = 'fair';
-          }
-          updated.status = status;
-        } else {
-          updated.status = 'pending';
-        }
+        updated.status = computeStatus(updated.result, updated.greenRange, updated.yellowRange);
       }
       return updated;
     }));
@@ -89,12 +156,10 @@ export function ReportSection() {
 
     let yPos = 14;
 
-    // Logo
     if (logoDataUrl) {
       try { doc.addImage(logoDataUrl, 'PNG', 14, yPos, 24, 24); } catch { /* skip */ }
     }
 
-    // Company name & title
     const textX = logoDataUrl ? 42 : 14;
     if (companyName) {
       doc.setFontSize(12);
@@ -114,21 +179,26 @@ export function ReportSection() {
     doc.text(`Batch No: ${batchNo || '—'}`, 14, yPos);
     doc.text(`Date: ${date}`, 196, yPos, { align: 'right' });
 
+    const selectedStd = savedStandards.find(s => s.id === selectedStandardId);
+    if (selectedStd) {
+      doc.text(`Standard: ${selectedStd.name}`, 14, yPos + 6);
+      yPos += 6;
+    }
+
     doc.setDrawColor(0, 200, 180);
     doc.setLineWidth(0.5);
     doc.line(14, yPos + 4, 196, yPos + 4);
 
-    // Table
     autoTable(doc, {
       startY: yPos + 10,
-      head: [['Parameter', 'Method', 'Result', 'Good Range', 'Fair Range', 'Status']],
+      head: [['Parameter', 'Method', 'Result', 'Good Range (Normal)', 'Fair Range (With Ded.)', 'Status']],
       body: entries.map(e => [
         e.parameter || '—',
         e.method || '—',
         `${e.result || '—'} ${e.unit}`.trim(),
         e.greenRange || '—',
         e.yellowRange || '—',
-        e.status === 'good' ? '✓ Good' : e.status === 'fair' ? '⚠ Fair' : e.status === 'reject' ? '✗ Reject' : 'Pending',
+        e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending',
       ]),
       theme: 'grid',
       headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold' },
@@ -139,14 +209,20 @@ export function ReportSection() {
       didParseCell: (data) => {
         if (data.section === 'body' && data.column.index === 5) {
           const val = data.cell.raw as string;
-          if (val.startsWith('✓')) data.cell.styles.textColor = [0, 160, 80];
-          else if (val.startsWith('⚠')) data.cell.styles.textColor = [200, 160, 0];
-          else if (val.startsWith('✗')) data.cell.styles.textColor = [200, 50, 50];
+          if (val === 'GOOD') {
+            data.cell.styles.textColor = [255, 255, 255];
+            data.cell.styles.fillColor = [0, 160, 80];
+          } else if (val === 'FAIR') {
+            data.cell.styles.textColor = [40, 40, 40];
+            data.cell.styles.fillColor = [255, 200, 50];
+          } else if (val === 'REJECT') {
+            data.cell.styles.textColor = [255, 255, 255];
+            data.cell.styles.fillColor = [200, 50, 50];
+          }
         }
       },
     });
 
-    // Footer
     const pageHeight = doc.internal.pageSize.height;
     doc.setFontSize(8);
     doc.setTextColor(120);
@@ -158,6 +234,43 @@ export function ReportSection() {
 
   return (
     <div className="space-y-4">
+      {/* Standard Template Selector */}
+      {savedStandards.length > 0 && (
+        <div className="glass-panel rounded-lg p-5 animate-fade-in">
+          <div className="flex items-center gap-2 mb-3">
+            <Shield className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Load from Standard Template</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Select a saved standard to auto-fill parameters. Normal range → Good, With Deduction range → Fair, outside both → Reject.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {savedStandards.map(s => (
+              <button
+                key={s.id}
+                onClick={() => loadStandard(s.id)}
+                className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${
+                  selectedStandardId === s.id
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-secondary/50 text-foreground border-border hover:border-primary/50 hover:bg-secondary'
+                }`}
+              >
+                {s.name}
+                <span className="ml-1.5 text-[10px] opacity-70">({s.parameters.length})</span>
+              </button>
+            ))}
+            {selectedStandardId && (
+              <button
+                onClick={clearStandard}
+                className="px-3 py-2 rounded-md text-xs font-medium border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                Clear Template
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Branding */}
       <div className="glass-panel rounded-lg p-5 animate-fade-in">
         <div className="flex items-center gap-2 mb-4">
