@@ -41,7 +41,7 @@ export function ConversionCalculator() {
     setInputs(prev => ({ ...prev, ...updates }));
   };
 
-  const needsInventory = ['vol_for_N', 'N_from_mass', 'N_from_pct', 'vol_pct_to_pct', 'gm_from_pellet'].includes(activeConv);
+  const needsInventory = ['vol_for_N', 'N_from_mass', 'N_from_pct', 'vol_pct_to_pct', 'gm_from_pellet', 'pct_wv', 'pct_ww'].includes(activeConv);
 
   const calculate = (): { value: string; unit: string } | null => {
     const get = (k: string) => parseFloat(inputs[k] || '');
