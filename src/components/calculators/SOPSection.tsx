@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
-import { Search, BookOpen, FlaskConical, Beaker, ChevronDown, ChevronRight, Lock, Unlock, Plus, FileUp, Printer, Download, X, Trash2, Save } from 'lucide-react';
+import { Search, BookOpen, FlaskConical, Beaker, ChevronDown, ChevronRight, Lock, Unlock, Plus, FileUp, Printer, Download, X, Trash2, Save, TestTubes } from 'lucide-react';
 import { SOP_DATA, type SOPEntry } from '@/lib/sopData';
+import { SOP_FORMULAS, sopFormulaToSavedFormula } from '@/lib/sopFormulas';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,6 +40,28 @@ export function SOPSection() {
   const handleDeleteSOP = (id: string) => {
     setCustomSOPs(prev => prev.filter(s => s.id !== id));
     toast({ title: 'SOP Deleted', description: 'Custom SOP has been removed.' });
+  };
+
+  const handleUseInAnalytical = (sopId: string) => {
+    const formulaDef = SOP_FORMULAS.find(f => f.sopId === sopId);
+    if (!formulaDef) {
+      toast({ title: 'No Formula', description: 'This SOP does not have a calculable formula defined yet.', variant: 'destructive' });
+      return;
+    }
+    const savedFormula = sopFormulaToSavedFormula(formulaDef);
+    try {
+      const existing = JSON.parse(localStorage.getItem('chem-formulas-v2') || '[]');
+      if (existing.some((f: { id: string }) => f.id === savedFormula.id)) {
+        toast({ title: 'Already Added', description: `"${formulaDef.name}" formula is already in your formulas list.` });
+        return;
+      }
+      existing.push(savedFormula);
+      localStorage.setItem('chem-formulas-v2', JSON.stringify(existing));
+      window.dispatchEvent(new CustomEvent('local-storage-sync', { detail: { key: 'chem-formulas-v2' } }));
+      toast({ title: 'Formula Added!', description: `"${formulaDef.name}" is now available in Analytical Test section.` });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to add formula.', variant: 'destructive' });
+    }
   };
 
   const handleAddSOP = (sop: SOPEntry) => {
@@ -162,18 +185,23 @@ export function SOPSection() {
               {cat}
             </h3>
             <div className="space-y-1">
-              {catSOPs.map(sop => (
-                <SOPCard
-                  key={sop.id}
-                  sop={sop}
-                  expanded={expandedId === sop.id}
-                  onToggle={() => toggle(sop.id)}
-                  onEdit={(updates) => handleEditSOP(sop.id, updates)}
-                  onPrint={() => handlePrint(sop)}
-                  isCustom={customSOPs.some(s => s.id === sop.id)}
-                  onDelete={() => handleDeleteSOP(sop.id)}
-                />
-              ))}
+              {catSOPs.map(sop => {
+                const hasFormula = SOP_FORMULAS.some(f => f.sopId === sop.id);
+                return (
+                  <SOPCard
+                    key={sop.id}
+                    sop={sop}
+                    expanded={expandedId === sop.id}
+                    onToggle={() => toggle(sop.id)}
+                    onEdit={(updates) => handleEditSOP(sop.id, updates)}
+                    onPrint={() => handlePrint(sop)}
+                    isCustom={customSOPs.some(s => s.id === sop.id)}
+                    onDelete={() => handleDeleteSOP(sop.id)}
+                    hasFormula={hasFormula}
+                    onUseInAnalytical={() => handleUseInAnalytical(sop.id)}
+                  />
+                );
+              })}
             </div>
           </div>
         );
@@ -253,10 +281,11 @@ function AddSOPForm({ onAdd, onCancel, categories }: { onAdd: (sop: SOPEntry) =>
 }
 
 /* ---- SOP Card ---- */
-function SOPCard({ sop, expanded, onToggle, onEdit, onPrint, isCustom, onDelete }: {
+function SOPCard({ sop, expanded, onToggle, onEdit, onPrint, isCustom, onDelete, hasFormula, onUseInAnalytical }: {
   sop: SOPEntry; expanded: boolean; onToggle: () => void;
   onEdit: (updates: Partial<SOPEntry>) => void; onPrint: () => void;
   isCustom: boolean; onDelete: () => void;
+  hasFormula: boolean; onUseInAnalytical: () => void;
 }) {
   const [unlocked, setUnlocked] = useState(false);
   const [editingProcedure, setEditingProcedure] = useState('');
@@ -294,6 +323,11 @@ function SOPCard({ sop, expanded, onToggle, onEdit, onPrint, isCustom, onDelete 
         </button>
         {expanded && (
           <div className="flex items-center gap-1 pr-3">
+            {hasFormula && (
+              <button onClick={onUseInAnalytical} title="Use formula in Analytical Test" className="p-1.5 rounded hover:bg-primary/10 text-primary transition-colors">
+                <TestTubes className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button onClick={onPrint} title="Print this SOP" className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
               <Printer className="w-3.5 h-3.5" />
             </button>
