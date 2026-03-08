@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp } from 'lucide-react';
+import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList } from 'lucide-react';
 
 interface NavItem {
   id: string;
@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { id: 'periodic-table', label: 'Periodic Table', icon: <Grid3X3 className="w-4 h-4" /> },
   { id: 'formulas', label: 'Formulas', icon: <FunctionSquare className="w-4 h-4" /> },
   { id: 'calibration', label: 'Calibration Curve', icon: <TrendingUp className="w-4 h-4" /> },
+  { id: 'standards-inventory', label: 'Std. Inventory', icon: <ClipboardList className="w-4 h-4" /> },
 ];
 
 interface AppSidebarProps {
