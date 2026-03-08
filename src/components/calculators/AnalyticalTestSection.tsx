@@ -150,7 +150,7 @@ function FormulaBlockCard({
     >
       <div className="mb-3 p-2.5 rounded-md bg-muted/50 border border-border flex items-center justify-between gap-2">
         <code className="text-xs font-mono text-primary truncate">{formula.expression}</code>
-        {blockCount > 1 && !locked && (
+        {!locked && (
           <button onClick={onRemoveBlock} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0" title="Remove this formula">
             <X className="w-3.5 h-3.5" />
           </button>
