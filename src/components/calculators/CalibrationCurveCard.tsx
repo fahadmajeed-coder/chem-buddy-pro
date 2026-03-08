@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Lock, Unlock, Copy, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Lock, Unlock, Copy, RotateCcw, Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { exportCalibrationPDF, exportCalibrationCSV } from '@/lib/calibrationExport';
 
 export interface StandardPoint {
   id: string;
