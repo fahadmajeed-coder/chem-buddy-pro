@@ -176,7 +176,7 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
   const addStep = () => {
     setSteps(prev => [...prev, {
       id: Date.now().toString(), reagentState: 'solid',
-      targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: ''
+      targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '', resultUnit: 'g'
     }]);
   };
 
