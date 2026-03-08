@@ -87,7 +87,7 @@ const Index = () => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-4xl mx-auto">
+          <div className={`mx-auto ${activeSection === 'periodic-table' ? 'max-w-6xl' : 'max-w-4xl'}`}>
             {renderSection()}
           </div>
         </div>
