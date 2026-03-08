@@ -40,7 +40,8 @@ export function ConversionCalculator() {
 
   const handleCompoundSelect = (compound: ChemicalCompound) => {
     const updates: Record<string, string> = {};
-    if (compound.molarMass) { updates.eqWt = compound.molarMass.toString(); updates.mw = compound.molarMass.toString(); }
+    if (compound.molarMass) { updates.mw = compound.molarMass.toString(); }
+    if (compound.nFactor) updates.nfactor = compound.nFactor.toString();
     if (compound.purityValue) updates.purity = compound.purityValue.toString();
     if (compound.density) updates.density = compound.density.toString();
     setInputs(prev => ({ ...prev, ...updates }));
