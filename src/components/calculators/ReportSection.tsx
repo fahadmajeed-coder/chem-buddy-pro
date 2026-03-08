@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield, Settings2, FlaskConical } from 'lucide-react';
+import { toast } from 'sonner';
 import type { AnalyticalResult } from './AnalyticalTestSection';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import jsPDF from 'jspdf';
