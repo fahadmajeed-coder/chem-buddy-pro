@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield } from 'lucide-react';
+import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield, Settings2 } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
