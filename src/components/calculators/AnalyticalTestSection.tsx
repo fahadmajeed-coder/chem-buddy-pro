@@ -327,15 +327,6 @@ export function AnalyticalTestSection() {
             <p className="text-xs text-muted-foreground mt-0.5">Add formulas and enter sample data</p>
           </div>
           <div className="flex items-center gap-1">
-            {savedFormulas.length > 0 && savedFormulas.length > blocks.length && (
-              <button
-                onClick={() => setShowPicker(p => !p)}
-                className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
-                title="Add Formula"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            )}
             {blocks.length > 0 && (
               <button
                 onClick={() => setShowClearConfirm(true)}
@@ -343,6 +334,15 @@ export function AnalyticalTestSection() {
                 title="Remove All"
               >
                 <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {savedFormulas.length > 0 && savedFormulas.length > blocks.length && (
+              <button
+                onClick={() => setShowPicker(p => !p)}
+                className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
+                title="Add Formula"
+              >
+                <Plus className="w-4 h-4" />
               </button>
             )}
           </div>
