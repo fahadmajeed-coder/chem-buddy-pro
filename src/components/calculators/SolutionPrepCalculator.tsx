@@ -15,6 +15,7 @@ interface PrepStep {
   nFactor: string;
   purity: string;
   density: string;
+  resultUnit: string;
 }
 
 interface SolutionPrepCalculatorProps {
@@ -163,7 +164,7 @@ const unitLabels: Record<string, string> = {
 export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProps) {
   const [locked, setLocked] = useState(false);
   const [steps, setSteps] = useState<PrepStep[]>([
-    { id: '1', reagentState: 'solid', targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
+    { id: '1', reagentState: 'solid', targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '', resultUnit: 'g' }
   ]);
 
   useEffect(() => {
@@ -175,7 +176,7 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
   const addStep = () => {
     setSteps(prev => [...prev, {
       id: Date.now().toString(), reagentState: 'solid',
-      targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: ''
+      targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '', resultUnit: 'g'
     }]);
   };
 
@@ -205,15 +206,51 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
       {steps.map((step, idx) => {
         const r = calcAllResults(step);
         const isLiquid = step.reagentState === 'liquid';
-        const primaryResult = isLiquid && r.volumeToPipette !== null
-          ? { value: r.volumeToPipette.toFixed(4), unit: 'mL to pipette' }
-          : r.massNeeded !== null && !isLiquid
-            ? { value: r.massNeeded.toFixed(4), unit: 'g solute needed' }
-            : r.volumeOfSolute !== null
-              ? { value: r.volumeOfSolute.toFixed(4), unit: 'mL solute needed' }
-              : r.massNeeded !== null
-                ? { value: r.massNeeded.toFixed(4), unit: 'g solute needed' }
-                : null;
+
+        // Base result in grams
+        const baseGrams = r.massNeeded;
+        const baseVolSolute = r.volumeOfSolute;
+
+        // Convert result based on selected resultUnit
+        const convertResult = (): { value: string; unit: string } | null => {
+          const unit = step.resultUnit;
+          if (unit === 'mL (solute)' && baseVolSolute !== null) {
+            return { value: baseVolSolute.toFixed(4), unit: 'mL solute' };
+          }
+          if (baseGrams === null) {
+            if (baseVolSolute !== null) return { value: baseVolSolute.toFixed(4), unit: 'mL solute' };
+            return null;
+          }
+          switch (unit) {
+            case 'g': return { value: baseGrams.toFixed(4), unit: 'g' };
+            case 'mg': return { value: (baseGrams * 1000).toFixed(4), unit: 'mg' };
+            case 'µg': return { value: (baseGrams * 1e6).toFixed(2), unit: 'µg' };
+            case 'kg': return { value: (baseGrams / 1000).toFixed(6), unit: 'kg' };
+            case 'mol': {
+              if (r.mw > 0) return { value: (baseGrams * r.purity / r.mw).toFixed(6), unit: 'mol' };
+              return null;
+            }
+            case 'mmol': {
+              if (r.mw > 0) return { value: (baseGrams * r.purity / r.mw * 1000).toFixed(4), unit: 'mmol' };
+              return null;
+            }
+            case 'mL': {
+              if (r.density > 0) return { value: (baseGrams / r.density).toFixed(4), unit: 'mL' };
+              return null;
+            }
+            case 'µL': {
+              if (r.density > 0) return { value: (baseGrams / r.density * 1000).toFixed(2), unit: 'µL' };
+              return null;
+            }
+            case 'eq': {
+              if (r.mw > 0) return { value: (baseGrams * r.purity * r.nf / r.mw).toFixed(6), unit: 'eq' };
+              return null;
+            }
+            default: return { value: baseGrams.toFixed(4), unit: 'g' };
+          }
+        };
+
+        const primaryResult = convertResult();
 
         return (
           <CalculatorCard
@@ -224,11 +261,28 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
             onToggleLock={() => setLocked(!locked)}
             onReset={() => {
               if (!locked) setSteps(prev => prev.map(s => s.id === step.id
-                ? { ...s, reagentState: 'solid', targetConc: '', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
+                ? { ...s, reagentState: 'solid', targetConc: '', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '', resultUnit: 'g' }
                 : s
               ));
             }}
             result={primaryResult}
+            resultUnitSelector={
+              <select
+                value={step.resultUnit}
+                onChange={(e) => updateStep(step.id, 'resultUnit', e.target.value)}
+                className="bg-input border border-border rounded-md px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
+              >
+                <option value="g">g</option>
+                <option value="mg">mg</option>
+                <option value="µg">µg</option>
+                <option value="kg">kg</option>
+                <option value="mol">mol</option>
+                <option value="mmol">mmol</option>
+                <option value="eq">eq</option>
+                <option value="mL">mL (vol)</option>
+                <option value="µL">µL</option>
+              </select>
+            }
           >
             {/* Compound Selector */}
             <CompoundSelector onSelect={(c) => handleCompoundSelect(step.id, c)} disabled={locked} />
@@ -430,10 +484,8 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
               </div>
             )}
 
-            {/* ───── Section 4: Quick Unit Converter ───── */}
-            <QuickUnitConverter step={step} locked={locked} />
 
-            {/* ───── Section 5: Equivalent Concentrations ───── */}
+            {/* ───── Section 4: Equivalent Concentrations ───── */}
             {r.conversions && (
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
@@ -486,80 +538,6 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
   );
 }
 
-const convertUnits = ['M', 'N', 'F', '%w/v', '%w/w', '%v/v', 'mg/mL', 'ppm', 'µg/mL', 'g/L'] as const;
-
-/** Inline quick unit converter */
-function QuickUnitConverter({ step, locked }: { step: PrepStep; locked: boolean }) {
-  const [fromUnit, setFromUnit] = useState('M');
-  const [toUnit, setToUnit] = useState('N');
-  const [inputVal, setInputVal] = useState('');
-
-  const mw = parseFloat(step.mw) || 0;
-  const density = parseFloat(step.density) || 0;
-  const nFactor = parseFloat(step.nFactor) || 1;
-  const purity = (parseFloat(step.purity) || 100) / 100;
-
-  const numVal = parseFloat(inputVal);
-  let result: string | null = null;
-
-  if (numVal > 0) {
-    const allConversions = convertConcentration(numVal, fromUnit, mw, density, nFactor, purity);
-    const converted = allConversions[toUnit];
-    result = converted !== null ? converted.toFixed(6) : null;
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-1.5">
-        <ArrowRightLeft className="w-3.5 h-3.5 text-primary" />
-        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Quick Convert</span>
-      </div>
-      <div className="flex flex-wrap items-end gap-2 p-3 bg-muted/30 rounded-lg border border-border/50">
-        <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground font-medium uppercase">Value</label>
-          <input
-            type="number"
-            value={inputVal}
-            onChange={(e) => setInputVal(e.target.value)}
-            disabled={locked}
-            className="w-24 bg-input border border-border rounded-md px-2 py-1.5 text-sm font-mono text-foreground focus:ring-1 focus:ring-primary disabled:opacity-50"
-            placeholder="0"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground font-medium uppercase">From</label>
-          <select
-            value={fromUnit}
-            onChange={(e) => setFromUnit(e.target.value)}
-            disabled={locked}
-            className="bg-input border border-border rounded-md px-2 py-1.5 text-sm font-mono text-foreground focus:ring-1 focus:ring-primary disabled:opacity-50"
-          >
-            {convertUnits.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-        </div>
-        <span className="text-muted-foreground text-sm font-bold pb-1">→</span>
-        <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground font-medium uppercase">To</label>
-          <select
-            value={toUnit}
-            onChange={(e) => setToUnit(e.target.value)}
-            disabled={locked}
-            className="bg-input border border-border rounded-md px-2 py-1.5 text-sm font-mono text-foreground focus:ring-1 focus:ring-primary disabled:opacity-50"
-          >
-            {convertUnits.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-        </div>
-        <div className="space-y-1 min-w-[100px]">
-          <label className="text-[10px] text-muted-foreground font-medium uppercase">Result</label>
-          <div className="px-2 py-1.5 bg-primary/5 border border-primary/20 rounded-md text-sm font-mono font-bold text-primary min-h-[34px] flex items-center">
-            {result ?? '—'}
-          </div>
-        </div>
-      </div>
-      <p className="text-[10px] text-muted-foreground italic">Uses MW, density, n-factor & purity from reagent properties above</p>
-    </div>
-  );
-}
 
 /** Small result display card */
 function ResultCard({ icon, label, value, detail, highlight }: {

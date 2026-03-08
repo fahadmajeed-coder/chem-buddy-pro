@@ -9,9 +9,10 @@ interface CalculatorCardProps {
   onToggleLock: () => void;
   onReset: () => void;
   result?: { value: string; unit: string } | null;
+  resultUnitSelector?: ReactNode;
 }
 
-export function CalculatorCard({ title, subtitle, children, locked, onToggleLock, onReset, result }: CalculatorCardProps) {
+export function CalculatorCard({ title, subtitle, children, locked, onToggleLock, onReset, result, resultUnitSelector }: CalculatorCardProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -53,10 +54,11 @@ export function CalculatorCard({ title, subtitle, children, locked, onToggleLock
 
       {result && (
         <div className="px-5 py-3 border-t border-border bg-primary/5 rounded-b-lg flex items-center justify-between">
-          <div>
-            <span className="text-xs text-muted-foreground mr-2">Result:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Result:</span>
             <span className="font-mono text-lg font-bold text-primary">{result.value}</span>
-            <span className="text-sm text-muted-foreground ml-1">{result.unit}</span>
+            <span className="text-sm text-muted-foreground">{result.unit}</span>
+            {resultUnitSelector && resultUnitSelector}
           </div>
           <button
             onClick={handleCopy}
