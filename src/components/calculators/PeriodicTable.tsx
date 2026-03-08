@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Calculator, X, Thermometer, Zap, Atom } from 'lucide-react';
+import { Search, Calculator, X, Thermometer, Zap, Atom, Beaker, FlaskConical } from 'lucide-react';
 import {
   elements,
   Element,
@@ -9,7 +9,11 @@ import {
   calcMolarMass,
 } from '@/lib/periodicTableData';
 
-export function PeriodicTable() {
+interface PeriodicTableProps {
+  onUseInCalculator?: (target: 'molarity' | 'solution', mw: number, name: string) => void;
+}
+
+export function PeriodicTable({ onUseInCalculator }: PeriodicTableProps) {
   const [selected, setSelected] = useState<Element | null>(null);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<ElementCategory | 'all'>('all');
@@ -213,6 +217,22 @@ export function PeriodicTable() {
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Electron Configuration</p>
                 <p className="text-sm font-mono text-foreground">{selected.electronConfiguration}</p>
               </div>
+              {onUseInCalculator && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => onUseInCalculator('molarity', selected.atomicMass, selected.name)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <Beaker className="w-3.5 h-3.5" /> Use in Molarity
+                  </button>
+                  <button
+                    onClick={() => onUseInCalculator('solution', selected.atomicMass, selected.name)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <FlaskConical className="w-3.5 h-3.5" /> Use in Solution Prep
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
