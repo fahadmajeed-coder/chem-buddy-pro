@@ -53,6 +53,8 @@ const FORMULA_VARIABLES = [
   { key: 'DF', label: 'Dilution Factor' },
   { key: 'Vol', label: 'Final Volume (mL)' },
   { key: 'W', label: 'Sample Weight (g)' },
+  { key: 'm', label: 'Slope' },
+  { key: 'b', label: 'Intercept' },
 ];
 
 function evaluateFormula(formula: string, vars: Record<string, number>): number | null {
@@ -119,7 +121,7 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
       if (isNaN(abs)) return { ...s, concentration: null, corrected: null, finalConc: null };
       const conc = (abs - regression.intercept) / regression.slope;
       const corrected = conc * df;
-      const finalConc = evaluateFormula(formula, { C: conc, DF: df, Vol: vol, W: sw });
+      const finalConc = evaluateFormula(formula, { C: conc, DF: df, Vol: vol, W: sw, m: regression.slope, b: regression.intercept });
       return { ...s, concentration: conc, corrected, finalConc };
     });
   }, [samples, regression, dilutionFactor, sampleWeight, finalVolume, formula]);
