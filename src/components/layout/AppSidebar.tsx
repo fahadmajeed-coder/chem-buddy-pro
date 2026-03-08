@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical } from 'lucide-react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface NavItem {
   id: string;
@@ -7,7 +8,7 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-const navItems: NavItem[] = [
+const DEFAULT_NAV_ITEMS: NavItem[] = [
   { id: 'molarity', label: 'Molarity (M)', icon: <Beaker className="w-4 h-4" /> },
   { id: 'normality', label: 'Normality (N)', icon: <FlaskConical className="w-4 h-4" /> },
   { id: 'formality', label: 'Formality (F)', icon: <TestTubes className="w-4 h-4" /> },
@@ -25,6 +26,11 @@ const navItems: NavItem[] = [
   { id: 'standards-inventory', label: 'Std. Inventory', icon: <ClipboardList className="w-4 h-4" /> },
 ];
 
+const ICON_MAP: Record<string, React.ReactNode> = {};
+DEFAULT_NAV_ITEMS.forEach(i => { ICON_MAP[i.id] = i.icon; });
+const LABEL_MAP: Record<string, string> = {};
+DEFAULT_NAV_ITEMS.forEach(i => { LABEL_MAP[i.id] = i.label; });
+
 interface AppSidebarProps {
   activeSection: string;
   onSectionChange: (id: string) => void;
@@ -34,6 +40,38 @@ interface AppSidebarProps {
 
 export function AppSidebar({ activeSection, onSectionChange, customSections, onAddSection }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [order, setOrder] = useLocalStorage<string[]>('chemanalyst-sidebar-order', DEFAULT_NAV_ITEMS.map(i => i.id));
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  // Ensure all default items are in order (handles new items added later)
+  const allIds = DEFAULT_NAV_ITEMS.map(i => i.id);
+  const orderedIds = [
+    ...order.filter(id => allIds.includes(id)),
+    ...allIds.filter(id => !order.includes(id)),
+  ];
+
+  const handleDragStart = (idx: number) => {
+    dragItem.current = idx;
+  };
+
+  const handleDragEnter = (idx: number) => {
+    dragOverItem.current = idx;
+    setDragOverIdx(idx);
+  };
+
+  const handleDragEnd = () => {
+    if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) {
+      const newOrder = [...orderedIds];
+      const [removed] = newOrder.splice(dragItem.current, 1);
+      newOrder.splice(dragOverItem.current, 0, removed);
+      setOrder(newOrder);
+    }
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setDragOverIdx(null);
+  };
 
   return (
     <aside className={`${collapsed ? 'w-16' : 'w-60'} bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 shrink-0`}>
@@ -55,20 +93,30 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
         <div className={`${collapsed ? 'hidden' : ''} px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground`}>
           Calculators
         </div>
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onSectionChange(item.id)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all duration-200
-              ${activeSection === item.id
-                ? 'bg-sidebar-accent text-sidebar-primary glow-border'
-                : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-              }`}
-            title={collapsed ? item.label : undefined}
+        {orderedIds.map((id, idx) => (
+          <div
+            key={id}
+            draggable
+            onDragStart={() => handleDragStart(idx)}
+            onDragEnter={() => handleDragEnter(idx)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => e.preventDefault()}
+            className={`${dragOverIdx === idx ? 'border-t-2 border-primary' : 'border-t-2 border-transparent'}`}
           >
-            {item.icon}
-            {!collapsed && <span>{item.label}</span>}
-          </button>
+            <button
+              onClick={() => onSectionChange(id)}
+              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm transition-all duration-200
+                ${activeSection === id
+                  ? 'bg-sidebar-accent text-sidebar-primary glow-border'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                }`}
+              title={collapsed ? LABEL_MAP[id] : undefined}
+            >
+              {!collapsed && <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0 cursor-grab" />}
+              {ICON_MAP[id]}
+              {!collapsed && <span>{LABEL_MAP[id]}</span>}
+            </button>
+          </div>
         ))}
 
         {customSections.length > 0 && (
