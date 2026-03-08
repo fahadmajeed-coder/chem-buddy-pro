@@ -877,7 +877,7 @@ export function AnalyticalTestSection() {
       )}
 
       {/* Render each formula block */}
-      {blocks.map(block => {
+      {filteredBlocks.map(block => {
         const formula = savedFormulas.find(f => f.id === block.formulaId);
         if (!formula) return null;
         return (
