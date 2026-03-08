@@ -114,12 +114,11 @@ export function StandardsInventory() {
 
     autoTable(doc, {
       startY: 34,
-      head: [['Analysis', 'Reading', 'Normal', 'Min', 'Max', 'Standard', 'With Ded.', 'Outlier', 'Status']],
+      head: [['Analysis', 'Normal', 'Min', 'Max', 'Standard', 'With Ded.', 'Outlier', 'Status']],
       body: selected.parameters.map(p => {
-        const reading = readings[p.id] || '';
         const status = getStatus(p);
         return [
-          p.analysis, reading || '—', p.normal || '—', p.min || '—', p.max || '—',
+          p.analysis, p.normal || '—', p.min || '—', p.max || '—',
           p.standard || '—', p.withDeduction || '—', p.outlier || '—',
           status === 'good' ? 'GOOD' : status === 'fair' ? 'FAIR' : status === 'reject' ? 'REJECT' : 'PENDING',
         ];
@@ -128,7 +127,7 @@ export function StandardsInventory() {
       headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold', fontSize: 8 },
       styles: { fontSize: 8, cellPadding: 3 },
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 8) {
+        if (data.section === 'body' && data.column.index === 7) {
           const val = (data.cell.raw as string || '').toUpperCase();
           if (val === 'GOOD') {
             data.cell.styles.textColor = [255, 255, 255];
