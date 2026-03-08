@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield, Settings2, FlaskConical } from 'lucide-react';
+import { toast } from 'sonner';
 import type { AnalyticalResult } from './AnalyticalTestSection';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import jsPDF from 'jspdf';
@@ -101,18 +102,22 @@ export function ReportSection() {
     const std = savedStandards.find(s => s.id === standardId);
     if (!std) return;
     setSelectedStandardId(standardId);
+    // Build new entries from standard, merging existing results by parameter name
+    const existingByParam = new Map(entries.filter(e => e.parameter.trim()).map(e => [e.parameter.trim().toLowerCase(), e]));
     setEntries(std.parameters.map(p => {
       const greenRange = formatRangeStr(p.normalMin, p.normalMax, p.normal);
       const yellowRange = formatRangeStr(p.withDeductionMin, p.withDeductionMax, p.withDeduction);
+      const paramKey = p.analysis.trim().toLowerCase();
+      const existing = existingByParam.get(paramKey);
       return {
         id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         parameter: p.analysis,
-        method: '',
-        result: '',
-        unit: '',
+        method: existing?.method || '',
+        result: existing?.result || '',
+        unit: existing?.unit || '',
         greenRange,
         yellowRange,
-        status: 'pending' as EntryStatus,
+        status: existing?.result ? computeStatus(existing.result, greenRange, yellowRange) : 'pending' as EntryStatus,
       };
     }));
   };
@@ -293,21 +298,65 @@ export function ReportSection() {
   const loadFromAnalyticalTests = () => {
     try {
       const raw = localStorage.getItem('chemanalyst-analytical-results');
-      if (!raw) {
-        return;
-      }
+      if (!raw) return;
       const results: AnalyticalResult[] = JSON.parse(raw);
       if (!results.length) return;
-      setEntries(results.map(r => ({
-        id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        parameter: r.formulaName + (r.sampleId ? ` (${r.sampleId})` : ''),
-        method: '',
-        result: r.isAverage ? r.result.toFixed(4) : r.result.toFixed(4),
-        unit: '',
-        greenRange: '',
-        yellowRange: '',
-        status: 'pending' as EntryStatus,
-      })));
+
+      // Build lookup of analytical results by formulaName (lowercase)
+      const analyticalMap = new Map<string, AnalyticalResult>();
+      for (const r of results) {
+        const key = r.formulaName.trim().toLowerCase();
+        analyticalMap.set(key, r);
+      }
+
+      // Check if we have existing entries with parameters (from a standard)
+      const hasExistingParams = entries.some(e => e.parameter.trim() && e.parameter !== '');
+      
+      if (hasExistingParams) {
+        // Merge: fill results into matching entries by parameter name
+        const updatedEntries = entries.map(e => {
+          const paramKey = e.parameter.trim().toLowerCase();
+          const match = analyticalMap.get(paramKey);
+          if (match) {
+            analyticalMap.delete(paramKey); // consumed
+            const result = match.result.toFixed(4);
+            return {
+              ...e,
+              result,
+              status: computeStatus(result, e.greenRange, e.yellowRange),
+            };
+          }
+          return e;
+        });
+        // Append unmatched analytical results as new rows
+        const extraEntries: ReportEntry[] = [];
+        for (const [, r] of analyticalMap) {
+          extraEntries.push({
+            id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            parameter: r.formulaName + (r.sampleId ? ` (${r.sampleId})` : ''),
+            method: '',
+            result: r.result.toFixed(4),
+            unit: '',
+            greenRange: '',
+            yellowRange: '',
+            status: 'pending' as EntryStatus,
+          });
+        }
+        setEntries([...updatedEntries, ...extraEntries]);
+      } else {
+        // No existing parameters: create fresh entries from analytical results
+        setEntries(results.map(r => ({
+          id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          parameter: r.formulaName + (r.sampleId ? ` (${r.sampleId})` : ''),
+          method: '',
+          result: r.result.toFixed(4),
+          unit: '',
+          greenRange: '',
+          yellowRange: '',
+          status: 'pending' as EntryStatus,
+        })));
+      }
+      toast.success(`Analytical results loaded and merged.`);
     } catch { /* ignore */ }
   };
 
@@ -320,58 +369,62 @@ export function ReportSection() {
 
   return (
     <div className="space-y-4">
-      {/* Import from Analytical Tests */}
-      {hasAnalyticalResults && (
+      {/* Unified Data Sources Panel */}
+      {(savedStandards.length > 0 || hasAnalyticalResults) && (
         <div className="glass-panel rounded-lg p-5 animate-fade-in">
-          <div className="flex items-center gap-2 mb-3">
-            <FlaskConical className="w-5 h-5 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Import from Analytical Tests</h3>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Load results sent from the Analytical Testing section. Averages are used when enabled.
-          </p>
-          <button
-            onClick={loadFromAnalyticalTests}
-            className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-          >
-            Load Analytical Results
-          </button>
-        </div>
-      )}
-      {/* Standard Template Selector */}
-      {savedStandards.length > 0 && (
-        <div className="glass-panel rounded-lg p-5 animate-fade-in">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-4">
             <Shield className="w-5 h-5 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Load from Standard Template</h3>
+            <h3 className="text-sm font-semibold text-foreground">Data Sources</h3>
+            <span className="text-[10px] text-muted-foreground ml-auto">Load from Standards and/or Analytical Tests in any order</span>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Select a saved standard to auto-fill parameters. Normal range → Good, With Deduction range → Fair, outside both → Reject.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {savedStandards.map(s => (
+
+          {/* Standards selection */}
+          {savedStandards.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                ① Standard Template <span className="normal-case font-normal">— fills parameters &amp; ranges</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {savedStandards.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => loadStandard(s.id)}
+                    className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${
+                      selectedStandardId === s.id
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-secondary/50 text-foreground border-border hover:border-primary/50 hover:bg-secondary'
+                    }`}
+                  >
+                    {s.name}
+                    <span className="ml-1.5 text-[10px] opacity-70">({s.parameters.length})</span>
+                  </button>
+                ))}
+                {selectedStandardId && (
+                  <button
+                    onClick={clearStandard}
+                    className="px-3 py-2 rounded-md text-xs font-medium border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    Clear Template
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Analytical results */}
+          {hasAnalyticalResults && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                ② Analytical Test Results <span className="normal-case font-normal">— fills result values (merges by parameter name)</span>
+              </p>
               <button
-                key={s.id}
-                onClick={() => loadStandard(s.id)}
-                className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${
-                  selectedStandardId === s.id
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-secondary/50 text-foreground border-border hover:border-primary/50 hover:bg-secondary'
-                }`}
+                onClick={loadFromAnalyticalTests}
+                className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 border border-primary/20 transition-colors"
               >
-                {s.name}
-                <span className="ml-1.5 text-[10px] opacity-70">({s.parameters.length})</span>
+                <FlaskConical className="w-3.5 h-3.5" /> Load Analytical Results
               </button>
-            ))}
-            {selectedStandardId && (
-              <button
-                onClick={clearStandard}
-                className="px-3 py-2 rounded-md text-xs font-medium border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                Clear Template
-              </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
