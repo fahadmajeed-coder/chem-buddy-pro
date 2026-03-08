@@ -248,7 +248,7 @@ function FormulaBlockCard({
           >
             <Send className="w-3.5 h-3.5" />
           </button>
-          {!cardLocked && (
+          {!cardLocked && !editing && (
             <button
               onClick={onRemoveBlock}
               className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
@@ -256,6 +256,54 @@ function FormulaBlockCard({
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
+          )}
+          {!cardLocked && !editing && (
+            <button
+              onClick={() => {
+                setEditName(formula.name);
+                setEditDesc(formula.description);
+                setEditExpr(formula.expression);
+                setEditVars(formula.variables.map(v => ({ ...v })));
+                setEditing(true);
+                setCollapsed(false);
+              }}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+              title="Edit formula"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {editing && (
+            <>
+              <button
+                onClick={() => {
+                  if (!editName.trim() || !editExpr.trim()) {
+                    toast.error('Name and expression are required.');
+                    return;
+                  }
+                  onUpdateFormula({
+                    ...formula,
+                    name: editName.trim(),
+                    description: editDesc.trim(),
+                    expression: editExpr.trim(),
+                    variables: editVars.filter(v => v.name.trim()),
+                  });
+                  setEditing(false);
+                  toast.success('Formula updated.');
+                }}
+                className="p-1.5 rounded-md text-success hover:bg-success/10 transition-colors"
+                title="Save changes"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                title="Cancel editing"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
           )}
           <button
             onClick={() => setCardLocked(l => !l)}
