@@ -147,13 +147,6 @@ function FormulaBlockCard({
           <h3 className="text-sm font-semibold text-foreground truncate">{formula.name}</h3>
         </button>
         <div className="flex items-center gap-1 shrink-0 ml-2">
-          <button
-            onClick={() => setCardLocked(l => !l)}
-            className={`p-1.5 rounded-md transition-colors ${cardLocked ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
-            title={cardLocked ? 'Unlock' : 'Lock'}
-          >
-            {cardLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-          </button>
           {!cardLocked && (
             <button
               onClick={onRemoveBlock}
@@ -163,6 +156,13 @@ function FormulaBlockCard({
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
+          <button
+            onClick={() => setCardLocked(l => !l)}
+            className={`p-1.5 rounded-md transition-colors ${cardLocked ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
+            title={cardLocked ? 'Unlock' : 'Lock'}
+          >
+            {cardLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 
@@ -327,15 +327,6 @@ export function AnalyticalTestSection() {
             <p className="text-xs text-muted-foreground mt-0.5">Add formulas and enter sample data</p>
           </div>
           <div className="flex items-center gap-1">
-            {savedFormulas.length > 0 && savedFormulas.length > blocks.length && (
-              <button
-                onClick={() => setShowPicker(p => !p)}
-                className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
-                title="Add Formula"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            )}
             {blocks.length > 0 && (
               <button
                 onClick={() => setShowClearConfirm(true)}
@@ -343,6 +334,15 @@ export function AnalyticalTestSection() {
                 title="Remove All"
               >
                 <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {savedFormulas.length > 0 && savedFormulas.length > blocks.length && (
+              <button
+                onClick={() => setShowPicker(p => !p)}
+                className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
+                title="Add Formula"
+              >
+                <Plus className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -405,25 +405,7 @@ export function AnalyticalTestSection() {
         </div>
       </div>
 
-      {/* Render each formula block */}
-      {blocks.map(block => {
-        const formula = savedFormulas.find(f => f.id === block.formulaId);
-        if (!formula) return null;
-        return (
-          <FormulaBlockCard
-            key={block.formulaId}
-            formula={formula}
-            block={block}
-            onUpdateRow={(rowId, field, value) => updateRowInBlock(block.formulaId, rowId, field, value)}
-            onUpdateSampleId={(rowId, value) => updateSampleIdInBlock(block.formulaId, rowId, value)}
-            onAddRow={() => addRowToBlock(block.formulaId)}
-            onRemoveRow={(rowId) => removeRowFromBlock(block.formulaId, rowId)}
-            onRemoveBlock={() => removeBlock(block.formulaId)}
-          />
-        );
-      })}
-
-      {/* Clear All confirmation */}
+      {/* Clear All confirmation - at the top */}
       {showClearConfirm && (
         <div className="glass-panel rounded-lg p-5 border border-destructive/30 animate-fade-in">
           <p className="text-sm text-foreground font-medium mb-1">Remove all formulas?</p>
@@ -444,6 +426,24 @@ export function AnalyticalTestSection() {
           </div>
         </div>
       )}
+
+      {/* Render each formula block */}
+      {blocks.map(block => {
+        const formula = savedFormulas.find(f => f.id === block.formulaId);
+        if (!formula) return null;
+        return (
+          <FormulaBlockCard
+            key={block.formulaId}
+            formula={formula}
+            block={block}
+            onUpdateRow={(rowId, field, value) => updateRowInBlock(block.formulaId, rowId, field, value)}
+            onUpdateSampleId={(rowId, value) => updateSampleIdInBlock(block.formulaId, rowId, value)}
+            onAddRow={() => addRowToBlock(block.formulaId)}
+            onRemoveRow={(rowId) => removeRowFromBlock(block.formulaId, rowId)}
+            onRemoveBlock={() => removeBlock(block.formulaId)}
+          />
+        );
+      })}
     </div>
   );
 }
