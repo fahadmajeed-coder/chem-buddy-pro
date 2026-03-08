@@ -20,7 +20,7 @@ function createCurve(overrides?: Partial<CalibrationCurveData>): CalibrationCurv
 
 export function CalibrationCurveSection() {
   const [curves, setCurves] = useLocalStorage<CalibrationCurveData[]>('calibration-curves', [
-    createCurve({ locked: true, title: 'Default Template' }),
+    createCurve({ locked: false, title: 'Default Template' }),
   ]);
 
   const handleUpdate = (updated: CalibrationCurveData) => {
