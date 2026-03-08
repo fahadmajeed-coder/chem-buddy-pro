@@ -122,7 +122,7 @@ export function CalibrationCurveCard({ data, onUpdate, onDuplicate, onDelete, ca
       if (isNaN(abs)) return { ...s, concentration: null, corrected: null, finalConc: null };
       const conc = (abs - regression.intercept) / regression.slope;
       const corrected = conc * df;
-      const finalConc = evaluateFormula(formula, { C: conc, DF: df, Vol: vol, W: sw, m: regression.slope, b: regression.intercept });
+      const finalConc = evaluateFormula(formula, { Abs: abs, C: conc, DF: df, Vol: vol, W: sw, m: regression.slope, b: regression.intercept });
       return { ...s, concentration: conc, corrected, finalConc };
     });
   }, [samples, regression, dilutionFactor, sampleWeight, finalVolume, formula]);
