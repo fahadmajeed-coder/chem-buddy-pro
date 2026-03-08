@@ -486,7 +486,8 @@ export function ReportSection() {
             <button
               onClick={() => {
                 const headers = ['Parameter', 'Method', 'Result', 'Unit', 'Good Range', 'Fair Range', 'Status'];
-                const rows = entries.map(e => [
+                const csvEntries = entries.filter(e => e.included);
+                const rows = csvEntries.map(e => [
                   e.parameter, e.method, e.result, e.unit, e.greenRange, e.yellowRange,
                   e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending'
                 ]);
