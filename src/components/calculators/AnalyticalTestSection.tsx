@@ -579,6 +579,7 @@ export function AnalyticalTestSection() {
             onRemoveRow={(rowId) => removeRowFromBlock(block.formulaId, rowId)}
             onRemoveBlock={() => removeBlock(block.formulaId)}
             onResultsChange={(results) => handleResultsChange(block.formulaId, results)}
+          />
         );
       })}
     </div>
