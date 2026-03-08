@@ -1,5 +1,5 @@
 import { useState, useRef, DragEvent } from 'react';
-import { Plus, Trash2, Save, Check, X, Variable, Calculator, Search, GripVertical, FlaskConical, Play, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Save, Check, X, Variable, Calculator, Search, GripVertical, FlaskConical, Play, FileText, ChevronDown, ChevronUp, Copy, Pencil } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface FormulaVariable {
