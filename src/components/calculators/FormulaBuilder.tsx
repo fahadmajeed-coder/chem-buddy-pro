@@ -551,27 +551,56 @@ export function FormulaBuilder() {
             {variables.map(v => (
               <div
                 key={v.id}
-                draggable
+                draggable={editingVarId !== v.id}
                 onDragStart={ev => handleDragStart(ev, v.name)}
                 onDragEnd={handleDragEnd}
-                className={`group flex items-center gap-2 px-3 py-2 rounded-md border cursor-grab active:cursor-grabbing transition-all ${
-                  draggedVar === v.name
-                    ? 'border-primary bg-primary/20 scale-95'
-                    : 'border-border bg-secondary/50 hover:border-primary/40'
+                className={`group flex items-center gap-2 px-3 py-2 rounded-md border transition-all ${
+                  editingVarId === v.id
+                    ? 'border-primary bg-primary/10'
+                    : draggedVar === v.name
+                    ? 'border-primary bg-primary/20 scale-95 cursor-grab active:cursor-grabbing'
+                    : 'border-border bg-secondary/50 hover:border-primary/40 cursor-grab active:cursor-grabbing'
                 }`}
               >
-                <GripVertical className="w-3 h-3 text-muted-foreground/50" />
-                <span className="font-mono text-sm font-medium text-primary">{v.name}</span>
-                {v.description && (
-                  <span className="text-[10px] text-muted-foreground max-w-[120px] truncate">({v.description})</span>
-                )}
-                {v.defaultValue && (
-                  <span className="text-[10px] font-mono text-accent-foreground bg-accent/30 px-1.5 py-0.5 rounded">={v.defaultValue}</span>
-                )}
-                {variables.length > 1 && (
-                  <button onClick={() => removeVariable(v.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5">
-                    <X className="w-3 h-3" />
-                  </button>
+                {editingVarId === v.id ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      value={v.description}
+                      onChange={ev => updateVariable(v.id, 'description', ev.target.value)}
+                      placeholder="Description"
+                      className="w-28 bg-input border border-border rounded px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <input
+                      type="number"
+                      value={v.defaultValue}
+                      onChange={ev => updateVariable(v.id, 'defaultValue', ev.target.value)}
+                      placeholder="Default"
+                      className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <span className="font-mono text-xs font-medium text-primary">{v.name}</span>
+                    <button onClick={() => setEditingVarId(null)} className="p-0.5 text-primary hover:text-primary/80">
+                      <Check className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <GripVertical className="w-3 h-3 text-muted-foreground/50" />
+                    <span className="font-mono text-sm font-medium text-primary">{v.name}</span>
+                    {v.description && (
+                      <span className="text-[10px] text-muted-foreground max-w-[120px] truncate">({v.description})</span>
+                    )}
+                    {v.defaultValue && (
+                      <span className="text-[10px] font-mono text-accent-foreground bg-accent/30 px-1.5 py-0.5 rounded">={v.defaultValue}</span>
+                    )}
+                    <button onClick={() => setEditingVarId(v.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all p-0.5">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    {variables.length > 1 && (
+                      <button onClick={() => removeVariable(v.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             ))}
