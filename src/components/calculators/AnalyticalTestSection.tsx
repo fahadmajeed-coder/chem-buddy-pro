@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight, Send, Download } from 'lucide-react';
+import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight, Send, Download, BookOpen } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { SOP_FORMULAS, sopFormulaToSavedFormula } from '@/lib/sopFormulas';
 
 export interface AnalyticalResult {
   formulaName: string;
@@ -581,12 +582,66 @@ export function AnalyticalTestSection() {
 
         <div className="p-5">
           {savedFormulas.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-4 flex items-center gap-1.5">
-              <FlaskConical className="w-3.5 h-3.5" />
-              No formulas saved yet. Go to <span className="font-semibold text-primary">Formulas</span> to create one.
-            </p>
+            <div className="py-4 space-y-3">
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <FlaskConical className="w-3.5 h-3.5" />
+                No formulas saved yet. Go to <span className="font-semibold text-primary">Formulas</span> to create one, or load SOP formulas below.
+              </p>
+              <button
+                onClick={() => {
+                  const existing: SavedFormula[] = JSON.parse(localStorage.getItem('chem-formulas-v2') || '[]');
+                  const existingIds = new Set(existing.map(f => f.id));
+                  let added = 0;
+                  for (const def of SOP_FORMULAS) {
+                    const sf = sopFormulaToSavedFormula(def);
+                    if (!existingIds.has(sf.id)) {
+                      existing.push(sf as SavedFormula);
+                      added++;
+                    }
+                  }
+                  if (added > 0) {
+                    localStorage.setItem('chem-formulas-v2', JSON.stringify(existing));
+                    window.dispatchEvent(new CustomEvent('local-storage-sync', { detail: { key: 'chem-formulas-v2' } }));
+                    toast.success(`${added} SOP formulas loaded! Refresh or re-open this section.`);
+                  } else {
+                    toast.info('All SOP formulas are already loaded.');
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+              >
+                <BookOpen className="w-3.5 h-3.5" /> Load All SOP Formulas ({SOP_FORMULAS.length})
+              </button>
+            </div>
           ) : blocks.length === 0 && !showPicker ? (
-            <p className="text-muted-foreground text-sm text-center py-4">Click <Plus className="w-3.5 h-3.5 inline" /> above to add a formula.</p>
+            <div className="py-4 space-y-3">
+              <p className="text-muted-foreground text-sm text-center">Click <Plus className="w-3.5 h-3.5 inline" /> above to add a formula.</p>
+              {!savedFormulas.some(f => f.id.startsWith('sop-')) && (
+                <div className="text-center">
+                  <button
+                    onClick={() => {
+                      const existing: SavedFormula[] = [...savedFormulas];
+                      const existingIds = new Set(existing.map(f => f.id));
+                      let added = 0;
+                      for (const def of SOP_FORMULAS) {
+                        const sf = sopFormulaToSavedFormula(def);
+                        if (!existingIds.has(sf.id)) {
+                          existing.push(sf as SavedFormula);
+                          added++;
+                        }
+                      }
+                      if (added > 0) {
+                        localStorage.setItem('chem-formulas-v2', JSON.stringify(existing));
+                        window.dispatchEvent(new CustomEvent('local-storage-sync', { detail: { key: 'chem-formulas-v2' } }));
+                        toast.success(`${added} SOP formulas loaded!`);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-border text-foreground text-xs font-medium hover:bg-accent transition-colors mx-auto"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" /> Load SOP Formulas ({SOP_FORMULAS.length})
+                  </button>
+                </div>
+              )}
+            </div>
           ) : null}
 
           {/* Formula picker */}
