@@ -16,7 +16,7 @@ export function CompoundSelector({ onSelect, disabled }: CompoundSelectorProps) 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setResults(searchInventory(query));
+    setResults(searchStoredInventory(query));
     setOpen(query.length >= 2);
   }, [query]);
 
