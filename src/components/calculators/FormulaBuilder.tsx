@@ -230,11 +230,50 @@ function toJavaScript(expr: string): string {
   js = js.replace(/\bmax\(/g, 'Math.max(');
   js = js.replace(/\bclamp\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, 'Math.min(Math.max(($1), ($2)), ($3))');
 
-  // Statistical (multi-arg)
+  // Statistical — Central Tendency
   js = js.replace(/\baverage\(([^)]+)\)/g, '(function(){var _v=[$1];return _v.reduce(function(a,b){return a+b},0)/_v.length}())');
+  js = js.replace(/\bmedian\(([^)]+)\)/g, '(function(){var _v=[$1].sort(function(a,b){return a-b});var _m=Math.floor(_v.length/2);return _v.length%2?_v[_m]:(_v[_m-1]+_v[_m])/2}())');
+  js = js.replace(/\bgeometricMean\(([^)]+)\)/g, '(function(){var _v=[$1];return Math.pow(_v.reduce(function(a,b){return a*b},1),1/_v.length)}())');
+  js = js.replace(/\bharmonicMean\(([^)]+)\)/g, '(function(){var _v=[$1];return _v.length/_v.reduce(function(a,b){return a+1/b},0)}())');
+  js = js.replace(/\bweightedAvg\(([^)]+)\)/g, '(function(){var _a=[$1];var _s=0,_w=0;for(var i=0;i<_a.length;i+=2){_s+=_a[i]*_a[i+1];_w+=_a[i+1]}return _s/_w}())');
+
+  // Statistical — Spread & Variability
   js = js.replace(/\bsum\(([^)]+)\)/g, '([$1].reduce(function(a,b){return a+b},0))');
   js = js.replace(/\bcount\(([^)]+)\)/g, '([$1].length)');
   js = js.replace(/\brange\(([^)]+)\)/g, '(Math.max($1) - Math.min($1))');
+  js = js.replace(/\bsampleVariance\(([^)]+)\)/g, '(function(){var _v=[$1];var _m=_v.reduce(function(a,b){return a+b},0)/_v.length;return _v.reduce(function(a,b){return a+Math.pow(b-_m,2)},0)/(_v.length-1)}())');
+  js = js.replace(/\bvariance\(([^)]+)\)/g, '(function(){var _v=[$1];var _m=_v.reduce(function(a,b){return a+b},0)/_v.length;return _v.reduce(function(a,b){return a+Math.pow(b-_m,2)},0)/_v.length}())');
+  js = js.replace(/\bsampleStdDev\(([^)]+)\)/g, '(function(){var _v=[$1];var _m=_v.reduce(function(a,b){return a+b},0)/_v.length;return Math.sqrt(_v.reduce(function(a,b){return a+Math.pow(b-_m,2)},0)/(_v.length-1))}())');
+  js = js.replace(/\bstdDev\(([^)]+)\)/g, '(function(){var _v=[$1];var _m=_v.reduce(function(a,b){return a+b},0)/_v.length;return Math.sqrt(_v.reduce(function(a,b){return a+Math.pow(b-_m,2)},0)/_v.length)}())');
+  js = js.replace(/\bcoeffVar\(([^)]+)\)/g, '(function(){var _v=[$1];var _m=_v.reduce(function(a,b){return a+b},0)/_v.length;var _s=Math.sqrt(_v.reduce(function(a,b){return a+Math.pow(b-_m,2)},0)/(_v.length-1));return(_s/_m)*100}())');
+  js = js.replace(/\bmeanAbsDev\(([^)]+)\)/g, '(function(){var _v=[$1];var _m=_v.reduce(function(a,b){return a+b},0)/_v.length;return _v.reduce(function(a,b){return a+Math.abs(b-_m)},0)/_v.length}())');
+  js = js.replace(/\bsumOfSquares\(([^)]+)\)/g, '(function(){var _v=[$1];var _m=_v.reduce(function(a,b){return a+b},0)/_v.length;return _v.reduce(function(a,b){return a+Math.pow(b-_m,2)},0)}())');
+
+  // Statistical — Error & Uncertainty
+  js = js.replace(/\bstdError\(([^)]+)\)/g, '(function(){var _v=[$1];var _m=_v.reduce(function(a,b){return a+b},0)/_v.length;var _s=Math.sqrt(_v.reduce(function(a,b){return a+Math.pow(b-_m,2)},0)/(_v.length-1));return _s/Math.sqrt(_v.length)}())');
+  js = js.replace(/\brelStdDev\(([^)]+)\)/g, '(function(){var _v=[$1];var _m=_v.reduce(function(a,b){return a+b},0)/_v.length;var _s=Math.sqrt(_v.reduce(function(a,b){return a+Math.pow(b-_m,2)},0)/(_v.length-1));return(_s/_m)*100}())');
+  js = js.replace(/\bconfidenceInterval\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, '(1.96 * ($2) / Math.sqrt($3))');
+  js = js.replace(/\bzScore\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, '((($1) - ($2)) / ($3))');
+  js = js.replace(/\btValue\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/g, '((($1) - ($2)) / (($3) / Math.sqrt($4)))');
+  js = js.replace(/\bpooledStdDev\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/g, '(Math.sqrt(((($2)-1)*Math.pow($1,2) + (($4)-1)*Math.pow($3,2)) / (($2)+($4)-2)))');
+  js = js.replace(/\bpropagateAdd\(([^,]+),\s*([^)]+)\)/g, '(Math.sqrt(Math.pow($1,2) + Math.pow($2,2)))');
+  js = js.replace(/\bpropagateMul\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/g, '(Math.abs(($1)*($3)) * Math.sqrt(Math.pow(($2)/($1),2) + Math.pow(($4)/($3),2)))');
+
+  // Statistical — Regression (paired data: x1,y1, x2,y2, ...)
+  js = js.replace(/\bslope\(([^)]+)\)/g, '(function(){var _a=[$1];var _x=[],_y=[];for(var i=0;i<_a.length;i+=2){_x.push(_a[i]);_y.push(_a[i+1])}var n=_x.length;var sx=_x.reduce(function(a,b){return a+b},0);var sy=_y.reduce(function(a,b){return a+b},0);var sxy=_x.reduce(function(a,b,i){return a+b*_y[i]},0);var sx2=_x.reduce(function(a,b){return a+b*b},0);return(n*sxy-sx*sy)/(n*sx2-sx*sx)}())');
+  js = js.replace(/\bintercept\(([^)]+)\)/g, '(function(){var _a=[$1];var _x=[],_y=[];for(var i=0;i<_a.length;i+=2){_x.push(_a[i]);_y.push(_a[i+1])}var n=_x.length;var sx=_x.reduce(function(a,b){return a+b},0);var sy=_y.reduce(function(a,b){return a+b},0);var sxy=_x.reduce(function(a,b,i){return a+b*_y[i]},0);var sx2=_x.reduce(function(a,b){return a+b*b},0);var m=(n*sxy-sx*sy)/(n*sx2-sx*sx);return(sy-m*sx)/n}())');
+  js = js.replace(/\bcorrelation\(([^)]+)\)/g, '(function(){var _a=[$1];var _x=[],_y=[];for(var i=0;i<_a.length;i+=2){_x.push(_a[i]);_y.push(_a[i+1])}var n=_x.length;var sx=_x.reduce(function(a,b){return a+b},0);var sy=_y.reduce(function(a,b){return a+b},0);var sxy=_x.reduce(function(a,b,i){return a+b*_y[i]},0);var sx2=_x.reduce(function(a,b){return a+b*b},0);var sy2=_y.reduce(function(a,b){return a+b*b},0);return(n*sxy-sx*sy)/Math.sqrt((n*sx2-sx*sx)*(n*sy2-sy*sy))}())');
+  js = js.replace(/\brSquared\(([^)]+)\)/g, '(function(){var _a=[$1];var _x=[],_y=[];for(var i=0;i<_a.length;i+=2){_x.push(_a[i]);_y.push(_a[i+1])}var n=_x.length;var sx=_x.reduce(function(a,b){return a+b},0);var sy=_y.reduce(function(a,b){return a+b},0);var sxy=_x.reduce(function(a,b,i){return a+b*_y[i]},0);var sx2=_x.reduce(function(a,b){return a+b*b},0);var sy2=_y.reduce(function(a,b){return a+b*b},0);var r=(n*sxy-sx*sy)/Math.sqrt((n*sx2-sx*sx)*(n*sy2-sy*sy));return r*r}())');
+
+  // Statistical — Outlier & Quality
+  js = js.replace(/\bgrubbsG\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, '(Math.abs(($1) - ($2)) / ($3))');
+  js = js.replace(/\bdixonQ\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, '(Math.abs(($1) - ($2)) / ($3))');
+  js = js.replace(/\bpercentile\(([^)]+)\)/g, '(function(){var _a=[$1];var _r=_a.shift();var _s=_a.sort(function(a,b){return a-b});var _i=(_r/100)*(_s.length-1);var _l=Math.floor(_i);return _l===_i?_s[_l]:_s[_l]+(_i-_l)*(_s[_l+1]-_s[_l])}())');
+  js = js.replace(/\biqr\(([^)]+)\)/g, '(function(){var _s=[$1].sort(function(a,b){return a-b});var _q=function(a,p){var i=(p/100)*(a.length-1);var l=Math.floor(i);return l===i?a[l]:a[l]+(i-l)*(a[l+1]-a[l])};return _q(_s,75)-_q(_s,25)}())');
+  js = js.replace(/\brecoveryPercent\(([^,]+),\s*([^)]+)\)/g, '((($1) / ($2)) * 100)');
+  js = js.replace(/\bhorwitzRSD\(([^)]+)\)/g, '(Math.pow(2, 1 - 0.5 * Math.log10($1)))');
+  js = js.replace(/\bhorratRatio\(([^,]+),\s*([^)]+)\)/g, '(($1) / Math.pow(2, 1 - 0.5 * Math.log10($2)))');
+
 
   // Percentage & Ratio
   js = js.replace(/\bpercent\(([^,]+),\s*([^)]+)\)/g, '((($1) / ($2)) * 100)');
