@@ -79,6 +79,7 @@ export function CompoundSelector({ onSelect, disabled }: CompoundSelectorProps) 
               </div>
               <div className="flex gap-3 mt-0.5 text-xs text-muted-foreground">
                 {c.molarMass && <span>MW: {c.molarMass}</span>}
+                {c.nFactor && <span>n: {c.nFactor}</span>}
                 {c.purity && <span>Purity: {c.purity}</span>}
                 {c.density && <span>ρ: {c.density}</span>}
               </div>
