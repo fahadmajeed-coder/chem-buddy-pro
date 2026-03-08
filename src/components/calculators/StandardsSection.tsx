@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Plus, Trash2, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
+type ComparisonOp = '≤' | '≥' | '=' | 'range';
+
 interface StandardEntry {
   id: string;
   name: string;
@@ -8,16 +10,17 @@ interface StandardEntry {
   tolerance: string;
   actualValue: string;
   unit: string;
+  comparison: ComparisonOp;
 }
 
 export function StandardsSection() {
   const [standards, setStandards] = useState<StandardEntry[]>([
-    { id: '1', name: '', expectedValue: '', tolerance: '', actualValue: '', unit: '' }
+    { id: '1', name: '', expectedValue: '', tolerance: '', actualValue: '', unit: '', comparison: 'range' }
   ]);
 
   const addStandard = () => {
     setStandards(prev => [...prev, {
-      id: Date.now().toString(), name: '', expectedValue: '', tolerance: '', actualValue: '', unit: ''
+      id: Date.now().toString(), name: '', expectedValue: '', tolerance: '', actualValue: '', unit: '', comparison: 'range'
     }]);
   };
 
@@ -34,8 +37,19 @@ export function StandardsSection() {
     const tolerance = parseFloat(s.tolerance);
     const actual = parseFloat(s.actualValue);
     if (isNaN(expected) || isNaN(actual)) return 'pending';
-    const tol = isNaN(tolerance) ? 0 : tolerance;
-    return (actual >= expected - tol && actual <= expected + tol) ? 'pass' : 'fail';
+    switch (s.comparison) {
+      case '≤': return actual <= expected ? 'pass' : 'fail';
+      case '≥': return actual >= expected ? 'pass' : 'fail';
+      case '=': {
+        const tol = isNaN(tolerance) ? 0 : tolerance;
+        return actual === expected || (actual >= expected - tol && actual <= expected + tol) ? 'pass' : 'fail';
+      }
+      case 'range':
+      default: {
+        const tol = isNaN(tolerance) ? 0 : tolerance;
+        return (actual >= expected - tol && actual <= expected + tol) ? 'pass' : 'fail';
+      }
+    }
   };
 
   const passCount = standards.filter(s => getStatus(s) === 'pass').length;
@@ -72,6 +86,7 @@ export function StandardsSection() {
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Standard</th>
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Expected</th>
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">±Tolerance</th>
+                <th className="text-center py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Criteria</th>
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Actual</th>
                 <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Unit</th>
                 <th className="text-center py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
@@ -83,13 +98,36 @@ export function StandardsSection() {
                 const status = getStatus(s);
                 return (
                   <tr key={s.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
-                    {(['name', 'expectedValue', 'tolerance', 'actualValue', 'unit'] as const).map((field) => (
+                    {(['name', 'expectedValue', 'tolerance'] as const).map((field) => (
                       <td key={field} className="py-2 px-2">
                         <input
-                          type={field === 'name' || field === 'unit' ? 'text' : 'number'}
+                          type={field === 'name' ? 'text' : 'number'}
                           value={s[field]}
                           onChange={(e) => updateStandard(s.id, field, e.target.value)}
                           placeholder={field === 'name' ? 'Name' : '0'}
+                          className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
+                        />
+                      </td>
+                    ))}
+                    <td className="py-2 px-2">
+                      <select
+                        value={s.comparison}
+                        onChange={(e) => updateStandard(s.id, 'comparison', e.target.value)}
+                        className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-1 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center"
+                      >
+                        <option value="range">± Range</option>
+                        <option value="≤">≤ Max</option>
+                        <option value="≥">≥ Min</option>
+                        <option value="=">=  Equal</option>
+                      </select>
+                    </td>
+                    {(['actualValue', 'unit'] as const).map((field) => (
+                      <td key={field} className="py-2 px-2">
+                        <input
+                          type={field === 'unit' ? 'text' : 'number'}
+                          value={s[field]}
+                          onChange={(e) => updateStandard(s.id, field, e.target.value)}
+                          placeholder={field === 'unit' ? 'Unit' : '0'}
                           className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
                         />
                       </td>
