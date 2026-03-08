@@ -10,7 +10,7 @@ import {
 } from '@/lib/periodicTableData';
 
 interface PeriodicTableProps {
-  onUseInCalculator?: (target: 'molarity' | 'solution', mw: number, name: string) => void;
+  onUseInCalculator?: (target: 'molarity' | 'normality' | 'formality' | 'solution', mw: number, name: string) => void;
 }
 
 export function PeriodicTable({ onUseInCalculator }: PeriodicTableProps) {
@@ -224,6 +224,18 @@ export function PeriodicTable({ onUseInCalculator }: PeriodicTableProps) {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                   >
                     <Beaker className="w-3.5 h-3.5" /> Use in Molarity
+                  </button>
+                  <button
+                    onClick={() => onUseInCalculator('normality', selected.atomicMass, selected.name)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <FlaskConical className="w-3.5 h-3.5" /> Use in Normality
+                  </button>
+                  <button
+                    onClick={() => onUseInCalculator('formality', selected.atomicMass, selected.name)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <FlaskConical className="w-3.5 h-3.5" /> Use in Formality
                   </button>
                   <button
                     onClick={() => onUseInCalculator('solution', selected.atomicMass, selected.name)}

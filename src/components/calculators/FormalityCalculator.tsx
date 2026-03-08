@@ -1,16 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CalculatorCard } from './CalculatorCard';
 import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 
-export function FormalityCalculator() {
+interface FormalityCalculatorProps {
+  initialMw?: number | null;
+}
+
+export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
   const [mass, setMass] = useState('');
   const [fw, setFw] = useState('');
   const [volume, setVolume] = useState('');
   const [purity, setPurity] = useState('100');
   const [density, setDensity] = useState('');
   const [locked, setLocked] = useState(false);
+
+  useEffect(() => {
+    if (initialMw) setFw(initialMw.toString());
+  }, [initialMw]);
 
   const purityFactor = parseFloat(purity) / 100 || 1;
   const effectiveMass = parseFloat(mass) * purityFactor;
