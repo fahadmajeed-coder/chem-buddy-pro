@@ -32,6 +32,7 @@ const Index = () => {
   const [elementMw, setElementMw] = useState<number | null>(null);
   const isOnline = navigator.onLine;
   const isMobile = useIsMobile();
+  const { theme, toggleTheme } = useTheme();
 
   const handleUseInCalculator = (target: 'molarity' | 'normality' | 'formality' | 'solution', mw: number, _name: string) => {
     setElementMw(mw);
@@ -117,6 +118,13 @@ const Index = () => {
             {!isMobile && <p className="text-xs text-muted-foreground">Analytical Chemistry Toolkit</p>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${isOnline ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
               {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
               {!isMobile && (isOnline ? 'Online' : 'Offline')}
