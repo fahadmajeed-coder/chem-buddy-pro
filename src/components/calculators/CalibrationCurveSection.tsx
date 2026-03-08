@@ -10,6 +10,8 @@ function createCurve(overrides?: Partial<CalibrationCurveData>): CalibrationCurv
     standards: DEFAULT_TEMPLATE.standards.map(s => ({ ...s })),
     samples: DEFAULT_TEMPLATE.samples.map(s => ({ ...s })),
     dilutionFactor: DEFAULT_TEMPLATE.dilutionFactor,
+    sampleWeight: DEFAULT_TEMPLATE.sampleWeight,
+    finalVolume: DEFAULT_TEMPLATE.finalVolume,
     locked: false,
     ...overrides,
   };
@@ -30,6 +32,8 @@ export function CalibrationCurveSection() {
       standards: source.standards.map(s => ({ ...s, id: Date.now().toString() + s.id })),
       samples: source.samples.map(s => ({ ...s, id: Date.now().toString() + s.id })),
       dilutionFactor: source.dilutionFactor,
+      sampleWeight: source.sampleWeight,
+      finalVolume: source.finalVolume,
       locked: false,
     });
     setCurves(prev => [...prev, copy]);
