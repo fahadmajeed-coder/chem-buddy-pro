@@ -9,9 +9,10 @@ interface CalculatorCardProps {
   onToggleLock: () => void;
   onReset: () => void;
   result?: { value: string; unit: string } | null;
+  resultUnitSelector?: ReactNode;
 }
 
-export function CalculatorCard({ title, subtitle, children, locked, onToggleLock, onReset, result }: CalculatorCardProps) {
+export function CalculatorCard({ title, subtitle, children, locked, onToggleLock, onReset, result, resultUnitSelector }: CalculatorCardProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
