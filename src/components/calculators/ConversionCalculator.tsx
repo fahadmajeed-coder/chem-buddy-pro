@@ -4,7 +4,7 @@ import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 
-type ConversionType = 'M_to_N' | 'N_to_M' | 'M_to_F' | 'ppm_to_M' | 'percent_to_M' | 'dilution' | 'vol_for_N' | 'N_from_mass' | 'N_from_pct' | 'vol_pct_to_pct' | 'gm_from_pellet';
+type ConversionType = 'M_to_N' | 'N_to_M' | 'M_to_F' | 'ppm_to_M' | 'percent_to_M' | 'dilution' | 'vol_for_N' | 'N_from_mass' | 'N_from_pct' | 'vol_pct_to_pct' | 'gm_from_pellet' | 'pct_wv' | 'pct_ww' | 'pct_vv';
 
 const conversions: { id: ConversionType; label: string; desc: string }[] = [
   { id: 'M_to_N', label: 'M → N', desc: 'N = M × n-factor' },
@@ -18,6 +18,9 @@ const conversions: { id: ConversionType; label: string; desc: string }[] = [
   { id: 'N_from_pct', label: 'N from %', desc: 'N = (% × density × 10) / Eq.Wt' },
   { id: 'vol_pct_to_pct', label: '% → % Vol', desc: 'V₁ = (C₂ × V₂) / C₁' },
   { id: 'gm_from_pellet', label: 'gm for %', desc: 'mass = (% × V(mL)) / (purity × 100)' },
+  { id: 'pct_wv', label: '%w/v', desc: '%w/v = (mass of solute / volume of solution) × 100' },
+  { id: 'pct_ww', label: '%w/w', desc: '%w/w = (mass of solute / mass of solution) × 100' },
+  { id: 'pct_vv', label: '%v/v', desc: '%v/v = (volume of solute / volume of solution) × 100' },
 ];
 
 export function ConversionCalculator() {
@@ -38,7 +41,7 @@ export function ConversionCalculator() {
     setInputs(prev => ({ ...prev, ...updates }));
   };
 
-  const needsInventory = ['vol_for_N', 'N_from_mass', 'N_from_pct', 'vol_pct_to_pct', 'gm_from_pellet'].includes(activeConv);
+  const needsInventory = ['vol_for_N', 'N_from_mass', 'N_from_pct', 'vol_pct_to_pct', 'gm_from_pellet', 'pct_wv', 'pct_ww'].includes(activeConv);
 
   const calculate = (): { value: string; unit: string } | null => {
     const get = (k: string) => parseFloat(inputs[k] || '');
@@ -98,6 +101,25 @@ export function ConversionCalculator() {
         // For solids: mass = (desired_conc_pct × V(mL)) / (purity/100 × 100)
         const desiredPct = get('desiredPct'); const vol = get('volume'); const purity = get('purity') || 100;
         return desiredPct && vol ? { value: ((desiredPct * vol) / purity).toFixed(4), unit: 'g' } : null;
+      }
+      case 'pct_wv': {
+        // %w/v = (mass / volume) × 100
+        const mass = get('mass'); const vol = get('volume');
+        const purity = get('purity') || 100;
+        const effectiveMass = mass * (purity / 100);
+        return mass && vol ? { value: ((effectiveMass / vol) * 100).toFixed(4), unit: '%w/v' } : null;
+      }
+      case 'pct_ww': {
+        // %w/w = (mass of solute / mass of solution) × 100
+        const massSolute = get('massSolute'); const massSolution = get('massSolution');
+        const purity = get('purity') || 100;
+        const effectiveMass = massSolute * (purity / 100);
+        return massSolute && massSolution ? { value: ((effectiveMass / massSolution) * 100).toFixed(4), unit: '%w/w' } : null;
+      }
+      case 'pct_vv': {
+        // %v/v = (volume of solute / volume of solution) × 100
+        const volSolute = get('volSolute'); const volSolution = get('volSolution');
+        return volSolute && volSolution ? { value: ((volSolute / volSolution) * 100).toFixed(4), unit: '%v/v' } : null;
       }
       default: return null;
     }
@@ -214,12 +236,32 @@ export function ConversionCalculator() {
             <InputField label="Purity of Pellet" unit="%" value={inputs.purity || ''} onChange={(v) => updateInput('purity', v)} disabled={locked} placeholder="100" />
           </>
         )}
+        {activeConv === 'pct_wv' && (
+          <>
+            <InputField label="Mass of Solute" unit="g" value={inputs.mass || ''} onChange={(v) => updateInput('mass', v)} disabled={locked} />
+            <InputField label="Volume of Solution" unit="mL" value={inputs.volume || ''} onChange={(v) => updateInput('volume', v)} disabled={locked} />
+            <InputField label="Purity" unit="%" value={inputs.purity || ''} onChange={(v) => updateInput('purity', v)} disabled={locked} placeholder="100" />
+          </>
+        )}
+        {activeConv === 'pct_ww' && (
+          <>
+            <InputField label="Mass of Solute" unit="g" value={inputs.massSolute || ''} onChange={(v) => updateInput('massSolute', v)} disabled={locked} />
+            <InputField label="Mass of Solution" unit="g" value={inputs.massSolution || ''} onChange={(v) => updateInput('massSolution', v)} disabled={locked} />
+            <InputField label="Purity" unit="%" value={inputs.purity || ''} onChange={(v) => updateInput('purity', v)} disabled={locked} placeholder="100" />
+          </>
+        )}
+        {activeConv === 'pct_vv' && (
+          <>
+            <InputField label="Volume of Solute" unit="mL" value={inputs.volSolute || ''} onChange={(v) => updateInput('volSolute', v)} disabled={locked} />
+            <InputField label="Volume of Solution" unit="mL" value={inputs.volSolution || ''} onChange={(v) => updateInput('volSolution', v)} disabled={locked} />
+          </>
+        )}
       </div>
 
       {/* Show effective mass hint for purity-affected calcs */}
-      {(['vol_for_N', 'N_from_mass'].includes(activeConv)) && inputs.purity && parseFloat(inputs.purity) < 100 && inputs.mass && (
+      {(['vol_for_N', 'N_from_mass', 'pct_wv', 'pct_ww'].includes(activeConv)) && inputs.purity && parseFloat(inputs.purity) < 100 && (inputs.mass || inputs.massSolute) && (
         <p className="text-xs text-muted-foreground mt-2 font-mono">
-          Effective mass at {inputs.purity}% purity: {(parseFloat(inputs.mass) * parseFloat(inputs.purity) / 100).toFixed(4)} g
+          Effective mass at {inputs.purity}% purity: {(parseFloat(inputs.mass || inputs.massSolute || '0') * parseFloat(inputs.purity) / 100).toFixed(4)} g
         </p>
       )}
     </CalculatorCard>
