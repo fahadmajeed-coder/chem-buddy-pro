@@ -4,6 +4,7 @@ import { InputField } from './InputField';
 import { CompoundSelector } from './CompoundSelector';
 import { MolarMassLookup } from './MolarMassLookup';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
+import { Scale, Pipette } from 'lucide-react';
 
 interface FormalityCalculatorProps {
   initialMw?: number | null;
@@ -15,6 +16,7 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
   const [volume, setVolume] = useState('');
   const [purity, setPurity] = useState('100');
   const [density, setDensity] = useState('');
+  const [reagentState, setReagentState] = useState<'solid' | 'liquid'>('solid');
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
@@ -31,19 +33,20 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
     ? ((massVal * purityFactor / fwVal) / (volVal / 1000))
     : null;
 
-  // Stock formality from density + purity: F = (density × purity% × 1000) / FW
   const formalityFromDensity = densityVal > 0 && fwVal && purityFactor
     ? (densityVal * purityFactor * 1000) / fwVal
     : null;
 
-  const result = formality !== null && isFinite(formality)
-    ? { value: formality.toFixed(4), unit: 'F (FW/L)' }
-    : null;
-
-  // Volume to pipette
   const volumeToPipette = massVal && densityVal > 0
     ? (massVal / densityVal)
     : null;
+
+  const isLiquid = reagentState === 'liquid';
+  const result = isLiquid && volumeToPipette !== null && formality !== null
+    ? { value: volumeToPipette.toFixed(4), unit: 'mL to pipette' }
+    : formality !== null && isFinite(formality)
+      ? { value: formality.toFixed(4), unit: 'F (FW/L)' }
+      : null;
 
   const handleCompoundSelect = (compound: ChemicalCompound) => {
     if (compound.molarMass) setFw(compound.molarMass.toString());
@@ -57,17 +60,33 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
       subtitle="F = (mass × purity / FW) / Volume(L)"
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
-      onReset={() => { if (!locked) { setMass(''); setFw(''); setVolume(''); setPurity('100'); setDensity(''); } }}
+      onReset={() => { if (!locked) { setMass(''); setFw(''); setVolume(''); setPurity('100'); setDensity(''); setReagentState('solid'); } }}
       result={result}
     >
       <CompoundSelector onSelect={handleCompoundSelect} disabled={locked} />
       <MolarMassLookup onSelect={(mw) => setFw(mw.toString())} disabled={locked} />
+
+      {/* Reagent State Toggle */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reagent Type:</span>
+        <div className="inline-flex rounded-lg border border-border overflow-hidden">
+          <button type="button" onClick={() => !locked && setReagentState('solid')} disabled={locked}
+            className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${reagentState === 'solid' ? 'bg-primary text-primary-foreground' : 'bg-muted/30 text-muted-foreground hover:bg-muted/60'} disabled:opacity-50`}>
+            <Scale className="w-3 h-3" /> Solid
+          </button>
+          <button type="button" onClick={() => !locked && setReagentState('liquid')} disabled={locked}
+            className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${reagentState === 'liquid' ? 'bg-primary text-primary-foreground' : 'bg-muted/30 text-muted-foreground hover:bg-muted/60'} disabled:opacity-50`}>
+            <Pipette className="w-3 h-3" /> Liquid
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <InputField label="Mass of Solute" unit="g" value={mass} onChange={setMass} disabled={locked} />
+        <InputField label={isLiquid ? "Mass (or calculate)" : "Mass of Solute"} unit="g" value={mass} onChange={setMass} disabled={locked} />
         <InputField label="Formula Weight" unit="g/FW" value={fw} onChange={setFw} disabled={locked} />
         <InputField label="Volume of Solution" unit="mL" value={volume} onChange={setVolume} disabled={locked} />
         <InputField label="Purity" unit="%" value={purity} onChange={setPurity} disabled={locked} />
-        <InputField label="Density" unit="g/mL" value={density} onChange={setDensity} disabled={locked} placeholder="Optional" />
+        <InputField label="Density" unit="g/mL" value={density} onChange={setDensity} disabled={locked} placeholder={isLiquid ? 'Required' : 'Optional'} />
       </div>
       <div className="mt-2 space-y-1">
         {formalityFromDensity !== null && fwVal > 0 && (
@@ -80,7 +99,7 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
             </p>
           </div>
         )}
-        {volumeToPipette !== null && (
+        {isLiquid && volumeToPipette !== null && (
           <div className="p-2 bg-accent/30 border border-accent/20 rounded-md">
             <p className="text-xs font-medium text-foreground">
               📐 Volume to pipette: <span className="text-primary font-bold">{volumeToPipette.toFixed(4)} mL</span>
@@ -89,6 +108,21 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
               = {massVal} g / {densityVal} g/mL
             </p>
           </div>
+        )}
+        {!isLiquid && volumeToPipette !== null && (
+          <div className="p-2 bg-accent/30 border border-accent/20 rounded-md">
+            <p className="text-xs font-medium text-foreground">
+              📐 Equivalent volume: <span className="text-primary font-bold">{volumeToPipette.toFixed(4)} mL</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              = {massVal} g / {densityVal} g/mL (for reference)
+            </p>
+          </div>
+        )}
+        {formality !== null && isLiquid && (
+          <p className="text-xs text-muted-foreground font-mono">
+            Formality: {formality.toFixed(4)} F
+          </p>
         )}
         {purityFactor < 1 && massVal > 0 && (
           <p className="text-xs text-muted-foreground font-mono">
