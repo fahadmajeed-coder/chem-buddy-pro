@@ -101,18 +101,22 @@ export function ReportSection() {
     const std = savedStandards.find(s => s.id === standardId);
     if (!std) return;
     setSelectedStandardId(standardId);
+    // Build new entries from standard, merging existing results by parameter name
+    const existingByParam = new Map(entries.filter(e => e.parameter.trim()).map(e => [e.parameter.trim().toLowerCase(), e]));
     setEntries(std.parameters.map(p => {
       const greenRange = formatRangeStr(p.normalMin, p.normalMax, p.normal);
       const yellowRange = formatRangeStr(p.withDeductionMin, p.withDeductionMax, p.withDeduction);
+      const paramKey = p.analysis.trim().toLowerCase();
+      const existing = existingByParam.get(paramKey);
       return {
         id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         parameter: p.analysis,
-        method: '',
-        result: '',
-        unit: '',
+        method: existing?.method || '',
+        result: existing?.result || '',
+        unit: existing?.unit || '',
         greenRange,
         yellowRange,
-        status: 'pending' as EntryStatus,
+        status: existing?.result ? computeStatus(existing.result, greenRange, yellowRange) : 'pending' as EntryStatus,
       };
     }));
   };
