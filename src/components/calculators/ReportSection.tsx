@@ -135,11 +135,16 @@ export function ReportSection() {
     setEntries(prev => prev.map(e => {
       if (e.id !== id) return e;
       const updated = { ...e, [field]: value };
+      // Only auto-compute status if not manually overridden via dropdown
       if (field === 'result' || field === 'greenRange' || field === 'yellowRange') {
         updated.status = computeStatus(updated.result, updated.greenRange, updated.yellowRange);
       }
       return updated;
     }));
+  };
+
+  const setStatus = (id: string, status: EntryStatus) => {
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, status } : e));
   };
 
   const statusIcon = (status: EntryStatus) => {
@@ -149,6 +154,20 @@ export function ReportSection() {
       case 'reject': return <AlertCircle className="w-4 h-4 text-destructive" />;
       default: return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
+  };
+
+  const toggleColumn = (col: keyof typeof exportColumns) => {
+    setExportColumns(prev => ({ ...prev, [col]: !prev[col] }));
+  };
+
+  const columnLabels: Record<keyof typeof exportColumns, string> = {
+    parameter: 'Parameter',
+    method: 'Method',
+    result: 'Result',
+    unit: 'Unit',
+    greenRange: 'Good Range',
+    yellowRange: 'Fair Range',
+    status: 'Status',
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
