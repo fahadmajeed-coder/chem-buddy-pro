@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { CalculatorCard } from './CalculatorCard';
-import { Plus, Trash2, FlaskConical, Search, X } from 'lucide-react';
+import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface FormulaVariable {
@@ -122,125 +121,135 @@ function makeDefaultValues(formula: SavedFormula): Record<string, string> {
 function FormulaBlockCard({
   formula,
   block,
-  locked,
   onUpdateRow,
   onUpdateSampleId,
   onAddRow,
   onRemoveRow,
   onRemoveBlock,
-  blockCount,
 }: {
   formula: SavedFormula;
   block: FormulaBlock;
-  locked: boolean;
   onUpdateRow: (rowId: string, field: string, value: string) => void;
   onUpdateSampleId: (rowId: string, value: string) => void;
   onAddRow: () => void;
   onRemoveRow: (rowId: string) => void;
   onRemoveBlock: () => void;
-  blockCount: number;
 }) {
+  const [cardLocked, setCardLocked] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
-    <div className="glass-panel rounded-lg animate-fade-in">
+    <div className={`glass-panel rounded-lg animate-fade-in ${cardLocked ? 'glow-border' : ''}`}>
       <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <FlaskConical className="w-3.5 h-3.5 text-primary shrink-0" />
-            <h3 className="text-sm font-semibold text-foreground truncate">{formula.name}</h3>
-          </div>
-          {formula.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{formula.description}</p>}
-        </div>
-        {!locked && (
+        <button onClick={() => setCollapsed(c => !c)} className="flex items-center gap-2 min-w-0">
+          {collapsed ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+          <FlaskConical className="w-3.5 h-3.5 text-primary shrink-0" />
+          <h3 className="text-sm font-semibold text-foreground truncate">{formula.name}</h3>
+        </button>
+        <div className="flex items-center gap-1 shrink-0 ml-2">
           <button
-            onClick={onRemoveBlock}
-            className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors shrink-0 ml-2"
-            title="Remove this formula"
+            onClick={() => setCardLocked(l => !l)}
+            className={`p-1.5 rounded-md transition-colors ${cardLocked ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
+            title={cardLocked ? 'Unlock' : 'Lock'}
           >
-            <Trash2 className="w-4 h-4" />
+            {cardLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
           </button>
-        )}
+          {!cardLocked && (
+            <button
+              onClick={onRemoveBlock}
+              className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
+              title="Remove this formula"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="p-5 space-y-4">
-        <div className="p-2.5 rounded-md bg-muted/50 border border-border">
-          <code className="text-xs font-mono text-primary">{formula.expression}</code>
-        </div>
+      {!collapsed && (
+        <div className="p-5 space-y-4">
+          {formula.description && (
+            <p className="text-xs text-muted-foreground">{formula.description}</p>
+          )}
+          <div className="p-2.5 rounded-md bg-muted/50 border border-border">
+            <code className="text-xs font-mono text-primary">{formula.expression}</code>
+          </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Sample</th>
-                {formula.variables.map(v => (
-                  <th key={v.id} className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider" title={v.description}>
-                    {v.name}
-                  </th>
-                ))}
-                <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Result</th>
-                <th className="py-2 px-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {block.rows.map((row) => {
-                const result = evaluateFormula(formula.expression, formula.variables, row.values);
-                return (
-                  <tr key={row.id} className="border-b border-border/50">
-                    <td className="py-2 px-1">
-                      <input
-                        type="text"
-                        value={row.sampleId}
-                        onChange={(e) => onUpdateSampleId(row.id, e.target.value)}
-                        disabled={locked}
-                        placeholder="ID"
-                        className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
-                      />
-                    </td>
-                    {formula.variables.map(v => (
-                      <td key={v.id} className="py-2 px-1">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Sample</th>
+                  {formula.variables.map(v => (
+                    <th key={v.id} className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider" title={v.description}>
+                      {v.name}
+                    </th>
+                  ))}
+                  <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Result</th>
+                  <th className="py-2 px-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {block.rows.map((row) => {
+                  const result = evaluateFormula(formula.expression, formula.variables, row.values);
+                  return (
+                    <tr key={row.id} className="border-b border-border/50">
+                      <td className="py-2 px-1">
                         <input
-                          type="number"
-                          value={row.values[v.name] || ''}
-                          onChange={(e) => onUpdateRow(row.id, v.name, e.target.value)}
-                          disabled={locked}
-                          placeholder={v.defaultValue || '0'}
+                          type="text"
+                          value={row.sampleId}
+                          onChange={(e) => onUpdateSampleId(row.id, e.target.value)}
+                          disabled={cardLocked}
+                          placeholder="ID"
                           className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
                         />
                       </td>
-                    ))}
-                    <td className="py-2 px-2">
-                      <span className="font-mono text-sm font-bold text-primary">
-                        {result !== null ? result.toFixed(4) : '—'}
-                      </span>
-                    </td>
-                    <td className="py-2 px-1">
-                      {block.rows.length > 1 && !locked && (
-                        <button onClick={() => onRemoveRow(row.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      {formula.variables.map(v => (
+                        <td key={v.id} className="py-2 px-1">
+                          <input
+                            type="number"
+                            value={row.values[v.name] || ''}
+                            onChange={(e) => onUpdateRow(row.id, v.name, e.target.value)}
+                            disabled={cardLocked}
+                            placeholder={v.defaultValue || '0'}
+                            className="w-20 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
+                          />
+                        </td>
+                      ))}
+                      <td className="py-2 px-2">
+                        <span className="font-mono text-sm font-bold text-primary">
+                          {result !== null ? result.toFixed(4) : '—'}
+                        </span>
+                      </td>
+                      <td className="py-2 px-1">
+                        {block.rows.length > 1 && !cardLocked && (
+                          <button onClick={() => onRemoveRow(row.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-        {!locked && (
-          <button
-            onClick={onAddRow}
-            className="w-full py-2 rounded-md border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-xs transition-all"
-          >
-            <Plus className="w-3.5 h-3.5" /> Add Row
-          </button>
-        )}
-      </div>
+          {!cardLocked && (
+            <button
+              onClick={onAddRow}
+              className="w-full py-2 rounded-md border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-xs transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Row
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 export function AnalyticalTestSection() {
-  const [locked, setLocked] = useState(false);
   const [savedFormulas] = useLocalStorage<SavedFormula[]>('chem-formulas-v2', []);
   const [blocks, setBlocks] = useState<FormulaBlock[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -308,88 +317,93 @@ export function AnalyticalTestSection() {
     ));
   };
 
-  const handleReset = () => {
-    if (locked) return;
-    setBlocks([]);
-  };
-
   return (
     <div className="space-y-4">
-      <CalculatorCard
-        title="Analytical Testing"
-        subtitle="Add formulas and enter sample data"
-        locked={locked}
-        onToggleLock={() => setLocked(!locked)}
-        onReset={handleReset}
-      >
-        {savedFormulas.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-4 flex items-center gap-1.5">
-            <FlaskConical className="w-3.5 h-3.5" />
-            No formulas saved yet. Go to <span className="font-semibold text-primary">Formulas</span> to create one.
-          </p>
-        ) : (
-          <>
-            {/* Always-visible Add Formula button */}
-            {!locked && savedFormulas.length > blocks.length && (
+      {/* Header */}
+      <div className="glass-panel rounded-lg">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Analytical Testing</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Add formulas and enter sample data</p>
+          </div>
+          <div className="flex items-center gap-1">
+            {savedFormulas.length > 0 && savedFormulas.length > blocks.length && (
               <button
                 onClick={() => setShowPicker(p => !p)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 mb-3"
+                className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
+                title="Add Formula"
               >
-                <Plus className="w-4 h-4" /> Add Formula
+                <Plus className="w-4 h-4" />
               </button>
             )}
-
-            {blocks.length === 0 && !showPicker && (
-              <p className="text-muted-foreground text-sm text-center py-4">Click "Add Formula" to start entering sample data.</p>
+            {blocks.length > 0 && (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
+                title="Remove All"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             )}
+          </div>
+        </div>
 
-            {/* Formula picker */}
-            {showPicker && (
-              <div className="border border-border rounded-lg overflow-hidden">
-                <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
-                  <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search formulas by name, description, or expression..."
-                    className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-                    autoFocus
-                  />
-                  <button onClick={() => { setShowPicker(false); setSearchQuery(''); }} className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="max-h-48 overflow-y-auto">
-                  {filteredFormulas.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">No formulas match your search.</p>
-                  ) : (
-                    filteredFormulas.map(f => {
-                      const alreadyUsed = usedFormulaIds.has(f.id);
-                      return (
-                        <button
-                          key={f.id}
-                          onClick={() => !alreadyUsed && addFormulaBlock(f.id)}
-                          disabled={alreadyUsed}
-                          className="w-full text-left px-3 py-2.5 hover:bg-muted/50 border-b border-border/50 last:border-b-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          <div className="flex items-center gap-2">
-                            <FlaskConical className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span className="text-sm font-medium text-foreground">{f.name}</span>
-                            {alreadyUsed && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Added</span>}
-                          </div>
-                          {f.description && <p className="text-xs text-muted-foreground mt-0.5 ml-5.5">{f.description}</p>}
-                          <code className="text-[10px] font-mono text-muted-foreground mt-1 ml-5.5 block truncate">{f.expression}</code>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
+        <div className="p-5">
+          {savedFormulas.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-4 flex items-center gap-1.5">
+              <FlaskConical className="w-3.5 h-3.5" />
+              No formulas saved yet. Go to <span className="font-semibold text-primary">Formulas</span> to create one.
+            </p>
+          ) : blocks.length === 0 && !showPicker ? (
+            <p className="text-muted-foreground text-sm text-center py-4">Click <Plus className="w-3.5 h-3.5 inline" /> above to add a formula.</p>
+          ) : null}
+
+          {/* Formula picker */}
+          {showPicker && (
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
+                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search formulas..."
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                  autoFocus
+                />
+                <button onClick={() => { setShowPicker(false); setSearchQuery(''); }} className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            )}
-          </>
-        )}
-      </CalculatorCard>
+              <div className="max-h-48 overflow-y-auto">
+                {filteredFormulas.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">No formulas match your search.</p>
+                ) : (
+                  filteredFormulas.map(f => {
+                    const alreadyUsed = usedFormulaIds.has(f.id);
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => !alreadyUsed && addFormulaBlock(f.id)}
+                        disabled={alreadyUsed}
+                        className="w-full text-left px-3 py-2.5 hover:bg-muted/50 border-b border-border/50 last:border-b-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FlaskConical className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span className="text-sm font-medium text-foreground">{f.name}</span>
+                          {alreadyUsed && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Added</span>}
+                        </div>
+                        {f.description && <p className="text-xs text-muted-foreground mt-0.5 ml-5.5">{f.description}</p>}
+                        <code className="text-[10px] font-mono text-muted-foreground mt-1 ml-5.5 block truncate">{f.expression}</code>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Render each formula block */}
       {blocks.map(block => {
@@ -400,8 +414,6 @@ export function AnalyticalTestSection() {
             key={block.formulaId}
             formula={formula}
             block={block}
-            locked={locked}
-            blockCount={blocks.length}
             onUpdateRow={(rowId, field, value) => updateRowInBlock(block.formulaId, rowId, field, value)}
             onUpdateSampleId={(rowId, value) => updateSampleIdInBlock(block.formulaId, rowId, value)}
             onAddRow={() => addRowToBlock(block.formulaId)}
@@ -410,16 +422,6 @@ export function AnalyticalTestSection() {
           />
         );
       })}
-
-      {/* Clear All */}
-      {blocks.length > 0 && !locked && (
-        <button
-          onClick={() => setShowClearConfirm(true)}
-          className="w-full py-3 rounded-lg border border-dashed border-destructive/30 text-destructive/70 hover:border-destructive hover:text-destructive flex items-center justify-center gap-2 text-sm transition-all"
-        >
-          <Trash2 className="w-4 h-4" /> Clear All
-        </button>
-      )}
 
       {/* Clear All confirmation */}
       {showClearConfirm && (
