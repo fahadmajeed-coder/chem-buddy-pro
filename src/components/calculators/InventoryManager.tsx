@@ -158,10 +158,12 @@ export function InventoryManager({ isAdmin = true }: { isAdmin?: boolean } = {})
                       <td className="px-3 py-2">{c.purity || '—'}</td>
                       <td className="px-3 py-2 text-right font-mono">{c.density ?? '—'}</td>
                       <td className="px-3 py-2 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => startEdit(c)} className="p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDelete(c.srNo)} className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
+                        {isAdmin && (
+                          <div className="flex items-center justify-center gap-1">
+                            <button onClick={() => startEdit(c)} className="p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDelete(c.srNo)} className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        )}
                       </td>
                     </>
                   )}
