@@ -1465,7 +1465,6 @@ export const conversionCategories: ConversionCategory[] = [
       },
     ],
   },
-];
 
   // ─── CONCENTRATION INTER-CONVERSIONS ───
   {
