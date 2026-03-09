@@ -43,7 +43,7 @@ interface AppSidebarProps {
   isAdmin?: boolean;
 }
 
-export function AppSidebar({ activeSection, onSectionChange, customSections, onAddSection }: AppSidebarProps) {
+export function AppSidebar({ activeSection, onSectionChange, customSections, onAddSection, isAdmin = false }: AppSidebarProps) {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);

@@ -572,7 +572,7 @@ function FormulaBlockCard({
   );
 }
 
-export function AnalyticalTestSection() {
+export function AnalyticalTestSection({ isAdmin = true }: { isAdmin?: boolean } = {}) {
   const [savedFormulas, setSavedFormulas] = useLocalStorage<SavedFormula[]>('chem-formulas-v2', []);
   const [blocks, setBlocks] = useState<FormulaBlock[]>([]);
   const [blockResults, setBlockResults] = useState<Record<string, AnalyticalResult[]>>({});

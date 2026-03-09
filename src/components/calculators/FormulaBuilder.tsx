@@ -320,7 +320,7 @@ function toJavaScript(expr: string): string {
   return js;
 }
 
-export function FormulaBuilder() {
+export function FormulaBuilder({ isAdmin = true }: { isAdmin?: boolean } = {}) {
   const [variables, setVariables] = useState<FormulaVariable[]>([
     { id: 'v1', name: 'x', description: '', defaultValue: '', testValue: '' },
     { id: 'v2', name: 'y', description: '', defaultValue: '', testValue: '' },

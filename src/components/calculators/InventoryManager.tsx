@@ -3,7 +3,7 @@ import { ChemicalCompound } from '@/lib/chemicalInventory';
 import { loadInventory, saveInventory, resetInventory } from '@/lib/inventoryStore';
 import { Plus, Trash2, RotateCcw, Search, Edit2, Check, X } from 'lucide-react';
 
-export function InventoryManager() {
+export function InventoryManager({ isAdmin = true }: { isAdmin?: boolean } = {}) {
   const [inventory, setInventory] = useState<ChemicalCompound[]>([]);
   const [search, setSearch] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
