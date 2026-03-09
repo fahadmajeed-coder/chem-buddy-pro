@@ -867,6 +867,8 @@ export function FormulaBuilder({ isAdmin = true }: { isAdmin?: boolean } = {}) {
           )}
         </div>
       </div>
+      </>
+      )}
 
       {/* Saved Formulas */}
       <div className="glass-panel rounded-lg">
