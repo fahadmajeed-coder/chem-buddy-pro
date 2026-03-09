@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Shield, LogOut, Wifi, WifiOff } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import { useAdminMode } from '@/hooks/useAdminMode';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { MolarityCalculator } from '@/components/calculators/MolarityCalculator';
 import { NormalityCalculator } from '@/components/calculators/NormalityCalculator';
@@ -22,17 +23,20 @@ import { StandardsInventory } from '@/components/calculators/StandardsInventory'
 import { SOPSection } from '@/components/calculators/SOPSection';
 import { IndicatorsInventory } from '@/components/calculators/IndicatorsInventory';
 import { CVPercentCalculator } from '@/components/calculators/CVPercentCalculator';
-import { Wifi, WifiOff } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from 'sonner';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('molarity');
   const [customSections, setCustomSections] = useState<{ id: string; name: string }[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [elementMw, setElementMw] = useState<number | null>(null);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
   const isOnline = navigator.onLine;
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
+  const { isAdmin, login, logout } = useAdminMode();
 
   const handleUseInCalculator = (target: 'molarity' | 'normality' | 'formality' | 'solution', mw: number, _name: string) => {
     setElementMw(mw);
@@ -41,6 +45,26 @@ const Index = () => {
 
   const addCustomSection = (name: string) => {
     setCustomSections(prev => [...prev, { id: `custom-${Date.now()}`, name }]);
+  };
+
+  const handleAdminLogin = () => {
+    if (login(adminPassword)) {
+      toast.success('Admin mode activated');
+      setShowAdminLogin(false);
+      setAdminPassword('');
+    } else {
+      toast.error('Incorrect password');
+    }
+  };
+
+  // Regular users cannot access AI Assistant
+  const handleSectionChange = (id: string) => {
+    if (id === 'assistant' && !isAdmin) {
+      toast.error('AI Assistant is only available in Admin mode');
+      return;
+    }
+    setElementMw(null);
+    setActiveSection(id);
   };
 
   const sectionTitles: Record<string, string> = {
@@ -71,13 +95,13 @@ const Index = () => {
     conversion: <ConversionCalculator />,
     solution: <SolutionPrepCalculator initialMw={elementMw} />,
     dilution: <DilutionCalculator initialMw={elementMw} />,
-    analytical: <AnalyticalTestSection />,
+    analytical: <AnalyticalTestSection isAdmin={isAdmin} />,
     report: <ReportSection />,
     standards: <StandardsSection />,
     assistant: <ChemistryAssistant />,
-    inventory: <InventoryManager />,
+    inventory: <InventoryManager isAdmin={isAdmin} />,
     'periodic-table': <PeriodicTable onUseInCalculator={handleUseInCalculator} />,
-    formulas: <FormulaBuilder />,
+    formulas: <FormulaBuilder isAdmin={isAdmin} />,
     calibration: <CalibrationCurveSection />,
     'standards-inventory': <StandardsInventory />,
     sop: <SOPSection />,
@@ -101,9 +125,10 @@ const Index = () => {
     <div className="flex h-[100dvh] overflow-hidden bg-background">
       <AppSidebar
         activeSection={activeSection}
-        onSectionChange={(id) => { setElementMw(null); setActiveSection(id); }}
+        onSectionChange={handleSectionChange}
         customSections={customSections}
         onAddSection={() => setShowAddDialog(true)}
+        isAdmin={isAdmin}
       />
 
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -118,6 +143,26 @@ const Index = () => {
             {!isMobile && <p className="text-xs text-muted-foreground">Analytical Chemistry Toolkit</p>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {/* Admin mode toggle */}
+            {isAdmin ? (
+              <button
+                onClick={logout}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                title="Logout from Admin"
+              >
+                <Shield className="w-3 h-3" />
+                {!isMobile && 'Admin'}
+                <LogOut className="w-3 h-3" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAdminLogin(true)}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                title="Admin Login"
+              >
+                <Shield className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={toggleTheme}
               className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
@@ -147,6 +192,42 @@ const Index = () => {
         onClose={() => setShowAddDialog(false)}
         onAdd={addCustomSection}
       />
+
+      {/* Admin Login Dialog */}
+      {showAdminLogin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setShowAdminLogin(false)}>
+          <div className="bg-card border border-border rounded-lg p-6 w-80 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">Admin Login</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">Enter admin password to enable editing, formula management, and AI Assistant.</p>
+            <input
+              type="password"
+              value={adminPassword}
+              onChange={e => setAdminPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdminLogin()}
+              placeholder="Enter password"
+              className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary mb-4"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleAdminLogin}
+                className="flex-1 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => { setShowAdminLogin(false); setAdminPassword(''); }}
+                className="px-4 py-2 rounded-md bg-secondary text-secondary-foreground text-sm font-medium hover:bg-secondary/80 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
