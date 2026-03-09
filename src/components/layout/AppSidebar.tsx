@@ -140,7 +140,12 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
             >
               {!collapsed && !isMobile && <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0 cursor-grab" />}
               {ICON_MAP[id]}
-              {(!collapsed || isMobile) && <span>{LABEL_MAP[id]}</span>}
+              {(!collapsed || isMobile) && (
+                <span className="flex items-center gap-1">
+                  {LABEL_MAP[id]}
+                  {id === 'assistant' && !isAdmin && <span className="text-[9px] text-muted-foreground">🔒</span>}
+                </span>
+              )}
             </button>
             {isMobile && (
               <div className="flex flex-col mr-1">
