@@ -536,6 +536,16 @@ export function FormulaBuilder({ isAdmin = true }: { isAdmin?: boolean } = {}) {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {!isAdmin && (
+        <div className="glass-panel rounded-lg p-4">
+          <p className="text-xs text-muted-foreground flex items-center gap-2">
+            <span className="text-primary">🔒</span> You are in view-only mode. Login as Admin to create, edit, or delete formulas.
+          </p>
+        </div>
+      )}
+
+      {isAdmin && (
+        <>
       {/* Step 1: Define Variables */}
       <div className="glass-panel rounded-lg">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
