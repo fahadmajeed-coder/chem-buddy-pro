@@ -40,6 +40,7 @@ interface AppSidebarProps {
   onSectionChange: (id: string) => void;
   customSections: { id: string; name: string }[];
   onAddSection: () => void;
+  isAdmin?: boolean;
 }
 
 export function AppSidebar({ activeSection, onSectionChange, customSections, onAddSection }: AppSidebarProps) {
