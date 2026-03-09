@@ -3,7 +3,7 @@ import { ChemicalCompound } from '@/lib/chemicalInventory';
 import { loadInventory, saveInventory, resetInventory } from '@/lib/inventoryStore';
 import { Plus, Trash2, RotateCcw, Search, Edit2, Check, X } from 'lucide-react';
 
-export function InventoryManager() {
+export function InventoryManager({ isAdmin = true }: { isAdmin?: boolean } = {}) {
   const [inventory, setInventory] = useState<ChemicalCompound[]>([]);
   const [search, setSearch] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
@@ -69,12 +69,14 @@ export function InventoryManager() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-semibold text-foreground">Chemical Inventory</h3>
-            <p className="text-xs text-muted-foreground">{inventory.length} compounds • Editable</p>
+            <p className="text-xs text-muted-foreground">{inventory.length} compounds {isAdmin ? '• Editable' : '• Add only'}</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleReset} className="px-3 py-1.5 text-xs rounded-md bg-secondary text-secondary-foreground hover:bg-accent transition-colors flex items-center gap-1">
-              <RotateCcw className="w-3 h-3" /> Reset to Default
-            </button>
+            {isAdmin && (
+              <button onClick={handleReset} className="px-3 py-1.5 text-xs rounded-md bg-secondary text-secondary-foreground hover:bg-accent transition-colors flex items-center gap-1">
+                <RotateCcw className="w-3 h-3" /> Reset to Default
+              </button>
+            )}
             <button onClick={() => setShowAdd(!showAdd)} className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1">
               <Plus className="w-3 h-3" /> Add Compound
             </button>
@@ -156,10 +158,12 @@ export function InventoryManager() {
                       <td className="px-3 py-2">{c.purity || '—'}</td>
                       <td className="px-3 py-2 text-right font-mono">{c.density ?? '—'}</td>
                       <td className="px-3 py-2 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => startEdit(c)} className="p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDelete(c.srNo)} className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
+                        {isAdmin && (
+                          <div className="flex items-center justify-center gap-1">
+                            <button onClick={() => startEdit(c)} className="p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDelete(c.srNo)} className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        )}
                       </td>
                     </>
                   )}

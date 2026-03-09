@@ -320,7 +320,7 @@ function toJavaScript(expr: string): string {
   return js;
 }
 
-export function FormulaBuilder() {
+export function FormulaBuilder({ isAdmin = true }: { isAdmin?: boolean } = {}) {
   const [variables, setVariables] = useState<FormulaVariable[]>([
     { id: 'v1', name: 'x', description: '', defaultValue: '', testValue: '' },
     { id: 'v2', name: 'y', description: '', defaultValue: '', testValue: '' },
@@ -536,6 +536,16 @@ export function FormulaBuilder() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {!isAdmin && (
+        <div className="glass-panel rounded-lg p-4">
+          <p className="text-xs text-muted-foreground flex items-center gap-2">
+            <span className="text-primary">🔒</span> You are in view-only mode. Login as Admin to create, edit, or delete formulas.
+          </p>
+        </div>
+      )}
+
+      {isAdmin && (
+        <>
       {/* Step 1: Define Variables */}
       <div className="glass-panel rounded-lg">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
@@ -857,6 +867,8 @@ export function FormulaBuilder() {
           )}
         </div>
       </div>
+      </>
+      )}
 
       {/* Saved Formulas */}
       <div className="glass-panel rounded-lg">
@@ -881,25 +893,29 @@ export function FormulaBuilder() {
                       <p className="text-xs font-mono text-primary mt-0.5 truncate">{f.expression.replace(/\*/g, '×').replace(/\//g, '÷')}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <button
-                        onClick={ev => { ev.stopPropagation(); loadFormula(f); }}
-                        className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={ev => { ev.stopPropagation(); duplicateFormula(f); }}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-primary transition-colors"
-                        title="Duplicate formula"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={ev => { ev.stopPropagation(); deleteFormula(f.id); }}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={ev => { ev.stopPropagation(); loadFormula(f); }}
+                            className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={ev => { ev.stopPropagation(); duplicateFormula(f); }}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-primary transition-colors"
+                            title="Duplicate formula"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={ev => { ev.stopPropagation(); deleteFormula(f.id); }}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                       {expandedFormula === f.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                     </div>
                   </div>
