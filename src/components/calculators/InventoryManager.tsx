@@ -69,7 +69,7 @@ export function InventoryManager({ isAdmin = true }: { isAdmin?: boolean } = {})
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-semibold text-foreground">Chemical Inventory</h3>
-            <p className="text-xs text-muted-foreground">{inventory.length} compounds • Editable</p>
+            <p className="text-xs text-muted-foreground">{inventory.length} compounds {isAdmin ? '• Editable' : '• Add only'}</p>
           </div>
           <div className="flex gap-2">
             <button onClick={handleReset} className="px-3 py-1.5 text-xs rounded-md bg-secondary text-secondary-foreground hover:bg-accent transition-colors flex items-center gap-1">
