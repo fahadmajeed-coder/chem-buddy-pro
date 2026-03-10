@@ -344,11 +344,22 @@ export function FormulaBuilder({ isAdmin = true }: { isAdmin?: boolean } = {}) {
   const [editingVarId, setEditingVarId] = useState<string | null>(null);
 
   // --- Variable Management ---
+  const getNextAutoName = () => {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+    const usedNames = new Set(variables.map(v => v.name));
+    for (const ch of alphabet) {
+      if (!usedNames.has(ch)) return ch;
+    }
+    let i = 1;
+    while (usedNames.has(`var${i}`)) i++;
+    return `var${i}`;
+  };
+
   const addVariable = () => {
-    const name = newVarName.trim();
-    if (!name || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) return;
+    let name = newVarName.trim();
+    if (!name) name = getNextAutoName();
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) return;
     if (variables.some(v => v.name === name)) return;
-    // Prevent reserved words
     const reserved = ['sqrt', 'cbrt', 'squared', 'cubed', 'abs', 'sign', 'negate', 'round', 'roundUp', 'roundDown', 'roundTo', 'truncate', 'log', 'log2', 'ln', 'exp', 'pow10', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'toRadians', 'toDegrees', 'hypot', 'min', 'max', 'clamp', 'average', 'median', 'geometricMean', 'harmonicMean', 'weightedAvg', 'sum', 'count', 'range', 'variance', 'sampleVariance', 'stdDev', 'sampleStdDev', 'coeffVar', 'meanAbsDev', 'sumOfSquares', 'stdError', 'relStdDev', 'confidenceInterval', 'zScore', 'tValue', 'pooledStdDev', 'propagateAdd', 'propagateMul', 'slope', 'intercept', 'rSquared', 'correlation', 'grubbsG', 'dixonQ', 'percentile', 'iqr', 'recoveryPercent', 'horwitzRSD', 'horratRatio', 'percent', 'percentOf', 'ratio', 'ppm', 'ppb', 'molarity', 'dilution', 'percentYield', 'percentError', 'percentPurity', 'normality', 'gToMg', 'mgToG', 'LToMl', 'mlToL', 'celToFah', 'fahToCel', 'celToKel', 'kelToCel', 'mod', 'E_CONST', 'AVOGADRO', 'GAS_R', 'FARADAY', 'BOLTZMANN', 'PLANCK', 'SPEED_OF_LIGHT', 'ATM_TO_PA', 'WATER_MW'];
     if (reserved.includes(name)) return;
     setVariables(prev => [...prev, { id: `v-${Date.now()}`, name, description: newVarDesc.trim(), defaultValue: newVarDefault.trim(), testValue: newVarDefault.trim() }]);
