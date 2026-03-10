@@ -641,20 +641,26 @@ export function FormulaBuilder({ isAdmin = true }: { isAdmin?: boolean } = {}) {
             <div className="w-28 space-y-1">
               <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Default (optional)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={newVarDefault}
-                onChange={ev => setNewVarDefault(ev.target.value)}
+                onChange={ev => {
+                  const val = ev.target.value;
+                  if (val === '' || val === '-' || /^-?\d*\.?\d*$/.test(val)) {
+                    setNewVarDefault(val);
+                  }
+                }}
                 placeholder="0"
-                className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 onKeyDown={ev => ev.key === 'Enter' && addVariable()}
               />
             </div>
             <button
               onClick={addVariable}
               disabled={!newVarName.trim() || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newVarName.trim()) || variables.some(v => v.name === newVarName.trim())}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0 shadow-sm"
             >
-              <Plus className="w-3.5 h-3.5" /> Add
+              <Plus className="w-4 h-4" /> Add
             </button>
           </div>
           <p className="text-[10px] text-muted-foreground">
