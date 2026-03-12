@@ -698,41 +698,45 @@ export function FormulaBuilder({ isAdmin = true }: { isAdmin?: boolean } = {}) {
         <div className="p-5 space-y-4">
           {/* Operations panel */}
           {showOpPanel && (
-            <div className="border border-border rounded-md bg-secondary/30 overflow-hidden">
-              <div className="px-3 py-2 border-b border-border">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <input
-                    value={opSearch}
-                    onChange={ev => setOpSearch(ev.target.value)}
-                    placeholder="Search... (e.g. square root, divide, round up)"
-                    className="w-full bg-input border border-border rounded-md pl-8 pr-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
+            <div className="relative">
+              <div className="absolute left-0 right-0 top-0 z-50 border border-border rounded-md bg-card shadow-lg overflow-hidden">
+                <div className="px-3 py-2 border-b border-border bg-card">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <input
+                      value={opSearch}
+                      onChange={ev => setOpSearch(ev.target.value)}
+                      placeholder="Search... (e.g. square root, divide, round up)"
+                      className="w-full bg-input border border-border rounded-md pl-8 pr-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+                <div className="max-h-72 overflow-y-auto p-2 space-y-3 bg-card">
+                  {Object.entries(groupedOps).map(([category, ops]) => (
+                    <div key={category}>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1 mb-1.5">{category}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {ops.map(op => (
+                          <button
+                            key={op.token}
+                            onClick={() => insertToken(op.token)}
+                            title={op.description}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-secondary hover:bg-secondary/80 border border-border hover:border-primary/30 transition-colors group"
+                          >
+                            <span className="font-mono text-primary text-sm">{op.icon || op.token}</span>
+                            <span className="text-muted-foreground group-hover:text-foreground transition-colors">{op.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {filteredOps.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-3">No matching operations found</p>
+                  )}
                 </div>
               </div>
-              <div className="max-h-72 overflow-y-auto p-2 space-y-3">
-                {Object.entries(groupedOps).map(([category, ops]) => (
-                  <div key={category}>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1 mb-1.5">{category}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {ops.map(op => (
-                        <button
-                          key={op.token}
-                          onClick={() => insertToken(op.token)}
-                          title={op.description}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-secondary hover:bg-secondary/80 border border-border hover:border-primary/30 transition-colors group"
-                        >
-                          <span className="font-mono text-primary text-sm">{op.icon || op.token}</span>
-                          <span className="text-muted-foreground group-hover:text-foreground transition-colors">{op.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                {filteredOps.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-3">No matching operations found</p>
-                )}
-              </div>
+              {/* Spacer to prevent content jump when panel is open */}
+              <div className="h-[340px]" />
             </div>
           )}
 
