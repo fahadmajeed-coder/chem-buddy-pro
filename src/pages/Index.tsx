@@ -87,6 +87,7 @@ const Index = () => {
     sop: 'SOPs',
     indicators: 'Indicators Inventory',
     'cv-percent': 'CV% Calculator',
+    'data-sync': 'Data Transfer',
   };
 
   const sections: Record<string, React.ReactNode> = {
