@@ -257,18 +257,17 @@ export const conversionCategories: ConversionCategory[] = [
     icon: '⚗️',
     conversions: [
       {
-        id: 'np_N_to_wv', label: 'N → %w/v', desc: '% = (N × EW) / (d × 10), EW = MW / n-factor',
+        id: 'np_N_to_wv', label: 'N → %w/v', desc: '%w/v = (N × EW) / 10, EW = MW / n-factor',
         fields: [
           { key: 'normality', label: 'Normality', unit: 'N' },
           { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
           { key: 'nfactor', label: 'n-Factor', unit: '' },
-          { key: 'density', label: 'Density', unit: 'g/mL', placeholder: '1' },
         ],
         inventoryAutoFill: true,
         calculate: (get) => {
-          const n = get('normality'), mw = get('mw'), nf = get('nfactor'), d = get('density') || 1;
+          const n = get('normality'), mw = get('mw'), nf = get('nfactor');
           if (!n || !mw || !nf) return null;
-          return { value: ((n * mw) / (nf * d * 10)).toFixed(4), unit: '%w/v' };
+          return { value: ((n * mw) / (nf * 10)).toFixed(4), unit: '%w/v' };
         },
       },
       {
