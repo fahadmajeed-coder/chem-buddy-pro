@@ -133,16 +133,15 @@ export const conversionCategories: ConversionCategory[] = [
         },
       },
       {
-        id: 'percent_to_M', label: '%w/v → M', desc: 'M = (% × d × 10) / MW',
+        id: 'percent_to_M', label: '%w/v → M', desc: 'M = (%w/v × 10) / MW',
         fields: [
-          { key: 'percent', label: 'Concentration', unit: '%' },
+          { key: 'percent', label: 'Concentration', unit: '%w/v' },
           { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
-          { key: 'density', label: 'Density', unit: 'g/mL', placeholder: '1' },
         ],
         inventoryAutoFill: true,
         calculate: (get) => {
-          const pct = get('percent'), mw = get('mw'), d = get('density') || 1;
-          return pct && mw ? { value: ((pct * d * 10) / mw).toFixed(4), unit: 'M' } : null;
+          const pct = get('percent'), mw = get('mw');
+          return pct && mw ? { value: ((pct * 10) / mw).toFixed(4), unit: 'M' } : null;
         },
       },
       {
