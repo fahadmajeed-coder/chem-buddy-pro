@@ -23,6 +23,7 @@ import { StandardsInventory } from '@/components/calculators/StandardsInventory'
 import { SOPSection } from '@/components/calculators/SOPSection';
 import { IndicatorsInventory } from '@/components/calculators/IndicatorsInventory';
 import { CVPercentCalculator } from '@/components/calculators/CVPercentCalculator';
+import { DataSyncManager } from '@/components/calculators/DataSyncManager';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
@@ -86,6 +87,7 @@ const Index = () => {
     sop: 'SOPs',
     indicators: 'Indicators Inventory',
     'cv-percent': 'CV% Calculator',
+    'data-sync': 'Data Transfer',
   };
 
   const sections: Record<string, React.ReactNode> = {
@@ -107,6 +109,7 @@ const Index = () => {
     sop: <SOPSection />,
     indicators: <IndicatorsInventory />,
     'cv-percent': <CVPercentCalculator />,
+    'data-sync': <DataSyncManager isAdmin={isAdmin} />,
   };
 
   const renderSections = () => {
