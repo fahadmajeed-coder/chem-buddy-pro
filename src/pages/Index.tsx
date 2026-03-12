@@ -109,6 +109,7 @@ const Index = () => {
     sop: <SOPSection />,
     indicators: <IndicatorsInventory />,
     'cv-percent': <CVPercentCalculator />,
+    'data-sync': <DataSyncManager isAdmin={isAdmin} />,
   };
 
   const renderSections = () => {
