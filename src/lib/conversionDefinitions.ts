@@ -63,19 +63,18 @@ export const conversionCategories: ConversionCategory[] = [
         },
       },
       {
-        id: 'N_to_percent', label: 'N → %w/v', desc: '% = (N × MW) / (n-factor × d × 10)',
+        id: 'N_to_percent', label: 'N → %w/v', desc: '%w/v = (N × EW) / 10, EW = MW / n-factor',
         fields: [
           { key: 'normality', label: 'Normality', unit: 'N' },
           { key: 'mw', label: 'Molecular Weight', unit: 'g/mol' },
           { key: 'nfactor', label: 'n-Factor', unit: '' },
-          { key: 'density', label: 'Density', unit: 'g/mL', placeholder: '1' },
         ],
         inventoryAutoFill: true,
         calculate: (get) => {
-          const n = get('normality'), mw = get('mw'), nf = get('nfactor'), d = get('density') || 1;
+          const n = get('normality'), mw = get('mw'), nf = get('nfactor');
           if (!n || !mw || !nf) return null;
           const ew = mw / nf;
-          return { value: ((n * ew) / (d * 10)).toFixed(4), unit: '%w/v' };
+          return { value: ((n * ew) / 10).toFixed(4), unit: '%w/v' };
         },
       },
       {
