@@ -567,15 +567,14 @@ export function ChemistryAssistant() {
       {/* Input */}
       <div className="flex gap-2 pt-3 border-t border-border mt-2">
         <input
-          ref={pdfInputRef}
+          ref={pdfInputRef2}
           type="file"
           accept=".pdf"
           onChange={handlePdfUpload}
           className="hidden"
-          id="pdf-upload-input"
         />
         <button
-          onClick={() => pdfInputRef.current?.click()}
+          onClick={() => pdfInputRef2.current?.click()}
           disabled={isUploading}
           className="px-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 border border-border transition-colors disabled:opacity-40"
           title="Upload PDF"
