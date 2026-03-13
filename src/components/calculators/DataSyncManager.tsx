@@ -60,7 +60,7 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
     };
 
     let itemCount = 0;
-    for (const { key } of DATA_KEYS) {
+    for (const { key } of allKeys) {
       if (!selectedKeys.has(key)) continue;
       try {
         const raw = localStorage.getItem(key);
