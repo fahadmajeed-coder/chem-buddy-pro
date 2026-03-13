@@ -672,7 +672,7 @@ export function AnalyticalTestSection({ isAdmin = true }: { isAdmin?: boolean } 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="glass-panel rounded-lg">
+      <div className={`glass-panel rounded-lg relative ${showDropdown ? 'z-50' : 'z-10'}`}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <div>
             <h3 className="text-sm font-semibold text-foreground">Analytical Testing</h3>
