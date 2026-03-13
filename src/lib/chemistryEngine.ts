@@ -1,3 +1,5 @@
+import { searchPdfSources as searchPdfSourcesSync } from '@/lib/pdfSourceStore';
+
 // Periodic table data (atomic masses)
 export const elements: Record<string, { name: string; symbol: string; mass: number; number: number }> = {
   H: { name: 'Hydrogen', symbol: 'H', mass: 1.008, number: 1 },
@@ -439,6 +441,28 @@ export const suggestedPrompts = [
 // Main response engine
 export function getChemistryResponse(input: string): string {
   const trimmed = input.trim();
+
+  // Search uploaded PDF sources first
+  try {
+    const pdfResults = searchPdfSourcesSync(trimmed);
+    if (pdfResults.length > 0) {
+      let response = '📄 **Found in your uploaded documents:**\n\n';
+      for (const result of pdfResults) {
+        response += `**Source:** ${result.source}\n`;
+        for (const excerpt of result.excerpts) {
+          response += `> ${excerpt}\n\n`;
+        }
+      }
+      response += '\n---\n\n';
+      for (const qa of qaDatabase) {
+        if (qa.patterns.some(p => p.test(trimmed))) {
+          response += qa.answer;
+          return response;
+        }
+      }
+      return response;
+    }
+  } catch { /* PDF store not available */ }
 
   // Check Q&A database FIRST (before formula parsing to avoid "pH" → P+H)
   for (const qa of qaDatabase) {

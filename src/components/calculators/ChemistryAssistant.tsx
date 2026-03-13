@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Trash2, Bot, User, Zap, Info, X } from 'lucide-react';
+import { Send, Sparkles, Trash2, Bot, User, Zap, Info, X, FileUp, FileText, Loader2 } from 'lucide-react';
 import { getChemistryResponse, suggestedPrompts } from '@/lib/chemistryEngine';
 import { streamChat, generateItem, isGenerationRequest, type ChatMessage, type GeneratedItem } from '@/lib/aiChat';
 import { addGeneratedItem } from '@/lib/aiItemStore';
+import { getPdfSources, addPdfSource, removePdfSource, extractTextFromPdf, searchPdfSources, type PdfSource } from '@/lib/pdfSourceStore';
 import { GeneratedItemCard } from './GeneratedItemCard';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -13,7 +14,6 @@ function getAIUsage(): { count: number; resetDate: string } {
     const stored = localStorage.getItem('chemassist-ai-usage');
     if (stored) {
       const data = JSON.parse(stored);
-      // Reset if past reset date
       if (new Date(data.resetDate) <= new Date()) {
         const newData = { count: 0, resetDate: getNextResetDate() };
         localStorage.setItem('chemassist-ai-usage', JSON.stringify(newData));
@@ -45,7 +45,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  source?: 'offline' | 'ai';
+  source?: 'offline' | 'ai' | 'pdf';
   generatedItem?: GeneratedItem;
   itemConfirmed?: boolean;
   itemDismissed?: boolean;
@@ -56,7 +56,7 @@ export function ChemistryAssistant() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Hello! I\'m your **Chemistry Assistant** powered by AI.\n\nI can answer questions, **generate SOPs**, **create formulas**, and **add chemicals to your inventory**.\n\nTry: *"Generate SOP for pH determination"* or *"Add NaOH to inventory"*',
+      content: 'Hello! I\'m your **Chemistry Assistant** powered by AI.\n\nI can answer questions, **generate SOPs**, **create formulas**, **add chemicals to your inventory**, and **search your uploaded PDFs**.\n\nTry: *"Generate SOP for pH determination"* or upload a PDF reference document.',
       timestamp: new Date(),
       source: 'ai',
     },
@@ -65,13 +65,83 @@ export function ChemistryAssistant() {
   const [isTyping, setIsTyping] = useState(false);
   const [useAI, setUseAI] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
+  const [showPdfPanel, setShowPdfPanel] = useState(false);
+  const [pdfSources, setPdfSources] = useState<PdfSource[]>(() => getPdfSources());
+  const [isUploading, setIsUploading] = useState(false);
   const [aiUsage, setAiUsage] = useState(() => getAIUsage());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef2 = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Listen for PDF source changes
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.key === 'chemanalyst-pdf-sources') {
+        setPdfSources(getPdfSources());
+      }
+    };
+    window.addEventListener('local-storage-sync', handler);
+    return () => window.removeEventListener('local-storage-sync', handler);
+  }, []);
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      toast.error('Please select a PDF file.');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('PDF must be under 20MB.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const { text, pageCount } = await extractTextFromPdf(file);
+      if (!text.trim()) {
+        toast.error('Could not extract text from this PDF. It may be scanned/image-based.');
+        setIsUploading(false);
+        return;
+      }
+
+      const source: PdfSource = {
+        id: `pdf-${Date.now()}`,
+        name: file.name.replace(/\.pdf$/i, ''),
+        text,
+        uploadedAt: new Date().toISOString(),
+        pageCount,
+      };
+      addPdfSource(source);
+      setPdfSources(getPdfSources());
+
+      setMessages(prev => [...prev, {
+        id: `system-${Date.now()}`,
+        role: 'assistant',
+        content: `📄 **PDF uploaded:** "${source.name}" (${pageCount} pages)\n\nI can now search this document when answering your questions. Try asking about any topic covered in the PDF!`,
+        timestamp: new Date(),
+        source: 'pdf',
+      }]);
+      toast.success(`PDF "${source.name}" uploaded and indexed!`);
+    } catch (err) {
+      console.error('PDF extraction error:', err);
+      toast.error('Failed to process PDF. Please try again.');
+    }
+    setIsUploading(false);
+    e.target.value = '';
+  };
+
+  const handleRemovePdf = (id: string) => {
+    removePdfSource(id);
+    setPdfSources(getPdfSources());
+    toast.success('PDF source removed.');
+  };
 
   const handleConfirm = (msgId: string) => {
     const msg = messages.find(m => m.id === msgId);
@@ -106,13 +176,21 @@ export function ChemistryAssistant() {
     setInput('');
     setIsTyping(true);
 
+    // Build PDF context for AI mode
+    const pdfContext = buildPdfContext(messageText);
+
     if (useAI) {
       const newCount = incrementAIUsage();
       setAiUsage(getAIUsage());
       const history: ChatMessage[] = messages
         .filter(m => m.id !== 'welcome')
         .map(m => ({ role: m.role, content: m.content }));
-      history.push({ role: 'user', content: messageText });
+      
+      // If PDF context found, prepend it to the user message
+      const enrichedMessage = pdfContext
+        ? `[Reference from uploaded documents:\n${pdfContext}]\n\nUser question: ${messageText}`
+        : messageText;
+      history.push({ role: 'user', content: enrichedMessage });
 
       // Check if this is a generation request
       if (isGenerationRequest(messageText)) {
@@ -150,7 +228,6 @@ export function ChemistryAssistant() {
           } else {
             toast.error(errMsg);
           }
-          // Fallback to offline
           const response = getChemistryResponse(messageText);
           setMessages(prev => [...prev, {
             id: `assistant-${Date.now()}`,
@@ -218,12 +295,14 @@ export function ChemistryAssistant() {
     } else {
       setTimeout(() => {
         const response = getChemistryResponse(messageText);
+        // Check if PDF results were included
+        const hasPdfContent = response.includes('Found in your uploaded documents');
         setMessages(prev => [...prev, {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
           content: response,
           timestamp: new Date(),
-          source: 'offline',
+          source: hasPdfContent ? 'pdf' : 'offline',
         }]);
         setIsTyping(false);
       }, 300);
@@ -253,11 +332,24 @@ export function ChemistryAssistant() {
           <div>
             <h2 className="text-base font-semibold text-foreground">Chemistry Assistant</h2>
             <p className="text-xs text-muted-foreground">
-              {useAI ? '🟢 AI Powered • SOPs • Formulas • Inventory' : '⚫ Offline Engine'}
+              {useAI ? '🟢 AI Powered • SOPs • Formulas • PDFs' : '⚫ Offline Engine'}
+              {pdfSources.length > 0 && ` • ${pdfSources.length} PDF${pdfSources.length > 1 ? 's' : ''}`}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPdfPanel(!showPdfPanel)}
+            className={`p-2 rounded-lg transition-colors relative ${showPdfPanel ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+            title="PDF Sources"
+          >
+            <FileText className="w-4 h-4" />
+            {pdfSources.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] flex items-center justify-center font-bold">
+                {pdfSources.length}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => setShowInfo(!showInfo)}
             className={`p-2 rounded-lg transition-colors ${showInfo ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
@@ -284,6 +376,76 @@ export function ChemistryAssistant() {
           </button>
         </div>
       </div>
+
+      {/* PDF Sources Panel */}
+      {showPdfPanel && (
+        <div className="mb-4 rounded-xl border border-border bg-card p-4 space-y-3 text-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              PDF Reference Sources
+            </h3>
+            <button onClick={() => setShowPdfPanel(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {pdfSources.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No PDFs uploaded yet. Upload a PDF to use as a reference source for answers.</p>
+          ) : (
+            <div className="space-y-2">
+              {pdfSources.map(src => (
+                <div key={src.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 border border-border">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="w-4 h-4 text-primary shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{src.name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {src.pageCount} pages • {new Date(src.uploadedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemovePdf(src.id)}
+                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept=".pdf"
+            onChange={handlePdfUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => pdfInputRef.current?.click()}
+            disabled={isUploading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 border border-primary/20 transition-colors disabled:opacity-50"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing PDF...
+              </>
+            ) : (
+              <>
+                <FileUp className="w-4 h-4" />
+                Upload PDF Reference
+              </>
+            )}
+          </button>
+
+          <p className="text-[10px] text-muted-foreground">
+            📌 Uploaded PDFs are stored locally and used as reference sources. Both offline and AI modes will search your PDFs for relevant answers.
+          </p>
+        </div>
+      )}
 
       {/* Info Panel */}
       {showInfo && (
@@ -313,9 +475,9 @@ export function ChemistryAssistant() {
 
           <div className="space-y-2 text-xs text-muted-foreground">
             <p>📦 <strong className="text-foreground">Offline mode</strong> is always free — unlimited queries using the built-in chemistry engine.</p>
-            <p>✨ <strong className="text-foreground">AI mode</strong> uses Lovable AI credits from your workspace. Includes free monthly usage, resets on the 1st of each month.</p>
-            <p>⚠️ If you see a rate limit error, wait a moment and try again. If credits run out, switch to offline mode or top up in Settings → Workspace → Usage.</p>
-            <p>💡 <strong className="text-foreground">Tip:</strong> Use offline mode for quick formula lookups and AI mode for complex questions, SOP generation, and inventory lookups.</p>
+            <p>✨ <strong className="text-foreground">AI mode</strong> uses Lovable AI credits from your workspace.</p>
+            <p>📄 <strong className="text-foreground">PDF sources</strong> are searched in both modes for relevant answers.</p>
+            <p>⚠️ If you see a rate limit error, wait a moment and try again.</p>
           </div>
         </div>
       )}
@@ -358,7 +520,7 @@ export function ChemistryAssistant() {
 
               {msg.source && msg.role === 'assistant' && (
                 <span className="text-[10px] text-muted-foreground mt-1 ml-1 inline-block">
-                  {msg.source === 'ai' ? '✨ AI' : '📦 Offline'}
+                  {msg.source === 'ai' ? '✨ AI' : msg.source === 'pdf' ? '📄 PDF' : '📦 Offline'}
                 </span>
               )}
             </div>
@@ -405,12 +567,27 @@ export function ChemistryAssistant() {
       {/* Input */}
       <div className="flex gap-2 pt-3 border-t border-border mt-2">
         <input
+          ref={pdfInputRef2}
+          type="file"
+          accept=".pdf"
+          onChange={handlePdfUpload}
+          className="hidden"
+        />
+        <button
+          onClick={() => pdfInputRef2.current?.click()}
+          disabled={isUploading}
+          className="px-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 border border-border transition-colors disabled:opacity-40"
+          title="Upload PDF"
+        >
+          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
+        </button>
+        <input
           ref={inputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          placeholder={useAI ? "Ask, generate SOPs, add chemicals..." : "Ask about chemistry..."}
+          placeholder={useAI ? "Ask, generate SOPs, search PDFs..." : "Ask about chemistry..."}
           className="flex-1 bg-input border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <button
@@ -423,4 +600,17 @@ export function ChemistryAssistant() {
       </div>
     </div>
   );
+}
+
+// Build PDF context string for AI queries
+function buildPdfContext(query: string): string {
+  const results = searchPdfSources(query);
+  if (!results.length) return '';
+
+  let context = '';
+  for (const result of results) {
+    context += `[From "${result.source}"]:\n`;
+    context += result.excerpts.join('\n') + '\n\n';
+  }
+  return context.trim();
 }

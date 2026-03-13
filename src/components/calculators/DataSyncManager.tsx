@@ -15,6 +15,11 @@ const DATA_KEYS = [
   { key: 'calibration-curves', label: 'Calibration Curves' },
 ];
 
+// Admin-only data keys (PDF sources)
+const ADMIN_DATA_KEYS = [
+  { key: 'chemanalyst-pdf-sources', label: 'PDF Reference Sources' },
+];
+
 interface ExportData {
   _meta: {
     version: string;
@@ -25,7 +30,8 @@ interface ExportData {
 }
 
 export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(DATA_KEYS.map(d => d.key)));
+  const allKeys = isAdmin ? [...DATA_KEYS, ...ADMIN_DATA_KEYS] : DATA_KEYS;
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(allKeys.map(d => d.key)));
   const [importPreview, setImportPreview] = useState<ExportData | null>(null);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,7 +45,7 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
     });
   };
 
-  const selectAll = () => setSelectedKeys(new Set(DATA_KEYS.map(d => d.key)));
+  const selectAll = () => setSelectedKeys(new Set(allKeys.map(d => d.key)));
   const selectNone = () => setSelectedKeys(new Set());
 
   // ── Export ──
@@ -54,7 +60,7 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
     };
 
     let itemCount = 0;
-    for (const { key } of DATA_KEYS) {
+    for (const { key } of allKeys) {
       if (!selectedKeys.has(key)) continue;
       try {
         const raw = localStorage.getItem(key);
@@ -157,7 +163,7 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
 
   const getDataStats = () => {
     const stats: { key: string; label: string; count: number | string }[] = [];
-    for (const { key, label } of DATA_KEYS) {
+    for (const { key, label } of allKeys) {
       try {
         const raw = localStorage.getItem(key);
         if (raw) {
