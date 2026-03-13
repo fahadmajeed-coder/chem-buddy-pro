@@ -442,8 +442,7 @@ export function getChemistryResponse(input: string): string {
 
   // Search uploaded PDF sources first
   try {
-    const { searchPdfSources } = require('@/lib/pdfSourceStore');
-    const pdfResults = searchPdfSources(trimmed);
+    const pdfResults = searchPdfSourcesSync(trimmed);
     if (pdfResults.length > 0) {
       let response = '📄 **Found in your uploaded documents:**\n\n';
       for (const result of pdfResults) {
@@ -453,7 +452,6 @@ export function getChemistryResponse(input: string): string {
         }
       }
       response += '\n---\n\n';
-      // Also check Q&A database for additional context
       for (const qa of qaDatabase) {
         if (qa.patterns.some(p => p.test(trimmed))) {
           response += qa.answer;
