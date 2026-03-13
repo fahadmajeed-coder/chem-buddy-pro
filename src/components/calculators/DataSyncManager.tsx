@@ -126,10 +126,18 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
           } else {
             const existingParsed = JSON.parse(existing);
             if (Array.isArray(existingParsed) && Array.isArray(value)) {
-              // Merge arrays by id if items have id, otherwise concat
-              const existingIds = new Set(existingParsed.map((item: Record<string, unknown>) => item.id).filter(Boolean));
-              const newItems = (value as Record<string, unknown>[]).filter(item => !item.id || !existingIds.has(item.id));
-              localStorage.setItem(key, JSON.stringify([...existingParsed, ...newItems]));
+              // Check if it's an array of primitives (e.g. sidebar order strings)
+              const isPrimitiveArray = existingParsed.every((item: unknown) => typeof item !== 'object');
+              if (isPrimitiveArray) {
+                const existingSet = new Set(existingParsed);
+                const newItems = (value as unknown[]).filter(item => !existingSet.has(item));
+                localStorage.setItem(key, JSON.stringify([...existingParsed, ...newItems]));
+              } else {
+                // Merge arrays by id if items have id, otherwise concat
+                const existingIds = new Set(existingParsed.map((item: Record<string, unknown>) => item.id).filter(Boolean));
+                const newItems = (value as Record<string, unknown>[]).filter(item => !item.id || !existingIds.has(item.id));
+                localStorage.setItem(key, JSON.stringify([...existingParsed, ...newItems]));
+              }
             } else if (typeof existingParsed === 'object' && typeof value === 'object' && !Array.isArray(value)) {
               localStorage.setItem(key, JSON.stringify({ ...existingParsed, ...(value as Record<string, unknown>) }));
             } else {
