@@ -1,3 +1,5 @@
+import { searchPdfSources as searchPdfSourcesSync } from '@/lib/pdfSourceStore';
+
 // Periodic table data (atomic masses)
 export const elements: Record<string, { name: string; symbol: string; mass: number; number: number }> = {
   H: { name: 'Hydrogen', symbol: 'H', mass: 1.008, number: 1 },
