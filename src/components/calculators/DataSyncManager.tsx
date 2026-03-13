@@ -30,7 +30,8 @@ interface ExportData {
 }
 
 export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(DATA_KEYS.map(d => d.key)));
+  const allKeys = isAdmin ? [...DATA_KEYS, ...ADMIN_DATA_KEYS] : DATA_KEYS;
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(allKeys.map(d => d.key)));
   const [importPreview, setImportPreview] = useState<ExportData | null>(null);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const fileInputRef = useRef<HTMLInputElement>(null);
