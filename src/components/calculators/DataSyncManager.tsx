@@ -163,7 +163,7 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
 
   const getDataStats = () => {
     const stats: { key: string; label: string; count: number | string }[] = [];
-    for (const { key, label } of DATA_KEYS) {
+    for (const { key, label } of allKeys) {
       try {
         const raw = localStorage.getItem(key);
         if (raw) {
