@@ -736,7 +736,7 @@ export function AnalyticalTestSection({ isAdmin = true }: { isAdmin?: boolean } 
 
               {/* Auto-dropdown for formula library */}
               {showDropdown && (
-                <div className="absolute z-20 left-0 right-0 mt-1 border border-border rounded-lg bg-card shadow-lg overflow-hidden">
+                <div className="absolute z-50 left-0 right-0 mt-1 border border-border rounded-lg bg-card shadow-lg overflow-hidden">
                   <div className="flex items-center justify-between px-3 py-1.5 bg-muted/30 border-b border-border">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Formula Library</span>
                     <button onClick={() => setShowDropdown(false)} className="p-0.5 text-muted-foreground hover:text-foreground rounded transition-colors">
