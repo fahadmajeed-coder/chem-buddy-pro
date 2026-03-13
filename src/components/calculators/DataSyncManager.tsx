@@ -45,7 +45,7 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
     });
   };
 
-  const selectAll = () => setSelectedKeys(new Set(DATA_KEYS.map(d => d.key)));
+  const selectAll = () => setSelectedKeys(new Set(allKeys.map(d => d.key)));
   const selectNone = () => setSelectedKeys(new Set());
 
   // ── Export ──
