@@ -15,6 +15,11 @@ const DATA_KEYS = [
   { key: 'calibration-curves', label: 'Calibration Curves' },
 ];
 
+// Admin-only data keys (PDF sources)
+const ADMIN_DATA_KEYS = [
+  { key: 'chemanalyst-pdf-sources', label: 'PDF Reference Sources' },
+];
+
 interface ExportData {
   _meta: {
     version: string;

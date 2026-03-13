@@ -440,6 +440,30 @@ export const suggestedPrompts = [
 export function getChemistryResponse(input: string): string {
   const trimmed = input.trim();
 
+  // Search uploaded PDF sources first
+  try {
+    const { searchPdfSources } = require('@/lib/pdfSourceStore');
+    const pdfResults = searchPdfSources(trimmed);
+    if (pdfResults.length > 0) {
+      let response = '📄 **Found in your uploaded documents:**\n\n';
+      for (const result of pdfResults) {
+        response += `**Source:** ${result.source}\n`;
+        for (const excerpt of result.excerpts) {
+          response += `> ${excerpt}\n\n`;
+        }
+      }
+      response += '\n---\n\n';
+      // Also check Q&A database for additional context
+      for (const qa of qaDatabase) {
+        if (qa.patterns.some(p => p.test(trimmed))) {
+          response += qa.answer;
+          return response;
+        }
+      }
+      return response;
+    }
+  } catch { /* PDF store not available */ }
+
   // Check Q&A database FIRST (before formula parsing to avoid "pH" → P+H)
   for (const qa of qaDatabase) {
     if (qa.patterns.some(p => p.test(trimmed))) {
