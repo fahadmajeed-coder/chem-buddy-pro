@@ -162,7 +162,7 @@ const unitLabels: Record<string, string> = {
   'g/L': 'g/L',
 };
 
-export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProps) {
+export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionPrepCalculatorProps) {
   const [locked, setLocked] = useState(false);
   const [steps, setSteps] = useState<PrepStep[]>([
     { id: '1', reagentState: 'solid', targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
