@@ -11,7 +11,7 @@ interface NormalityCalculatorProps {
   isAdmin?: boolean;
 }
 
-export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
+export function NormalityCalculator({ initialMw, isAdmin = false }: NormalityCalculatorProps) {
   const [mass, setMass] = useState('');
   const [mw, setMw] = useState('');
   const [nFactor, setNFactor] = useState('1');
