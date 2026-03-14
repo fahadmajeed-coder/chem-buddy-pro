@@ -8,6 +8,7 @@ import { Scale, Pipette } from 'lucide-react';
 
 interface FormalityCalculatorProps {
   initialMw?: number | null;
+  isAdmin?: boolean;
 }
 
 export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
