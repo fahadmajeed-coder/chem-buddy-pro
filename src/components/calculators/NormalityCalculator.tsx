@@ -8,6 +8,7 @@ import { Scale, Pipette } from 'lucide-react';
 
 interface NormalityCalculatorProps {
   initialMw?: number | null;
+  isAdmin?: boolean;
 }
 
 export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
