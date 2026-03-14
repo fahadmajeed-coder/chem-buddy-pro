@@ -11,7 +11,7 @@ interface FormalityCalculatorProps {
   isAdmin?: boolean;
 }
 
-export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
+export function FormalityCalculator({ initialMw, isAdmin = false }: FormalityCalculatorProps) {
   const [mass, setMass] = useState('');
   const [fw, setFw] = useState('');
   const [volume, setVolume] = useState('');
