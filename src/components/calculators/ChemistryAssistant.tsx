@@ -3,7 +3,7 @@ import { Send, Sparkles, Trash2, Bot, User, Zap, Info, X, FileUp, FileText, Load
 import { getChemistryResponse, suggestedPrompts } from '@/lib/chemistryEngine';
 import { streamChat, generateItem, isGenerationRequest, type ChatMessage, type GeneratedItem } from '@/lib/aiChat';
 import { addGeneratedItem } from '@/lib/aiItemStore';
-import { getPdfSources, addPdfSource, removePdfSource, extractTextFromPdf, searchPdfSources, type PdfSource } from '@/lib/pdfSourceStore';
+import { getPdfSources, addPdfSource, removePdfSource, extractTextFromPdf, searchPdfSources, searchPdfSourcesExact, type PdfSource } from '@/lib/pdfSourceStore';
 import { GeneratedItemCard } from './GeneratedItemCard';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -40,6 +40,8 @@ function incrementAIUsage(): number {
   return usage.count;
 }
 
+type PdfSearchMode = 'smart' | 'exact';
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -69,6 +71,7 @@ export function ChemistryAssistant() {
   const [pdfSources, setPdfSources] = useState<PdfSource[]>(() => getPdfSources());
   const [isUploading, setIsUploading] = useState(false);
   const [aiUsage, setAiUsage] = useState(() => getAIUsage());
+  const [pdfSearchMode, setPdfSearchMode] = useState<PdfSearchMode>('smart');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -78,7 +81,6 @@ export function ChemistryAssistant() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Listen for PDF source changes
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -176,8 +178,8 @@ export function ChemistryAssistant() {
     setInput('');
     setIsTyping(true);
 
-    // Build PDF context for AI mode
-    const pdfContext = buildPdfContext(messageText);
+    // Build PDF context based on search mode
+    const pdfContext = buildPdfContext(messageText, pdfSearchMode);
 
     if (useAI) {
       const newCount = incrementAIUsage();
@@ -186,13 +188,11 @@ export function ChemistryAssistant() {
         .filter(m => m.id !== 'welcome')
         .map(m => ({ role: m.role, content: m.content }));
       
-      // If PDF context found, prepend it to the user message
       const enrichedMessage = pdfContext
         ? `[Reference from uploaded documents:\n${pdfContext}]\n\nUser question: ${messageText}`
         : messageText;
       history.push({ role: 'user', content: enrichedMessage });
 
-      // Check if this is a generation request
       if (isGenerationRequest(messageText)) {
         try {
           const result = await generateItem(history);
@@ -295,7 +295,6 @@ export function ChemistryAssistant() {
     } else {
       setTimeout(() => {
         const response = getChemistryResponse(messageText);
-        // Check if PDF results were included
         const hasPdfContent = response.includes('Found in your uploaded documents');
         setMessages(prev => [...prev, {
           id: `assistant-${Date.now()}`,
@@ -389,6 +388,38 @@ export function ChemistryAssistant() {
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {/* PDF Search Mode Toggle */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Search Mode:</span>
+            <div className="inline-flex rounded-lg border border-border overflow-hidden">
+              <button
+                onClick={() => setPdfSearchMode('smart')}
+                className={`px-3 py-1 text-[11px] font-medium transition-colors ${
+                  pdfSearchMode === 'smart'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                🧠 Smart
+              </button>
+              <button
+                onClick={() => setPdfSearchMode('exact')}
+                className={`px-3 py-1 text-[11px] font-medium transition-colors ${
+                  pdfSearchMode === 'exact'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                🔍 Exact Match
+              </button>
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            {pdfSearchMode === 'smart'
+              ? '🧠 Smart mode: AI-style contextual search — finds related content even if wording differs.'
+              : '🔍 Exact mode: Finds only sentences containing the exact phrase you typed.'}
+          </p>
 
           {pdfSources.length === 0 ? (
             <p className="text-xs text-muted-foreground">No PDFs uploaded yet. Upload a PDF to use as a reference source for answers.</p>
@@ -602,9 +633,9 @@ export function ChemistryAssistant() {
   );
 }
 
-// Build PDF context string for AI queries
-function buildPdfContext(query: string): string {
-  const results = searchPdfSources(query);
+// Build PDF context string for queries using the selected search mode
+function buildPdfContext(query: string, mode: PdfSearchMode = 'smart'): string {
+  const results = mode === 'exact' ? searchPdfSourcesExact(query) : searchPdfSources(query);
   if (!results.length) return '';
 
   let context = '';

@@ -19,7 +19,6 @@ export function getPdfSources(): PdfSource[] {
 
 export function addPdfSource(source: PdfSource): void {
   const sources = getPdfSources();
-  // Replace if same name exists
   const idx = sources.findIndex(s => s.name === source.name);
   if (idx >= 0) sources[idx] = source;
   else sources.push(source);
@@ -33,6 +32,7 @@ export function removePdfSource(id: string): void {
   window.dispatchEvent(new CustomEvent('local-storage-sync', { detail: { key: PDF_SOURCES_KEY } }));
 }
 
+/** Smart contextual search — finds sentences containing query terms */
 export function searchPdfSources(query: string): { source: string; excerpts: string[] }[] {
   const sources = getPdfSources();
   if (!sources.length || !query.trim()) return [];
@@ -47,7 +47,6 @@ export function searchPdfSources(query: string): { source: string; excerpts: str
     const matchedTerms = terms.filter(t => textLower.includes(t));
     if (matchedTerms.length === 0) continue;
 
-    // Extract relevant excerpts around matched terms
     const excerpts: string[] = [];
     const sentences = src.text.split(/[.!?\n]+/).filter(s => s.trim().length > 10);
 
@@ -67,10 +66,39 @@ export function searchPdfSources(query: string): { source: string; excerpts: str
   return results;
 }
 
+/** Exact word match search — finds sentences containing the exact query phrase */
+export function searchPdfSourcesExact(query: string): { source: string; excerpts: string[] }[] {
+  const sources = getPdfSources();
+  if (!sources.length || !query.trim()) return [];
+
+  const exactPhrase = query.trim().toLowerCase();
+  const results: { source: string; excerpts: string[] }[] = [];
+
+  for (const src of sources) {
+    const textLower = src.text.toLowerCase();
+    if (!textLower.includes(exactPhrase)) continue;
+
+    const excerpts: string[] = [];
+    const sentences = src.text.split(/[.!?\n]+/).filter(s => s.trim().length > 10);
+
+    for (const sentence of sentences) {
+      if (sentence.toLowerCase().includes(exactPhrase)) {
+        excerpts.push(sentence.trim());
+        if (excerpts.length >= 8) break;
+      }
+    }
+
+    if (excerpts.length) {
+      results.push({ source: src.name, excerpts });
+    }
+  }
+
+  return results;
+}
+
 export async function extractTextFromPdf(file: File): Promise<{ text: string; pageCount: number }> {
   const pdfjsLib = await import('pdfjs-dist');
   
-  // Use the bundled worker
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.mjs',
     import.meta.url

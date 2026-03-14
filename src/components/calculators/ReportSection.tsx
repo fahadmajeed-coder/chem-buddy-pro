@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield, Settings2, FlaskConical } from 'lucide-react';
+import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield, Settings2, FlaskConical, Save, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AnalyticalResult } from './AnalyticalTestSection';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -34,6 +34,19 @@ interface SavedStandard {
   createdAt: number;
 }
 
+interface CustomColumn {
+  id: string;
+  header: string;
+}
+
+interface ReportTemplate {
+  id: string;
+  name: string;
+  customColumns: CustomColumn[];
+  showDeduction: boolean;
+  createdAt: number;
+}
+
 interface ReportEntry {
   id: string;
   parameter: string;
@@ -44,6 +57,8 @@ interface ReportEntry {
   yellowRange: string;
   status: EntryStatus;
   included: boolean;
+  deduction: string;
+  customValues: Record<string, string>;
 }
 
 const formatRangeStr = (min?: string, max?: string, legacy?: string) => {
@@ -76,9 +91,44 @@ const computeStatus = (result: string, greenRange: string, yellowRange: string):
   return 'pending';
 };
 
+/** Auto-calculate deduction based on how far a result is outside the good range */
+const computeDeduction = (result: string, greenRange: string): string => {
+  const res = parseFloat(result);
+  if (isNaN(res)) return '';
+  const match = greenRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
+  if (!match) return '';
+  const gMin = parseFloat(match[1]);
+  const gMax = parseFloat(match[2]);
+  if (res >= gMin && res <= gMax) return '0';
+  // How far outside the range
+  if (res < gMin) return (gMin - res).toFixed(4);
+  if (res > gMax) return (res - gMax).toFixed(4);
+  return '';
+};
+
+const makeEntry = (overrides?: Partial<ReportEntry>): ReportEntry => ({
+  id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+  parameter: '',
+  method: '',
+  result: '',
+  unit: '',
+  greenRange: '',
+  yellowRange: '',
+  status: 'pending',
+  included: true,
+  deduction: '',
+  customValues: {},
+  ...overrides,
+});
+
 export function ReportSection() {
   const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
   const [selectedStandardId, setSelectedStandardId] = useState<string | null>(null);
+  const [savedTemplates, setSavedTemplates] = useLocalStorage<ReportTemplate[]>('chemanalyst-report-templates', []);
+  const [templateName, setTemplateName] = useState('');
+
+  const [showDeduction, setShowDeduction] = useState(true);
+  const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
 
   const [exportColumns, setExportColumns] = useState({
     parameter: true,
@@ -95,18 +145,14 @@ export function ReportSection() {
   const [companyName, setCompanyName] = useState('');
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [entries, setEntries] = useState<ReportEntry[]>([
-    { id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending', included: true }
-  ]);
+  const [entries, setEntries] = useState<ReportEntry[]>([makeEntry()]);
 
-  // Normalize parameter name for matching: strip trailing (sampleId), trim, lowercase
   const normalizeParam = (name: string) => name.replace(/\s*\(.*\)\s*$/, '').trim().toLowerCase();
 
   const loadStandard = (standardId: string) => {
     const std = savedStandards.find(s => s.id === standardId);
     if (!std) return;
     setSelectedStandardId(standardId);
-    // Build lookup of existing entries by normalized parameter name
     const existingByParam = new Map<string, ReportEntry>();
     for (const e of entries) {
       if (e.parameter.trim()) {
@@ -120,32 +166,31 @@ export function ReportSection() {
       const paramKey = normalizeParam(p.analysis);
       const existing = existingByParam.get(paramKey);
       if (existing) usedExistingIds.add(existing.id);
-      return {
-        id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      const resultVal = existing?.result || '';
+      return makeEntry({
         parameter: p.analysis,
         method: existing?.method || '',
-        result: existing?.result || '',
+        result: resultVal,
         unit: existing?.unit || '',
         greenRange,
         yellowRange,
-        status: existing?.result ? computeStatus(existing.result, greenRange, yellowRange) : 'pending' as EntryStatus,
+        status: resultVal ? computeStatus(resultVal, greenRange, yellowRange) : 'pending',
         included: existing?.included ?? true,
-      };
+        deduction: resultVal ? computeDeduction(resultVal, greenRange) : '',
+        customValues: existing?.customValues || {},
+      });
     });
-    // Keep unmatched existing entries (e.g. extra analytical results not in standard)
     const extras = entries.filter(e => e.parameter.trim() && !usedExistingIds.has(e.id));
     setEntries([...stdEntries, ...extras]);
   };
 
   const clearStandard = () => {
     setSelectedStandardId(null);
-    setEntries([{ id: '1', parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending', included: true }]);
+    setEntries([makeEntry()]);
   };
 
   const addEntry = () => {
-    setEntries(prev => [...prev, {
-      id: Date.now().toString(), parameter: '', method: '', result: '', unit: '', greenRange: '', yellowRange: '', status: 'pending', included: true
-    }]);
+    setEntries(prev => [...prev, makeEntry()]);
   };
 
   const removeEntry = (id: string) => {
@@ -156,16 +201,60 @@ export function ReportSection() {
     setEntries(prev => prev.map(e => {
       if (e.id !== id) return e;
       const updated = { ...e, [field]: value };
-      // Only auto-compute status if not manually overridden via dropdown
       if (field === 'result' || field === 'greenRange' || field === 'yellowRange') {
         updated.status = computeStatus(updated.result, updated.greenRange, updated.yellowRange);
+        // Auto-calculate deduction unless user manually edited it
+        if (field !== 'greenRange' || !e.deduction) {
+          updated.deduction = computeDeduction(updated.result, updated.greenRange);
+        }
       }
       return updated;
     }));
   };
 
+  const updateCustomValue = (entryId: string, colId: string, value: string) => {
+    setEntries(prev => prev.map(e => e.id === entryId ? { ...e, customValues: { ...e.customValues, [colId]: value } } : e));
+  };
+
   const setStatus = (id: string, status: EntryStatus) => {
     setEntries(prev => prev.map(e => e.id === id ? { ...e, status } : e));
+  };
+
+  const addCustomColumn = () => {
+    setCustomColumns(prev => [...prev, { id: `col-${Date.now()}`, header: `Column ${prev.length + 1}` }]);
+  };
+
+  const updateColumnHeader = (colId: string, header: string) => {
+    setCustomColumns(prev => prev.map(c => c.id === colId ? { ...c, header } : c));
+  };
+
+  const removeCustomColumn = (colId: string) => {
+    setCustomColumns(prev => prev.filter(c => c.id !== colId));
+  };
+
+  const saveTemplate = () => {
+    const name = templateName.trim() || `Template ${savedTemplates.length + 1}`;
+    const template: ReportTemplate = {
+      id: `tmpl-${Date.now()}`,
+      name,
+      customColumns: [...customColumns],
+      showDeduction,
+      createdAt: Date.now(),
+    };
+    setSavedTemplates(prev => [...prev, template]);
+    setTemplateName('');
+    toast.success(`Template "${name}" saved`);
+  };
+
+  const loadTemplate = (tmpl: ReportTemplate) => {
+    setCustomColumns(tmpl.customColumns.map(c => ({ ...c })));
+    setShowDeduction(tmpl.showDeduction);
+    toast.success(`Template "${tmpl.name}" loaded`);
+  };
+
+  const deleteTemplate = (id: string) => {
+    setSavedTemplates(prev => prev.filter(t => t.id !== id));
+    toast.success('Template deleted');
   };
 
   const statusIcon = (status: EntryStatus) => {
@@ -242,24 +331,32 @@ export function ReportSection() {
 
     type ColKey = keyof typeof exportColumns;
     const allCols: { key: ColKey; header: string; getValue: (e: ReportEntry) => string }[] = [
-      { key: 'parameter' as ColKey, header: 'Parameter', getValue: (e: ReportEntry) => e.parameter || '—' },
-      { key: 'method' as ColKey, header: 'Method', getValue: (e: ReportEntry) => e.method || '—' },
-      { key: 'result' as ColKey, header: 'Result', getValue: (e: ReportEntry) => `${e.result || '—'} ${e.unit}`.trim() },
-      { key: 'greenRange' as ColKey, header: 'Good Range (Normal)', getValue: (e: ReportEntry) => e.greenRange || '—' },
-      { key: 'yellowRange' as ColKey, header: 'Fair Range (With Ded.)', getValue: (e: ReportEntry) => e.yellowRange || '—' },
-      { key: 'status' as ColKey, header: 'Status', getValue: (e: ReportEntry) => e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending' },
+      { key: 'parameter', header: 'Parameter', getValue: (e) => e.parameter || '—' },
+      { key: 'method', header: 'Method', getValue: (e) => e.method || '—' },
+      { key: 'result', header: 'Result', getValue: (e) => `${e.result || '—'} ${e.unit}`.trim() },
+      { key: 'greenRange', header: 'Good Range (Normal)', getValue: (e) => e.greenRange || '—' },
+      { key: 'yellowRange', header: 'Fair Range (With Ded.)', getValue: (e) => e.yellowRange || '—' },
+      { key: 'status', header: 'Status', getValue: (e) => e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending' },
     ];
-    const finalCols = allCols.filter(c => exportColumns[c.key]);
+    let finalCols = allCols.filter(c => exportColumns[c.key]);
 
-    // Transpose mode: when ≤2 column types selected, pivot so parameters become columns
-    const useTranspose = finalCols.length === 2 && finalCols.some(c => c.key === 'parameter') && exportEntries.length > 1;
+    // Add deduction column if visible
+    if (showDeduction) {
+      const statusIdx = finalCols.findIndex(c => c.key === 'status');
+      const dedCol = { key: 'status' as ColKey, header: 'Deduction', getValue: (e: ReportEntry) => e.deduction || '—' };
+      if (statusIdx >= 0) finalCols.splice(statusIdx + 1, 0, dedCol);
+      else finalCols.push(dedCol);
+    }
+
+    // Add custom columns
+    for (const cc of customColumns) {
+      finalCols.push({ key: 'status' as ColKey, header: cc.header, getValue: (e) => e.customValues[cc.id] || '—' });
+    }
+
+    const useTranspose = finalCols.length === 2 && finalCols.some(c => c.header === 'Parameter') && exportEntries.length > 1;
 
     if (useTranspose) {
-      const valueCol = finalCols.find(c => c.key !== 'parameter')!;
-      const head = [valueCol.header, ...exportEntries.map(e => e.parameter || '—')];
-      const body = [exportEntries.map(e => valueCol.getValue(e))];
-      body[0].unshift(valueCol.header);
-
+      const valueCol = finalCols.find(c => c.header !== 'Parameter')!;
       autoTable(doc, {
         startY: yPos + 10,
         head: [['', ...exportEntries.map(e => e.parameter || '—')]],
@@ -268,18 +365,9 @@ export function ReportSection() {
         headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         styles: { fontSize: 9, cellPadding: 4 },
         columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
-        didParseCell: (data) => {
-          if (data.section === 'body' && valueCol.key === 'status') {
-            const val = data.cell.raw as string;
-            if (val === 'GOOD') { data.cell.styles.textColor = [255, 255, 255]; data.cell.styles.fillColor = [0, 160, 80]; }
-            else if (val === 'FAIR') { data.cell.styles.textColor = [40, 40, 40]; data.cell.styles.fillColor = [255, 200, 50]; }
-            else if (val === 'REJECT') { data.cell.styles.textColor = [255, 255, 255]; data.cell.styles.fillColor = [200, 50, 50]; }
-          }
-        },
       });
     } else {
-      const statusColIndex = finalCols.findIndex(c => c.key === 'status');
-
+      const statusColIndex = finalCols.findIndex(c => c.header === 'Status');
       autoTable(doc, {
         startY: yPos + 10,
         head: [finalCols.map(c => c.header)],
@@ -287,7 +375,7 @@ export function ReportSection() {
         theme: 'grid',
         headStyles: { fillColor: [0, 160, 145], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 9, cellPadding: 4 },
-        ...(statusColIndex >= 0 ? { columnStyles: { [statusColIndex]: { fontStyle: 'bold', halign: 'center' } } } : {}),
+        ...(statusColIndex >= 0 ? { columnStyles: { [statusColIndex]: { fontStyle: 'bold', halign: 'center' as const } } } : {}),
         didParseCell: (data) => {
           if (data.section === 'body' && statusColIndex >= 0 && data.column.index === statusColIndex) {
             const val = data.cell.raw as string;
@@ -315,60 +403,41 @@ export function ReportSection() {
       const results: AnalyticalResult[] = JSON.parse(raw);
       if (!results.length) return;
 
-      // Build lookup of analytical results by normalized formulaName
       const analyticalMap = new Map<string, AnalyticalResult>();
       for (const r of results) {
-        const key = normalizeParam(r.formulaName);
-        analyticalMap.set(key, r);
+        analyticalMap.set(normalizeParam(r.formulaName), r);
       }
 
-      // Check if we have existing entries with parameters (from a standard)
-      const hasExistingParams = entries.some(e => e.parameter.trim() && e.parameter !== '');
+      const hasExistingParams = entries.some(e => e.parameter.trim());
       
       if (hasExistingParams) {
-        // Merge: fill results into matching entries by normalized parameter name
         const updatedEntries = entries.map(e => {
           const paramKey = normalizeParam(e.parameter);
           const match = analyticalMap.get(paramKey);
           if (match) {
-            analyticalMap.delete(paramKey); // consumed
+            analyticalMap.delete(paramKey);
             const result = match.result.toFixed(4);
             return {
               ...e,
               result,
               status: computeStatus(result, e.greenRange, e.yellowRange),
+              deduction: computeDeduction(result, e.greenRange),
             };
           }
           return e;
         });
-        // Append unmatched analytical results as new rows
         const extraEntries: ReportEntry[] = [];
         for (const [, r] of analyticalMap) {
-          extraEntries.push({
-            id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          extraEntries.push(makeEntry({
             parameter: r.formulaName + (r.sampleId ? ` (${r.sampleId})` : ''),
-            method: '',
             result: r.result.toFixed(4),
-            unit: '',
-            greenRange: '',
-            yellowRange: '',
-            status: 'pending' as EntryStatus,
-            included: true,
-          });
+          }));
         }
         setEntries([...updatedEntries, ...extraEntries]);
       } else {
-        // No existing parameters: create fresh entries from analytical results
-        setEntries(results.map(r => ({
-          id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        setEntries(results.map(r => makeEntry({
           parameter: r.formulaName + (r.sampleId ? ` (${r.sampleId})` : ''),
-          method: '',
           result: r.result.toFixed(4),
-          unit: '',
-          greenRange: '',
-          yellowRange: '',
-          status: 'pending' as EntryStatus,
-          included: true,
         })));
       }
       toast.success(`Analytical results loaded and merged.`);
@@ -384,7 +453,7 @@ export function ReportSection() {
 
   return (
     <div className="space-y-4">
-      {/* Unified Data Sources Panel */}
+      {/* Data Sources Panel */}
       {(savedStandards.length > 0 || hasAnalyticalResults) && (
         <div className="glass-panel rounded-lg p-5 animate-fade-in">
           <div className="flex items-center gap-2 mb-4">
@@ -393,7 +462,6 @@ export function ReportSection() {
             <span className="text-[10px] text-muted-foreground ml-auto">Load from Standards and/or Analytical Tests in any order</span>
           </div>
 
-          {/* Standards selection */}
           {savedStandards.length > 0 && (
             <div className="mb-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
@@ -426,7 +494,6 @@ export function ReportSection() {
             </div>
           )}
 
-          {/* Analytical results */}
           {hasAnalyticalResults && (
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
@@ -491,19 +558,26 @@ export function ReportSection() {
                 metaRows.push(['Report Title', title || 'Certificate of Analysis']);
                 if (batchNo) metaRows.push(['Batch No', batchNo]);
                 metaRows.push(['Date', date]);
-                metaRows.push([]); // blank line
+                metaRows.push([]);
                 const headers = ['Parameter', 'Method', 'Result', 'Unit', 'Good Range', 'Fair Range', 'Status'];
+                if (showDeduction) headers.push('Deduction');
+                customColumns.forEach(cc => headers.push(cc.header));
                 const csvEntries = entries.filter(e => e.included);
-                const rows = csvEntries.map(e => [
-                  e.parameter, e.method, e.result, e.unit, e.greenRange, e.yellowRange,
-                  e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending'
-                ]);
+                const rows = csvEntries.map(e => {
+                  const row = [
+                    e.parameter, e.method, e.result, e.unit, e.greenRange, e.yellowRange,
+                    e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending'
+                  ];
+                  if (showDeduction) row.push(e.deduction || '');
+                  customColumns.forEach(cc => row.push(e.customValues[cc.id] || ''));
+                  return row;
+                });
                 const csv = [...metaRows, headers, ...rows].map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
                 const blob = new Blob([csv], { type: 'text/csv' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `COA_${batchNo || 'report'}_${new Date().toISOString().split('T')[0]}.csv`;
+                a.download = `COA_${batchNo || 'report'}_${date}.csv`;
                 a.click();
                 URL.revokeObjectURL(url);
                 toast.success('CSV exported');
@@ -532,14 +606,16 @@ export function ReportSection() {
         </div>
       </div>
 
-      {/* Export Column Toggles */}
+      {/* Export Column Toggles + Deduction Toggle + Custom Columns */}
       <div className="glass-panel rounded-lg p-5 animate-fade-in">
         <div className="flex items-center gap-2 mb-3">
           <Settings2 className="w-5 h-5 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Export Columns</h3>
-          <span className="text-[10px] text-muted-foreground ml-auto">Toggle columns to include in PDF</span>
+          <h3 className="text-sm font-semibold text-foreground">Column Settings</h3>
+          <span className="text-[10px] text-muted-foreground ml-auto">Toggle columns, add custom columns, save templates</span>
         </div>
-        <div className="flex flex-wrap gap-3">
+
+        {/* Standard column toggles */}
+        <div className="flex flex-wrap gap-3 mb-3">
           {(Object.keys(exportColumns) as (keyof typeof exportColumns)[]).map(col => (
             <label key={col} className="inline-flex items-center gap-1.5 cursor-pointer select-none">
               <input
@@ -553,7 +629,87 @@ export function ReportSection() {
               </span>
             </label>
           ))}
+          {/* Deduction toggle */}
+          <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showDeduction}
+              onChange={() => setShowDeduction(!showDeduction)}
+              className="rounded border-border text-primary focus:ring-primary w-3.5 h-3.5"
+            />
+            <span className={`text-xs font-medium ${showDeduction ? 'text-warning' : 'text-muted-foreground line-through'}`}>
+              Deduction
+            </span>
+          </label>
         </div>
+
+        {/* Custom columns */}
+        {customColumns.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {customColumns.map(cc => (
+              <div key={cc.id} className="flex items-center gap-1 bg-secondary/50 border border-border rounded-md px-2 py-1">
+                <input
+                  type="text"
+                  value={cc.header}
+                  onChange={(e) => updateColumnHeader(cc.id, e.target.value)}
+                  className="bg-transparent text-xs font-medium text-foreground w-24 focus:outline-none focus:ring-0 border-none"
+                  placeholder="Header name"
+                />
+                <button onClick={() => removeCustomColumn(cc.id)} className="text-destructive hover:text-destructive/80 p-0.5">
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={addCustomColumn}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Column
+          </button>
+
+          {/* Save / Load Templates */}
+          <div className="flex items-center gap-1.5 ml-auto">
+            <input
+              type="text"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Template name"
+              className="bg-input border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/40 focus:ring-1 focus:ring-primary w-28"
+            />
+            <button
+              onClick={saveTemplate}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors"
+            >
+              <Save className="w-3 h-3" /> Save
+            </button>
+          </div>
+        </div>
+
+        {/* Saved templates */}
+        {savedTemplates.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Saved Templates</p>
+            <div className="flex flex-wrap gap-2">
+              {savedTemplates.map(tmpl => (
+                <div key={tmpl.id} className="flex items-center gap-1">
+                  <button
+                    onClick={() => loadTemplate(tmpl)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-secondary/50 text-foreground border border-border hover:border-primary/50 transition-colors"
+                  >
+                    <FolderOpen className="w-3 h-3" /> {tmpl.name}
+                  </button>
+                  <button onClick={() => deleteTemplate(tmpl.id)} className="p-1 text-destructive/60 hover:text-destructive transition-colors">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Entries Table */}
@@ -582,6 +738,14 @@ export function ReportSection() {
                   <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning inline-block"></span> Fair Range</span>
                 </th>
                 <th className="text-center py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                {showDeduction && (
+                  <th className="text-left py-2.5 px-3 text-xs font-medium text-warning uppercase tracking-wider">Deduction</th>
+                )}
+                {customColumns.map(cc => (
+                  <th key={cc.id} className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {cc.header}
+                  </th>
+                ))}
                 <th className="py-2.5 px-3"></th>
               </tr>
             </thead>
@@ -628,6 +792,28 @@ export function ReportSection() {
                       </select>
                     </div>
                   </td>
+                  {showDeduction && (
+                    <td className="py-2 px-2">
+                      <input
+                        type="text"
+                        value={entry.deduction}
+                        onChange={(e) => setEntries(prev => prev.map(en => en.id === entry.id ? { ...en, deduction: e.target.value } : en))}
+                        placeholder="Auto"
+                        className="w-20 bg-transparent border border-transparent hover:border-border focus:border-warning/60 rounded px-2 py-1 text-xs font-mono text-warning focus:ring-0 focus:outline-none transition-colors"
+                      />
+                    </td>
+                  )}
+                  {customColumns.map(cc => (
+                    <td key={cc.id} className="py-2 px-2">
+                      <input
+                        type="text"
+                        value={entry.customValues[cc.id] || ''}
+                        onChange={(e) => updateCustomValue(entry.id, cc.id, e.target.value)}
+                        placeholder="—"
+                        className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
+                      />
+                    </td>
+                  ))}
                   <td className="py-2 px-2">
                     {entries.length > 1 && (
                       <button onClick={() => removeEntry(entry.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
