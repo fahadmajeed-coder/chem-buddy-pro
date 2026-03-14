@@ -8,6 +8,7 @@ import { Scale, Pipette } from 'lucide-react';
 
 interface MolarityCalculatorProps {
   initialMw?: number | null;
+  isAdmin?: boolean;
 }
 
 export function MolarityCalculator({ initialMw }: MolarityCalculatorProps) {
