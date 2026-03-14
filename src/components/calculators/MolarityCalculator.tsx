@@ -68,7 +68,7 @@ export function MolarityCalculator({ initialMw, isAdmin = false }: MolarityCalcu
   return (
     <CalculatorCard
       title="Molarity Calculator"
-      subtitle="M = (mass × purity / MW) / Volume(L)"
+      subtitle={isAdmin ? "M = (mass × purity / MW) / Volume(L)" : undefined}
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
       onReset={() => { if (!locked) { setMass(''); setMw(''); setVolume(''); setPurity('100'); setDensity(''); setTargetConc(''); setReagentState('solid'); } }}

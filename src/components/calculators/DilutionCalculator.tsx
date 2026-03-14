@@ -85,7 +85,7 @@ export function DilutionCalculator({ initialMw, isAdmin = false }: DilutionCalcu
   return (
     <CalculatorCard
       title="Dilution Calculator"
-      subtitle="C₁V₁ = C₂V₂"
+      subtitle={isAdmin ? "C₁V₁ = C₂V₂" : undefined}
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
       onReset={reset}

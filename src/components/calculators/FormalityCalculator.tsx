@@ -66,7 +66,7 @@ export function FormalityCalculator({ initialMw, isAdmin = false }: FormalityCal
   return (
     <CalculatorCard
       title="Formality Calculator"
-      subtitle="F = (mass × purity / FW) / Volume(L)"
+      subtitle={isAdmin ? "F = (mass × purity / FW) / Volume(L)" : undefined}
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
       onReset={() => { if (!locked) { setMass(''); setFw(''); setVolume(''); setPurity('100'); setDensity(''); setTargetConc(''); setReagentState('solid'); } }}

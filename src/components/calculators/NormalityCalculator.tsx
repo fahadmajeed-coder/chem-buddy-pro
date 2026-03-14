@@ -70,7 +70,7 @@ export function NormalityCalculator({ initialMw, isAdmin = false }: NormalityCal
   return (
     <CalculatorCard
       title="Normality Calculator"
-      subtitle="N = (mass × purity × n-factor / MW) / Volume(L)"
+      subtitle={isAdmin ? "N = (mass × purity × n-factor / MW) / Volume(L)" : undefined}
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
       onReset={() => { if (!locked) { setMass(''); setMw(''); setNFactor('1'); setVolume(''); setPurity('100'); setDensity(''); setTargetConc(''); setReagentState('solid'); } }}

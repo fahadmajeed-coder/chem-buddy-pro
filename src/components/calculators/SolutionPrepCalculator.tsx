@@ -20,6 +20,7 @@ interface PrepStep {
 
 interface SolutionPrepCalculatorProps {
   initialMw?: number | null;
+  isAdmin?: boolean;
 }
 
 /** Convert concentration to Molarity as pivot, then to all other units */
