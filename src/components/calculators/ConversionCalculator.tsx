@@ -6,7 +6,7 @@ import { MolarMassLookup } from './MolarMassLookup';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 import { conversionCategories, ConversionDef } from '@/lib/conversionDefinitions';
 
-export function ConversionCalculator() {
+export function ConversionCalculator({ isAdmin: _isAdmin = false }: { isAdmin?: boolean } = {}) {
   const [activeCatId, setActiveCatId] = useState(conversionCategories[0].id);
   const [activeConvId, setActiveConvId] = useState(conversionCategories[0].conversions[0].id);
   const [locked, setLocked] = useState(false);

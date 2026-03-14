@@ -221,7 +221,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
           <CalculatorCard
             key={step.id}
             title={`Solution Preparation ${steps.length > 1 ? `#${idx + 1}` : ''}`}
-            subtitle="Complete solution making guide — mass, volume & conversions"
+            subtitle={isAdmin ? "Complete solution making guide — mass, volume & conversions" : undefined}
             locked={locked}
             onToggleLock={() => setLocked(!locked)}
             onReset={() => {
