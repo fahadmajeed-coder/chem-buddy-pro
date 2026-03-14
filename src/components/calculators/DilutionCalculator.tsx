@@ -12,7 +12,7 @@ interface DilutionCalculatorProps {
   isAdmin?: boolean;
 }
 
-export function DilutionCalculator({ initialMw }: DilutionCalculatorProps) {
+export function DilutionCalculator({ initialMw, isAdmin = false }: DilutionCalculatorProps) {
   const [locked, setLocked] = useState(false);
   const [solveFor, setSolveFor] = useState<SolveFor>('V1');
   const [c1, setC1] = useState('');
