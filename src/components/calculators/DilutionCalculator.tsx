@@ -9,6 +9,7 @@ type SolveFor = 'V1' | 'C2' | 'V2';
 
 interface DilutionCalculatorProps {
   initialMw?: number | null;
+  isAdmin?: boolean;
 }
 
 export function DilutionCalculator({ initialMw }: DilutionCalculatorProps) {
