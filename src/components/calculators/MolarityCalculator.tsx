@@ -11,7 +11,7 @@ interface MolarityCalculatorProps {
   isAdmin?: boolean;
 }
 
-export function MolarityCalculator({ initialMw }: MolarityCalculatorProps) {
+export function MolarityCalculator({ initialMw, isAdmin = false }: MolarityCalculatorProps) {
   const [mass, setMass] = useState('');
   const [mw, setMw] = useState('');
   const [volume, setVolume] = useState('');
