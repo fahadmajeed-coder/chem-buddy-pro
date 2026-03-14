@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RotateCcw, Copy, Info, FileDown, FileSpreadsheet } from 'lucide-react';
@@ -14,12 +14,16 @@ interface Observation {
   value: string;
 }
 
-export function CVPercentCalculator() {
+export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } = {}) {
   const isMobile = useIsMobile();
   const [sampleName, setSampleName] = useState('');
   const [observations, setObservations] = useState<Observation[]>(
     Array.from({ length: NUM_ROWS }, (_, i) => ({ name: `Sample ${i + 1}`, value: '' }))
   );
+
+  // Refs for Excel-like navigation
+  const nameRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const valueRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const updateObs = (index: number, field: 'name' | 'value', val: string) => {
     setObservations(prev => {
@@ -28,6 +32,31 @@ export function CVPercentCalculator() {
       return next;
     });
   };
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, rowIndex: number, field: 'name' | 'value') => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Move to same column, next row
+      const nextRow = rowIndex + 1;
+      if (nextRow < NUM_ROWS) {
+        const refs = field === 'name' ? nameRefs : valueRefs;
+        refs.current[nextRow]?.focus();
+      }
+    } else if (e.key === 'Tab' && !e.shiftKey) {
+      // Tab: move to next column in same row (name → value)
+      if (field === 'name') {
+        e.preventDefault();
+        valueRefs.current[rowIndex]?.focus();
+      }
+      // If on value field, let default tab move to next row's name
+    } else if (e.key === 'Tab' && e.shiftKey) {
+      // Shift+Tab: move to previous column
+      if (field === 'value') {
+        e.preventDefault();
+        nameRefs.current[rowIndex]?.focus();
+      }
+    }
+  }, []);
 
   const stats = useMemo(() => {
     const entries = observations
@@ -158,19 +187,21 @@ export function CVPercentCalculator() {
 
   return (
     <div className="space-y-4">
-      {/* Formula reference */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className={isMobile ? 'p-3' : 'p-4'}>
-          <div className="flex items-start gap-2">
-            <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-            <div className="space-y-1 text-xs text-muted-foreground font-mono">
-              <p><span className="text-foreground font-semibold">Mean</span> = Σ Observations / N</p>
-              <p><span className="text-foreground font-semibold">Std Dev</span> = √( Σ(Xᵢ − μ)² / (N−1) )</p>
-              <p><span className="text-foreground font-semibold">CV%</span> = (Std Dev / Mean) × 100</p>
+      {/* Formula reference — admin only */}
+      {isAdmin && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className={isMobile ? 'p-3' : 'p-4'}>
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+              <div className="space-y-1 text-xs text-muted-foreground font-mono">
+                <p><span className="text-foreground font-semibold">Mean</span> = Σ Observations / N</p>
+                <p><span className="text-foreground font-semibold">Std Dev</span> = √( Σ(Xᵢ − μ)² / (N−1) )</p>
+                <p><span className="text-foreground font-semibold">CV%</span> = (Std Dev / Mean) × 100</p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sample name */}
       <Card>
@@ -215,9 +246,11 @@ export function CVPercentCalculator() {
                 <div className="space-y-1">
                   {i === 0 && <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Name</label>}
                   <input
+                    ref={el => { nameRefs.current[i] = el; }}
                     type="text"
                     value={obs.name}
                     onChange={(e) => updateObs(i, 'name', e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, i, 'name')}
                     placeholder={`Sample ${i + 1}`}
                     className="w-full bg-input border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
                   />
@@ -225,10 +258,12 @@ export function CVPercentCalculator() {
                 <div className="space-y-1">
                   {i === 0 && <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Value</label>}
                   <input
+                    ref={el => { valueRefs.current[i] = el; }}
                     type="number"
                     inputMode="decimal"
                     value={obs.value}
                     onChange={(e) => updateObs(i, 'value', e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, i, 'value')}
                     placeholder="0"
                     className="w-full bg-input border border-border rounded-md px-2.5 py-1.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
                   />

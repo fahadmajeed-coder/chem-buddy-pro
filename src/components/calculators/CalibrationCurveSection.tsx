@@ -18,7 +18,7 @@ function createCurve(overrides?: Partial<CalibrationCurveData>): CalibrationCurv
   };
 }
 
-export function CalibrationCurveSection() {
+export function CalibrationCurveSection({ isAdmin: _isAdmin = false }: { isAdmin?: boolean } = {}) {
   const [curves, setCurves] = useLocalStorage<CalibrationCurveData[]>('calibration-curves', [
     createCurve({ locked: false, title: 'Default Template' }),
   ]);

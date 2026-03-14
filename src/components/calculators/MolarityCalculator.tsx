@@ -8,9 +8,10 @@ import { Scale, Pipette } from 'lucide-react';
 
 interface MolarityCalculatorProps {
   initialMw?: number | null;
+  isAdmin?: boolean;
 }
 
-export function MolarityCalculator({ initialMw }: MolarityCalculatorProps) {
+export function MolarityCalculator({ initialMw, isAdmin = false }: MolarityCalculatorProps) {
   const [mass, setMass] = useState('');
   const [mw, setMw] = useState('');
   const [volume, setVolume] = useState('');
@@ -67,7 +68,7 @@ export function MolarityCalculator({ initialMw }: MolarityCalculatorProps) {
   return (
     <CalculatorCard
       title="Molarity Calculator"
-      subtitle="M = (mass × purity / MW) / Volume(L)"
+      subtitle={isAdmin ? "M = (mass × purity / MW) / Volume(L)" : undefined}
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
       onReset={() => { if (!locked) { setMass(''); setMw(''); setVolume(''); setPurity('100'); setDensity(''); setTargetConc(''); setReagentState('solid'); } }}

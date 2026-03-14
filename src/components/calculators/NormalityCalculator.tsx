@@ -8,9 +8,10 @@ import { Scale, Pipette } from 'lucide-react';
 
 interface NormalityCalculatorProps {
   initialMw?: number | null;
+  isAdmin?: boolean;
 }
 
-export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
+export function NormalityCalculator({ initialMw, isAdmin = false }: NormalityCalculatorProps) {
   const [mass, setMass] = useState('');
   const [mw, setMw] = useState('');
   const [nFactor, setNFactor] = useState('1');
@@ -69,7 +70,7 @@ export function NormalityCalculator({ initialMw }: NormalityCalculatorProps) {
   return (
     <CalculatorCard
       title="Normality Calculator"
-      subtitle="N = (mass × purity × n-factor / MW) / Volume(L)"
+      subtitle={isAdmin ? "N = (mass × purity × n-factor / MW) / Volume(L)" : undefined}
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
       onReset={() => { if (!locked) { setMass(''); setMw(''); setNFactor('1'); setVolume(''); setPurity('100'); setDensity(''); setTargetConc(''); setReagentState('solid'); } }}

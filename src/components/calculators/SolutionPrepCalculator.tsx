@@ -20,6 +20,7 @@ interface PrepStep {
 
 interface SolutionPrepCalculatorProps {
   initialMw?: number | null;
+  isAdmin?: boolean;
 }
 
 /** Convert concentration to Molarity as pivot, then to all other units */
@@ -161,7 +162,7 @@ const unitLabels: Record<string, string> = {
   'g/L': 'g/L',
 };
 
-export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProps) {
+export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionPrepCalculatorProps) {
   const [locked, setLocked] = useState(false);
   const [steps, setSteps] = useState<PrepStep[]>([
     { id: '1', reagentState: 'solid', targetConc: '', targetUnit: 'M', targetVol: '', mw: '', nFactor: '1', purity: '100', density: '' }
@@ -220,7 +221,7 @@ export function SolutionPrepCalculator({ initialMw }: SolutionPrepCalculatorProp
           <CalculatorCard
             key={step.id}
             title={`Solution Preparation ${steps.length > 1 ? `#${idx + 1}` : ''}`}
-            subtitle="Complete solution making guide — mass, volume & conversions"
+            subtitle={isAdmin ? "Complete solution making guide — mass, volume & conversions" : undefined}
             locked={locked}
             onToggleLock={() => setLocked(!locked)}
             onReset={() => {

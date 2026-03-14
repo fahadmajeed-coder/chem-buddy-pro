@@ -91,12 +91,12 @@ const Index = () => {
   };
 
   const sections: Record<string, React.ReactNode> = {
-    molarity: <MolarityCalculator initialMw={elementMw} />,
-    normality: <NormalityCalculator initialMw={elementMw} />,
-    formality: <FormalityCalculator initialMw={elementMw} />,
-    conversion: <ConversionCalculator />,
-    solution: <SolutionPrepCalculator initialMw={elementMw} />,
-    dilution: <DilutionCalculator initialMw={elementMw} />,
+    molarity: <MolarityCalculator initialMw={elementMw} isAdmin={isAdmin} />,
+    normality: <NormalityCalculator initialMw={elementMw} isAdmin={isAdmin} />,
+    formality: <FormalityCalculator initialMw={elementMw} isAdmin={isAdmin} />,
+    conversion: <ConversionCalculator isAdmin={isAdmin} />,
+    solution: <SolutionPrepCalculator initialMw={elementMw} isAdmin={isAdmin} />,
+    dilution: <DilutionCalculator initialMw={elementMw} isAdmin={isAdmin} />,
     analytical: <AnalyticalTestSection isAdmin={isAdmin} />,
     report: <ReportSection />,
     standards: <StandardsSection />,
@@ -104,11 +104,11 @@ const Index = () => {
     inventory: <InventoryManager isAdmin={isAdmin} />,
     'periodic-table': <PeriodicTable onUseInCalculator={handleUseInCalculator} />,
     formulas: <FormulaBuilder isAdmin={isAdmin} />,
-    calibration: <CalibrationCurveSection />,
+    calibration: <CalibrationCurveSection isAdmin={isAdmin} />,
     'standards-inventory': <StandardsInventory />,
     sop: <SOPSection />,
     indicators: <IndicatorsInventory />,
-    'cv-percent': <CVPercentCalculator />,
+    'cv-percent': <CVPercentCalculator isAdmin={isAdmin} />,
     'data-sync': <DataSyncManager isAdmin={isAdmin} />,
   };
 

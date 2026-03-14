@@ -9,9 +9,10 @@ type SolveFor = 'V1' | 'C2' | 'V2';
 
 interface DilutionCalculatorProps {
   initialMw?: number | null;
+  isAdmin?: boolean;
 }
 
-export function DilutionCalculator({ initialMw }: DilutionCalculatorProps) {
+export function DilutionCalculator({ initialMw, isAdmin = false }: DilutionCalculatorProps) {
   const [locked, setLocked] = useState(false);
   const [solveFor, setSolveFor] = useState<SolveFor>('V1');
   const [c1, setC1] = useState('');
@@ -84,7 +85,7 @@ export function DilutionCalculator({ initialMw }: DilutionCalculatorProps) {
   return (
     <CalculatorCard
       title="Dilution Calculator"
-      subtitle="C₁V₁ = C₂V₂"
+      subtitle={isAdmin ? "C₁V₁ = C₂V₂" : undefined}
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
       onReset={reset}

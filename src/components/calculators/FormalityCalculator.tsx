@@ -8,9 +8,10 @@ import { Scale, Pipette } from 'lucide-react';
 
 interface FormalityCalculatorProps {
   initialMw?: number | null;
+  isAdmin?: boolean;
 }
 
-export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
+export function FormalityCalculator({ initialMw, isAdmin = false }: FormalityCalculatorProps) {
   const [mass, setMass] = useState('');
   const [fw, setFw] = useState('');
   const [volume, setVolume] = useState('');
@@ -65,7 +66,7 @@ export function FormalityCalculator({ initialMw }: FormalityCalculatorProps) {
   return (
     <CalculatorCard
       title="Formality Calculator"
-      subtitle="F = (mass × purity / FW) / Volume(L)"
+      subtitle={isAdmin ? "F = (mass × purity / FW) / Volume(L)" : undefined}
       locked={locked}
       onToggleLock={() => setLocked(!locked)}
       onReset={() => { if (!locked) { setMass(''); setFw(''); setVolume(''); setPurity('100'); setDensity(''); setTargetConc(''); setReagentState('solid'); } }}
