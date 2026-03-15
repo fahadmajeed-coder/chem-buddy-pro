@@ -37,6 +37,7 @@ interface SavedStandard {
 interface CustomColumn {
   id: string;
   header: string;
+  formula: string; // formula expression e.g. "{result} * 0.5" or empty for manual
 }
 
 interface ReportTemplate {
