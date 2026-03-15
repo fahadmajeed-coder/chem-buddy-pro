@@ -684,9 +684,9 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
 
         {/* Custom columns */}
         {customColumns.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="space-y-2 mb-3">
             {customColumns.map(cc => (
-              <div key={cc.id} className="flex items-center gap-1 bg-secondary/50 border border-border rounded-md px-2 py-1">
+              <div key={cc.id} className="flex items-center gap-2 bg-secondary/50 border border-border rounded-md px-2 py-1.5">
                 <input
                   type="text"
                   value={cc.header}
@@ -694,7 +694,20 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
                   className="bg-transparent text-xs font-medium text-foreground w-24 focus:outline-none focus:ring-0 border-none"
                   placeholder="Header name"
                 />
-                <button onClick={() => removeCustomColumn(cc.id)} className="text-destructive hover:text-destructive/80 p-0.5">
+                {isAdmin && (
+                  <input
+                    type="text"
+                    value={cc.formula}
+                    onChange={(e) => updateColumnFormula(cc.id, e.target.value)}
+                    className="bg-input border border-border rounded px-2 py-0.5 text-[10px] font-mono text-primary w-40 focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Formula: {result}*0.5"
+                    title="Use {result}, {deduction}, {greenMin}, {greenMax}"
+                  />
+                )}
+                {cc.formula && !isAdmin && (
+                  <span className="text-[10px] text-muted-foreground font-mono">ƒ auto</span>
+                )}
+                <button onClick={() => removeCustomColumn(cc.id)} className="text-destructive hover:text-destructive/80 p-0.5 ml-auto">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
