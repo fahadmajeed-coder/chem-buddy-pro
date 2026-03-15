@@ -37,6 +37,7 @@ interface SavedStandard {
 interface CustomColumn {
   id: string;
   header: string;
+  formula: string; // formula expression e.g. "{result} * 0.5" or empty for manual
 }
 
 interface ReportTemplate {
@@ -121,7 +122,29 @@ const makeEntry = (overrides?: Partial<ReportEntry>): ReportEntry => ({
   ...overrides,
 });
 
-export function ReportSection() {
+/** Evaluate a simple formula for a custom column.
+ *  Tokens: {result}, {deduction}, {greenMin}, {greenMax}
+ *  Supports basic math: +, -, *, /, (, )
+ */
+const evalColumnFormula = (formula: string, entry: ReportEntry): string => {
+  if (!formula.trim()) return '';
+  try {
+    const greenMatch = entry.greenRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
+    let expr = formula
+      .replace(/\{result\}/gi, entry.result || '0')
+      .replace(/\{deduction\}/gi, entry.deduction || '0')
+      .replace(/\{greenMin\}/gi, greenMatch ? greenMatch[1] : '0')
+      .replace(/\{greenMax\}/gi, greenMatch ? greenMatch[2] : '0');
+    // Only allow digits, operators, parentheses, dots
+    if (/^[\d\s+\-*/().]+$/.test(expr)) {
+      const result = Function('"use strict"; return (' + expr + ')')();
+      return typeof result === 'number' && !isNaN(result) ? result.toFixed(4) : '';
+    }
+  } catch { /* ignore */ }
+  return '';
+};
+
+export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
   const [selectedStandardId, setSelectedStandardId] = useState<string | null>(null);
   const [savedTemplates, setSavedTemplates] = useLocalStorage<ReportTemplate[]>('chemanalyst-report-templates', []);
@@ -221,15 +244,25 @@ export function ReportSection() {
   };
 
   const addCustomColumn = () => {
-    setCustomColumns(prev => [...prev, { id: `col-${Date.now()}`, header: `Column ${prev.length + 1}` }]);
+    setCustomColumns(prev => [...prev, { id: `col-${Date.now()}`, header: `Column ${prev.length + 1}`, formula: '' }]);
   };
 
   const updateColumnHeader = (colId: string, header: string) => {
     setCustomColumns(prev => prev.map(c => c.id === colId ? { ...c, header } : c));
   };
 
+  const updateColumnFormula = (colId: string, formula: string) => {
+    setCustomColumns(prev => prev.map(c => c.id === colId ? { ...c, formula } : c));
+  };
+
   const removeCustomColumn = (colId: string) => {
     setCustomColumns(prev => prev.filter(c => c.id !== colId));
+  };
+
+  const resetLoadedResults = () => {
+    setEntries([makeEntry()]);
+    setSelectedStandardId(null);
+    toast.success('All loaded results cleared');
   };
 
   const saveTemplate = () => {
@@ -490,6 +523,12 @@ export function ReportSection() {
                     Clear Template
                   </button>
                 )}
+                <button
+                  onClick={resetLoadedResults}
+                  className="px-3 py-2 rounded-md text-xs font-medium border border-warning/30 text-warning hover:bg-warning/10 transition-colors"
+                >
+                  Reset All Results
+                </button>
               </div>
             </div>
           )}
@@ -645,9 +684,9 @@ export function ReportSection() {
 
         {/* Custom columns */}
         {customColumns.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="space-y-2 mb-3">
             {customColumns.map(cc => (
-              <div key={cc.id} className="flex items-center gap-1 bg-secondary/50 border border-border rounded-md px-2 py-1">
+              <div key={cc.id} className="flex items-center gap-2 bg-secondary/50 border border-border rounded-md px-2 py-1.5">
                 <input
                   type="text"
                   value={cc.header}
@@ -655,7 +694,20 @@ export function ReportSection() {
                   className="bg-transparent text-xs font-medium text-foreground w-24 focus:outline-none focus:ring-0 border-none"
                   placeholder="Header name"
                 />
-                <button onClick={() => removeCustomColumn(cc.id)} className="text-destructive hover:text-destructive/80 p-0.5">
+                {isAdmin && (
+                  <input
+                    type="text"
+                    value={cc.formula}
+                    onChange={(e) => updateColumnFormula(cc.id, e.target.value)}
+                    className="bg-input border border-border rounded px-2 py-0.5 text-[10px] font-mono text-primary w-40 focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Formula: {result}*0.5"
+                    title="Use {result}, {deduction}, {greenMin}, {greenMax}"
+                  />
+                )}
+                {cc.formula && !isAdmin && (
+                  <span className="text-[10px] text-muted-foreground font-mono">ƒ auto</span>
+                )}
+                <button onClick={() => removeCustomColumn(cc.id)} className="text-destructive hover:text-destructive/80 p-0.5 ml-auto">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -803,17 +855,25 @@ export function ReportSection() {
                       />
                     </td>
                   )}
-                  {customColumns.map(cc => (
-                    <td key={cc.id} className="py-2 px-2">
-                      <input
-                        type="text"
-                        value={entry.customValues[cc.id] || ''}
-                        onChange={(e) => updateCustomValue(entry.id, cc.id, e.target.value)}
-                        placeholder="—"
-                        className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
-                      />
-                    </td>
-                  ))}
+                  {customColumns.map(cc => {
+                    const formulaVal = cc.formula ? evalColumnFormula(cc.formula, entry) : '';
+                    const displayVal = cc.formula ? (entry.customValues[cc.id] || formulaVal) : (entry.customValues[cc.id] || '');
+                    return (
+                      <td key={cc.id} className="py-2 px-2">
+                        {cc.formula ? (
+                          <span className="text-xs font-mono text-foreground px-2 py-1">{formulaVal || '—'}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={displayVal}
+                            onChange={(e) => updateCustomValue(entry.id, cc.id, e.target.value)}
+                            placeholder="—"
+                            className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
+                          />
+                        )}
+                      </td>
+                    );
+                  })}
                   <td className="py-2 px-2">
                     {entries.length > 1 && (
                       <button onClick={() => removeEntry(entry.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">

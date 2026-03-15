@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Download, Upload, Check, AlertTriangle, HardDrive, Smartphone, FileJson, X } from 'lucide-react';
+import { Download, Upload, Check, AlertTriangle, HardDrive, Smartphone, FileJson, X, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 // All localStorage keys that hold app data
@@ -34,7 +34,11 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(allKeys.map(d => d.key)));
   const [importPreview, setImportPreview] = useState<ExportData | null>(null);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
+  const [importSelectedKeys, setImportSelectedKeys] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // For browsing/removing specific items within a section
+  const [expandedDataKey, setExpandedDataKey] = useState<string | null>(null);
+  const [, setRefresh] = useState(0);
 
   const toggleKey = (key: string) => {
     setSelectedKeys(prev => {
@@ -104,13 +108,22 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
           return;
         }
         setImportPreview(parsed);
+        setImportSelectedKeys(new Set(Object.keys(parsed.data)));
       } catch {
         toast.error('Failed to read file — make sure it\'s a valid JSON export.');
       }
     };
     reader.readAsText(file);
-    // Reset so same file can be re-selected
     e.target.value = '';
+  };
+
+  const toggleImportKey = (key: string) => {
+    setImportSelectedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
   // ── Import: apply ──
@@ -119,27 +132,24 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
 
     let imported = 0;
     for (const [key, value] of Object.entries(importPreview.data)) {
-      if (!selectedKeys.has(key)) continue;
+      if (!importSelectedKeys.has(key)) continue;
 
       try {
         if (importMode === 'replace') {
           localStorage.setItem(key, JSON.stringify(value));
         } else {
-          // Merge: for arrays, combine unique items; for objects, shallow merge
           const existing = localStorage.getItem(key);
           if (!existing) {
             localStorage.setItem(key, JSON.stringify(value));
           } else {
             const existingParsed = JSON.parse(existing);
             if (Array.isArray(existingParsed) && Array.isArray(value)) {
-              // Check if it's an array of primitives (e.g. sidebar order strings)
               const isPrimitiveArray = existingParsed.every((item: unknown) => typeof item !== 'object');
               if (isPrimitiveArray) {
                 const existingSet = new Set(existingParsed);
                 const newItems = (value as unknown[]).filter(item => !existingSet.has(item));
                 localStorage.setItem(key, JSON.stringify([...existingParsed, ...newItems]));
               } else {
-                // Merge arrays by id if items have id, otherwise concat
                 const existingIds = new Set(existingParsed.map((item: Record<string, unknown>) => item.id).filter(Boolean));
                 const newItems = (value as Record<string, unknown>[]).filter(item => !item.id || !existingIds.has(item.id));
                 localStorage.setItem(key, JSON.stringify([...existingParsed, ...newItems]));
@@ -151,7 +161,6 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
             }
           }
         }
-        // Trigger sync event so components re-read
         window.dispatchEvent(new CustomEvent('local-storage-sync', { detail: { key } }));
         imported++;
       } catch { /* skip */ }
@@ -159,6 +168,29 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
 
     toast.success(`Imported ${imported} section(s). Data is now available across the app.`);
     setImportPreview(null);
+  };
+
+  // ── Remove specific data items from a section ──
+  const removeDataItem = (storageKey: string, itemIndex: number) => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        parsed.splice(itemIndex, 1);
+        localStorage.setItem(storageKey, JSON.stringify(parsed));
+        window.dispatchEvent(new CustomEvent('local-storage-sync', { detail: { key: storageKey } }));
+        setRefresh(r => r + 1);
+        toast.success('Item removed');
+      }
+    } catch { /* ignore */ }
+  };
+
+  const clearSectionData = (storageKey: string) => {
+    localStorage.removeItem(storageKey);
+    window.dispatchEvent(new CustomEvent('local-storage-sync', { detail: { key: storageKey } }));
+    setRefresh(r => r + 1);
+    toast.success('Section data cleared');
   };
 
   const getDataStats = () => {
@@ -178,6 +210,21 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
       }
     }
     return stats;
+  };
+
+  const getDataItems = (storageKey: string): { label: string; index: number }[] => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item: any, idx: number) => ({
+          label: item.name || item.analysis || item.title || item.label || item.id || `Item ${idx + 1}`,
+          index: idx,
+        }));
+      }
+    } catch { /* ignore */ }
+    return [];
   };
 
   const stats = getDataStats();
@@ -203,7 +250,7 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
         </div>
       </div>
 
-      {/* Section selector */}
+      {/* Section selector with data browsing */}
       <div className="glass-panel rounded-lg">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">Select Sections</h3>
@@ -213,29 +260,70 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
             <button onClick={selectNone} className="text-[10px] text-muted-foreground hover:text-foreground font-medium uppercase tracking-wider">None</button>
           </div>
         </div>
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="p-4 space-y-1">
           {stats.map(({ key, label, count }) => (
-            <button
-              key={key}
-              onClick={() => toggleKey(key)}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-md border text-left transition-all ${
-                selectedKeys.has(key)
-                  ? 'border-primary/40 bg-primary/5 text-foreground'
-                  : 'border-border bg-secondary/30 text-muted-foreground'
-              }`}
-            >
+            <div key={key}>
               <div className="flex items-center gap-2">
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                  selectedKeys.has(key) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
-                }`}>
-                  {selectedKeys.has(key) && <Check className="w-3 h-3 text-primary-foreground" />}
-                </div>
-                <span className="text-xs font-medium">{label}</span>
+                <button
+                  onClick={() => toggleKey(key)}
+                  className={`flex-1 flex items-center justify-between px-3 py-2.5 rounded-md border text-left transition-all ${
+                    selectedKeys.has(key)
+                      ? 'border-primary/40 bg-primary/5 text-foreground'
+                      : 'border-border bg-secondary/30 text-muted-foreground'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                      selectedKeys.has(key) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                    }`}>
+                      {selectedKeys.has(key) && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <span className="text-xs font-medium">{label}</span>
+                  </div>
+                  <span className={`text-[10px] font-mono ${count === 0 ? 'text-muted-foreground/40' : 'text-muted-foreground'}`}>
+                    {count === 0 ? 'empty' : typeof count === 'number' ? `${count} items` : count}
+                  </span>
+                </button>
+                {typeof count === 'number' && count > 0 && (
+                  <button
+                    onClick={() => setExpandedDataKey(expandedDataKey === key ? null : key)}
+                    className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    title="Browse items"
+                  >
+                    {expandedDataKey === key ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                  </button>
+                )}
+                {typeof count === 'number' && count > 0 && (
+                  <button
+                    onClick={() => { if (confirm(`Clear all ${label} data?`)) clearSectionData(key); }}
+                    className="p-2 rounded-md text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    title="Clear all data in this section"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
-              <span className={`text-[10px] font-mono ${count === 0 ? 'text-muted-foreground/40' : 'text-muted-foreground'}`}>
-                {count === 0 ? 'empty' : typeof count === 'number' ? `${count} items` : count}
-              </span>
-            </button>
+              {/* Expanded item list for removal */}
+              {expandedDataKey === key && (
+                <div className="ml-8 mt-1 mb-2 space-y-0.5 max-h-40 overflow-y-auto">
+                  {getDataItems(key).map(item => (
+                    <div key={item.index} className="flex items-center justify-between px-3 py-1.5 rounded text-xs bg-secondary/30 border border-border/50">
+                      <span className="text-foreground truncate mr-2">{item.label}</span>
+                      <button
+                        onClick={() => removeDataItem(key, item.index)}
+                        className="p-0.5 text-destructive/60 hover:text-destructive transition-colors shrink-0"
+                        title="Remove this item"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {getDataItems(key).length === 0 && (
+                    <p className="text-[10px] text-muted-foreground py-1 px-3">No browseable items</p>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -302,20 +390,31 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
               <p>📱 From: <span className="text-foreground font-mono text-[10px]">{importPreview._meta.deviceInfo}</span></p>
             </div>
 
-            {/* What's included */}
+            {/* What's included — selectable */}
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-foreground">Sections in this file:</p>
+              <p className="text-xs font-medium text-foreground">Select sections to import:</p>
               {Object.keys(importPreview.data).map(key => {
-                const def = DATA_KEYS.find(d => d.key === key);
+                const def = [...DATA_KEYS, ...ADMIN_DATA_KEYS].find(d => d.key === key);
                 const val = importPreview.data[key];
                 const count = Array.isArray(val) ? val.length : typeof val === 'object' && val ? Object.keys(val).length : 1;
                 return (
-                  <div key={key} className={`flex items-center justify-between px-3 py-1.5 rounded text-xs ${
-                    selectedKeys.has(key) ? 'bg-primary/5 text-foreground' : 'bg-secondary/30 text-muted-foreground line-through'
-                  }`}>
-                    <span>{def?.label || key}</span>
+                  <button
+                    key={key}
+                    onClick={() => toggleImportKey(key)}
+                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded text-xs transition-colors ${
+                      importSelectedKeys.has(key) ? 'bg-primary/5 text-foreground' : 'bg-secondary/30 text-muted-foreground line-through'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                        importSelectedKeys.has(key) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                      }`}>
+                        {importSelectedKeys.has(key) && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                      </div>
+                      <span>{def?.label || key}</span>
+                    </div>
                     <span className="font-mono text-[10px]">{count} items</span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -356,10 +455,11 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
 
             <button
               onClick={applyImport}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              disabled={importSelectedKeys.size === 0}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <Upload className="w-4 h-4" />
-              Import Data
+              Import {importSelectedKeys.size} Section{importSelectedKeys.size !== 1 ? 's' : ''}
             </button>
           </div>
         </div>

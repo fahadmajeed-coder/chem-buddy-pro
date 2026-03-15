@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette, Percent, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react';
+import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette, Percent, ChevronUp, ChevronDown, RefreshCw, Trash2 } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -49,17 +49,16 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [order, setOrder] = useLocalStorage<string[]>('chemanalyst-sidebar-order', DEFAULT_NAV_ITEMS.map(i => i.id));
+  const [hiddenSections, setHiddenSections] = useLocalStorage<string[]>('chemanalyst-hidden-sections', []);
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
-  // Close mobile menu on section change
   const handleSectionChange = (id: string) => {
     onSectionChange(id);
     if (isMobile) setMobileOpen(false);
   };
 
-  // Close mobile menu on escape
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setMobileOpen(false);
@@ -68,12 +67,11 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
     return () => document.removeEventListener('keydown', handleEsc);
   }, []);
 
-  // Ensure all default items are in order
   const allIds = DEFAULT_NAV_ITEMS.map(i => i.id);
   const orderedIds = [
     ...order.filter(id => allIds.includes(id)),
     ...allIds.filter(id => !order.includes(id)),
-  ];
+  ].filter(id => !hiddenSections.includes(id));
 
   const handleDragStart = (idx: number) => { dragItem.current = idx; };
   const handleDragEnter = (idx: number) => { dragOverItem.current = idx; setDragOverIdx(idx); };
@@ -82,15 +80,26 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
       const newOrder = [...orderedIds];
       const [removed] = newOrder.splice(dragItem.current, 1);
       newOrder.splice(dragOverItem.current, 0, removed);
-      setOrder(newOrder);
+      // Include hidden ones back in the full order
+      setOrder([...newOrder, ...hiddenSections]);
     }
     dragItem.current = null;
     dragOverItem.current = null;
     setDragOverIdx(null);
   };
 
-  // Mobile: hamburger button is rendered by parent (Index.tsx)
-  // This component exposes toggle via mobileOpen state
+  const hideSection = (id: string) => {
+    setHiddenSections(prev => [...prev, id]);
+    // If the hidden section is active, switch to first visible
+    if (activeSection === id) {
+      const remaining = orderedIds.filter(i => i !== id);
+      if (remaining.length > 0) onSectionChange(remaining[0]);
+    }
+  };
+
+  const restoreSection = (id: string) => {
+    setHiddenSections(prev => prev.filter(i => i !== id));
+  };
 
   const sidebarContent = (
     <>
@@ -148,17 +157,27 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
                 </span>
               )}
             </button>
-            {isMobile && (
+            {/* Admin delete button */}
+            {isAdmin && (!collapsed || isMobile) && (
+              <button
+                onClick={(e) => { e.stopPropagation(); hideSection(id); }}
+                className="p-1 mr-1 text-muted-foreground/30 hover:text-destructive transition-colors rounded"
+                title="Hide section"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
+            {isMobile && !isAdmin && (
               <div className="flex flex-col mr-1">
                 <button
-                  onClick={(e) => { e.stopPropagation(); if (idx > 0) { const n = [...orderedIds]; [n[idx-1], n[idx]] = [n[idx], n[idx-1]]; setOrder(n); } }}
+                  onClick={(e) => { e.stopPropagation(); if (idx > 0) { const n = [...orderedIds]; [n[idx-1], n[idx]] = [n[idx], n[idx-1]]; setOrder([...n, ...hiddenSections]); } }}
                   disabled={idx === 0}
                   className="p-0.5 text-muted-foreground/40 hover:text-primary disabled:opacity-20 transition-colors"
                 >
                   <ChevronUp className="w-3 h-3" />
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); if (idx < orderedIds.length - 1) { const n = [...orderedIds]; [n[idx], n[idx+1]] = [n[idx+1], n[idx]]; setOrder(n); } }}
+                  onClick={(e) => { e.stopPropagation(); if (idx < orderedIds.length - 1) { const n = [...orderedIds]; [n[idx], n[idx+1]] = [n[idx+1], n[idx]]; setOrder([...n, ...hiddenSections]); } }}
                   disabled={idx === orderedIds.length - 1}
                   className="p-0.5 text-muted-foreground/40 hover:text-primary disabled:opacity-20 transition-colors"
                 >
@@ -168,6 +187,26 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
             )}
           </div>
         ))}
+
+        {/* Hidden sections restore (admin only) */}
+        {isAdmin && hiddenSections.length > 0 && (!collapsed || isMobile) && (
+          <>
+            <div className="px-3 py-2 mt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Hidden ({hiddenSections.length})
+            </div>
+            {hiddenSections.map(id => (
+              <button
+                key={id}
+                onClick={() => restoreSection(id)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs text-muted-foreground/60 hover:text-foreground hover:bg-secondary/50 transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                {LABEL_MAP[id] || id}
+                <span className="text-[9px] ml-auto">restore</span>
+              </button>
+            ))}
+          </>
+        )}
 
         {customSections.length > 0 && (
           <>
@@ -205,11 +244,9 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
     </>
   );
 
-  // Mobile: slide-over drawer
   if (isMobile) {
     return (
       <>
-        {/* Hamburger button */}
         <button
           onClick={() => setMobileOpen(true)}
           className="fixed top-3 left-3 z-50 p-2 rounded-lg bg-card border border-border text-foreground shadow-lg"
@@ -218,7 +255,6 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Overlay */}
         {mobileOpen && (
           <div
             className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
@@ -226,7 +262,6 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
           />
         )}
 
-        {/* Drawer */}
         <aside
           className={`fixed top-0 left-0 z-50 h-full w-72 max-w-[85vw] bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-out ${
             mobileOpen ? 'translate-x-0' : '-translate-x-full'
@@ -239,7 +274,6 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
     );
   }
 
-  // Desktop: fixed sidebar
   return (
     <aside className={`${collapsed ? 'w-16' : 'w-60'} bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 shrink-0`}>
       {sidebarContent}
