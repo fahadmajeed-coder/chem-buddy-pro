@@ -122,7 +122,29 @@ const makeEntry = (overrides?: Partial<ReportEntry>): ReportEntry => ({
   ...overrides,
 });
 
-export function ReportSection() {
+/** Evaluate a simple formula for a custom column.
+ *  Tokens: {result}, {deduction}, {greenMin}, {greenMax}
+ *  Supports basic math: +, -, *, /, (, )
+ */
+const evalColumnFormula = (formula: string, entry: ReportEntry): string => {
+  if (!formula.trim()) return '';
+  try {
+    const greenMatch = entry.greenRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
+    let expr = formula
+      .replace(/\{result\}/gi, entry.result || '0')
+      .replace(/\{deduction\}/gi, entry.deduction || '0')
+      .replace(/\{greenMin\}/gi, greenMatch ? greenMatch[1] : '0')
+      .replace(/\{greenMax\}/gi, greenMatch ? greenMatch[2] : '0');
+    // Only allow digits, operators, parentheses, dots
+    if (/^[\d\s+\-*/().]+$/.test(expr)) {
+      const result = Function('"use strict"; return (' + expr + ')')();
+      return typeof result === 'number' && !isNaN(result) ? result.toFixed(4) : '';
+    }
+  } catch { /* ignore */ }
+  return '';
+};
+
+export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
   const [selectedStandardId, setSelectedStandardId] = useState<string | null>(null);
   const [savedTemplates, setSavedTemplates] = useLocalStorage<ReportTemplate[]>('chemanalyst-report-templates', []);
