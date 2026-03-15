@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Copy, Info, FileDown, FileSpreadsheet } from 'lucide-react';
+import { RotateCcw, Copy, Info, FileDown, FileSpreadsheet, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -14,14 +15,22 @@ interface Observation {
   value: string;
 }
 
+interface CVLimits {
+  excellent: number;
+  acceptable: number;
+}
+
+const DEFAULT_LIMITS: CVLimits = { excellent: 2, acceptable: 5 };
+
 export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } = {}) {
   const isMobile = useIsMobile();
   const [sampleName, setSampleName] = useState('');
   const [observations, setObservations] = useState<Observation[]>(
     Array.from({ length: NUM_ROWS }, (_, i) => ({ name: `Sample ${i + 1}`, value: '' }))
   );
+  const [limits, setLimits] = useLocalStorage<CVLimits>('chemanalyst-cv-limits', DEFAULT_LIMITS);
+  const [showLimitSettings, setShowLimitSettings] = useState(false);
 
-  // Refs for Excel-like navigation
   const nameRefs = useRef<(HTMLInputElement | null)[]>([]);
   const valueRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -36,21 +45,17 @@ export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } =
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, rowIndex: number, field: 'name' | 'value') => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      // Move to same column, next row
       const nextRow = rowIndex + 1;
       if (nextRow < NUM_ROWS) {
         const refs = field === 'name' ? nameRefs : valueRefs;
         refs.current[nextRow]?.focus();
       }
     } else if (e.key === 'Tab' && !e.shiftKey) {
-      // Tab: move to next column in same row (name → value)
       if (field === 'name') {
         e.preventDefault();
         valueRefs.current[rowIndex]?.focus();
       }
-      // If on value field, let default tab move to next row's name
     } else if (e.key === 'Tab' && e.shiftKey) {
-      // Shift+Tab: move to previous column
       if (field === 'value') {
         e.preventDefault();
         nameRefs.current[rowIndex]?.focus();
@@ -75,6 +80,18 @@ export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } =
     return { n, sum, mean, stdDev, cv, entries };
   }, [observations]);
 
+  const getStatus = (cv: number): 'excellent' | 'acceptable' | 'high' => {
+    if (cv <= limits.excellent) return 'excellent';
+    if (cv <= limits.acceptable) return 'acceptable';
+    return 'high';
+  };
+
+  const getStatusLabel = (status: 'excellent' | 'acceptable' | 'high') => {
+    if (status === 'excellent') return `✓ Excellent (≤${limits.excellent}%)`;
+    if (status === 'acceptable') return `~ Acceptable (≤${limits.acceptable}%)`;
+    return `⚠ High variability (>${limits.acceptable}%)`;
+  };
+
   const reset = () => {
     setSampleName('');
     setObservations(Array.from({ length: NUM_ROWS }, (_, i) => ({ name: `Sample ${i + 1}`, value: '' })));
@@ -93,6 +110,7 @@ export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } =
     const doc = new jsPDF();
     const title = sampleName || 'CV% Report';
     const now = new Date().toLocaleString();
+    const status = getStatus(stats.cv);
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
@@ -135,7 +153,8 @@ export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } =
         ['Mean (μ)', stats.mean.toFixed(6)],
         ['Std Dev (σ)', stats.stdDev.toFixed(6)],
         ['CV%', `${stats.cv.toFixed(4)}%`],
-        ['Assessment', stats.cv <= 2 ? 'Excellent (≤2%)' : stats.cv <= 5 ? 'Acceptable (≤5%)' : 'High variability (>5%)'],
+        ['Assessment', getStatusLabel(status)],
+        ['Limits', `Excellent: ≤${limits.excellent}% | Acceptable: ≤${limits.acceptable}%`],
       ],
       theme: 'grid',
       headStyles: { fillColor: [41, 128, 185], fontSize: 8 },
@@ -155,6 +174,7 @@ export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } =
   const exportExcel = () => {
     if (!stats) return;
     const title = sampleName || 'CV% Report';
+    const status = getStatus(stats.cv);
     const lines: string[] = [];
 
     lines.push(`"${title}"`);
@@ -173,7 +193,7 @@ export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } =
     lines.push(`"Mean","${stats.mean.toFixed(6)}"`);
     lines.push(`"Std Dev","${stats.stdDev.toFixed(6)}"`);
     lines.push(`"CV%","${stats.cv.toFixed(4)}%"`);
-    lines.push(`"Assessment","${stats.cv <= 2 ? 'Excellent' : stats.cv <= 5 ? 'Acceptable' : 'High variability'}"`);
+    lines.push(`"Assessment","${getStatusLabel(status)}"`);
 
     const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -201,6 +221,59 @@ export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } =
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* CV Limits Settings — admin only */}
+      {isAdmin && (
+        <Card>
+          <CardContent className={isMobile ? 'p-3' : 'p-4'}>
+            <button
+              onClick={() => setShowLimitSettings(!showLimitSettings)}
+              className="flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              CV% Acceptance Limits
+              {showLimitSettings ? ' ▲' : ' ▼'}
+            </button>
+            {showLimitSettings && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Excellent (≤%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={limits.excellent}
+                    onChange={e => setLimits({ ...limits, excellent: parseFloat(e.target.value) || 2 })}
+                    className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="text-[9px] text-success">✓ Excellent quality</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Acceptable (≤%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={limits.acceptable}
+                    onChange={e => setLimits({ ...limits, acceptable: parseFloat(e.target.value) || 5 })}
+                    className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="text-[9px] text-warning">~ Acceptable quality</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Current limits display for non-admin */}
+      {!isAdmin && (
+        <div className="flex items-center gap-3 px-4 py-2 rounded-md bg-secondary/30 border border-border text-[10px] text-muted-foreground">
+          <span>Limits: <span className="text-success font-medium">Excellent ≤{limits.excellent}%</span></span>
+          <span className="text-border">|</span>
+          <span><span className="text-warning font-medium">Acceptable ≤{limits.acceptable}%</span></span>
+          <span className="text-border">|</span>
+          <span><span className="text-destructive font-medium">High &gt;{limits.acceptable}%</span></span>
+        </div>
       )}
 
       {/* Sample name */}
@@ -289,8 +362,9 @@ export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } =
               <ResultBox
                 label="CV%"
                 value={`${stats.cv.toFixed(4)}%`}
-                highlight={stats.cv > 5}
-                status={stats.cv <= 2 ? 'excellent' : stats.cv <= 5 ? 'acceptable' : 'high'}
+                highlight={stats.cv > limits.acceptable}
+                status={getStatus(stats.cv)}
+                statusLabel={getStatusLabel(getStatus(stats.cv))}
               />
             </div>
           )}
@@ -305,9 +379,8 @@ export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } =
   );
 }
 
-function ResultBox({ label, value, highlight, status }: { label: string; value: string; highlight?: boolean; status?: 'excellent' | 'acceptable' | 'high' }) {
+function ResultBox({ label, value, highlight, status, statusLabel }: { label: string; value: string; highlight?: boolean; status?: 'excellent' | 'acceptable' | 'high'; statusLabel?: string }) {
   const statusColor = status === 'excellent' ? 'text-success' : status === 'acceptable' ? 'text-warning' : status === 'high' ? 'text-destructive' : 'text-foreground';
-  const statusLabel = status === 'excellent' ? '✓ Excellent' : status === 'acceptable' ? '~ Acceptable' : status === 'high' ? '⚠ High variability' : '';
 
   return (
     <div className={`rounded-lg border p-3 text-center ${highlight ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-muted/30'}`}>
