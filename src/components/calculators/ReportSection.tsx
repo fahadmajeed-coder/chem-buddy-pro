@@ -251,8 +251,18 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
     setCustomColumns(prev => prev.map(c => c.id === colId ? { ...c, header } : c));
   };
 
+  const updateColumnFormula = (colId: string, formula: string) => {
+    setCustomColumns(prev => prev.map(c => c.id === colId ? { ...c, formula } : c));
+  };
+
   const removeCustomColumn = (colId: string) => {
     setCustomColumns(prev => prev.filter(c => c.id !== colId));
+  };
+
+  const resetLoadedResults = () => {
+    setEntries([makeEntry()]);
+    setSelectedStandardId(null);
+    toast.success('All loaded results cleared');
   };
 
   const saveTemplate = () => {
