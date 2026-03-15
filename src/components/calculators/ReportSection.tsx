@@ -244,7 +244,7 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
   };
 
   const addCustomColumn = () => {
-    setCustomColumns(prev => [...prev, { id: `col-${Date.now()}`, header: `Column ${prev.length + 1}` }]);
+    setCustomColumns(prev => [...prev, { id: `col-${Date.now()}`, header: `Column ${prev.length + 1}`, formula: '' }]);
   };
 
   const updateColumnHeader = (colId: string, header: string) => {
