@@ -532,7 +532,6 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
             </div>
           )}
-          )}
 
           {hasAnalyticalResults && (
             <div>
