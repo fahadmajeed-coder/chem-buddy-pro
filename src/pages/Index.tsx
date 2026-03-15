@@ -98,7 +98,7 @@ const Index = () => {
     solution: <SolutionPrepCalculator initialMw={elementMw} isAdmin={isAdmin} />,
     dilution: <DilutionCalculator initialMw={elementMw} isAdmin={isAdmin} />,
     analytical: <AnalyticalTestSection isAdmin={isAdmin} />,
-    report: <ReportSection />,
+    report: <ReportSection isAdmin={isAdmin} />,
     standards: <StandardsSection />,
     assistant: <ChemistryAssistant />,
     inventory: <InventoryManager isAdmin={isAdmin} />,
