@@ -855,17 +855,25 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
                       />
                     </td>
                   )}
-                  {customColumns.map(cc => (
-                    <td key={cc.id} className="py-2 px-2">
-                      <input
-                        type="text"
-                        value={entry.customValues[cc.id] || ''}
-                        onChange={(e) => updateCustomValue(entry.id, cc.id, e.target.value)}
-                        placeholder="—"
-                        className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
-                      />
-                    </td>
-                  ))}
+                  {customColumns.map(cc => {
+                    const formulaVal = cc.formula ? evalColumnFormula(cc.formula, entry) : '';
+                    const displayVal = cc.formula ? (entry.customValues[cc.id] || formulaVal) : (entry.customValues[cc.id] || '');
+                    return (
+                      <td key={cc.id} className="py-2 px-2">
+                        {cc.formula ? (
+                          <span className="text-xs font-mono text-foreground px-2 py-1">{formulaVal || '—'}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={displayVal}
+                            onChange={(e) => updateCustomValue(entry.id, cc.id, e.target.value)}
+                            placeholder="—"
+                            className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
+                          />
+                        )}
+                      </td>
+                    );
+                  })}
                   <td className="py-2 px-2">
                     {entries.length > 1 && (
                       <button onClick={() => removeEntry(entry.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
