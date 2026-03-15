@@ -530,8 +530,8 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
                   Reset All Results
                 </button>
               </div>
-              </div>
             </div>
+          )}
           )}
 
           {hasAnalyticalResults && (
