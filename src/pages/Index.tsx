@@ -107,7 +107,7 @@ const Index = () => {
     calibration: <CalibrationCurveSection isAdmin={isAdmin} />,
     'standards-inventory': <StandardsInventory />,
     sop: <SOPSection />,
-    indicators: <IndicatorsInventory />,
+    indicators: <IndicatorsInventory isAdmin={isAdmin} />,
     'cv-percent': <CVPercentCalculator isAdmin={isAdmin} />,
     'data-sync': <DataSyncManager isAdmin={isAdmin} />,
   };
