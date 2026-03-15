@@ -528,8 +528,8 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
                   className="px-3 py-2 rounded-md text-xs font-medium border border-warning/30 text-warning hover:bg-warning/10 transition-colors"
                 >
                   Reset All Results
-                  </button>
-                )}
+                </button>
+              </div>
               </div>
             </div>
           )}
