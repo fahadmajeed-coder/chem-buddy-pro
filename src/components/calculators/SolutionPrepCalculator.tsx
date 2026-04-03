@@ -376,7 +376,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="💎"
                       label="Pure Solute in Solution"
                       value={`${r.pureSoluteMass.toFixed(4)} g`}
-                      detail={`Actual active mass at ${r.purityPercent}%`}
+                      detail={isAdmin ? `Actual active mass at ${r.purityPercent}%` : undefined}
                     />
                   )}
 
