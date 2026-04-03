@@ -487,6 +487,7 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
 
   return (
     <div className="space-y-4">
+      <SectionCloudSync sectionKey="chemanalyst-standards" label="Report Standards" isAdmin={isAdmin} />
       {/* Data Sources Panel */}
       {(savedStandards.length > 0 || hasAnalyticalResults) && (
         <div className="glass-panel rounded-lg p-5 animate-fade-in">

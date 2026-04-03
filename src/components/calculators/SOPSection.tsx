@@ -4,6 +4,7 @@ import { SOP_DATA, type SOPEntry } from '@/lib/sopData';
 import { SOP_FORMULAS, sopFormulaToSavedFormula } from '@/lib/sopFormulas';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useToast } from '@/hooks/use-toast';
+import { SectionCloudSync } from './SectionCloudSync';
 
 export function SOPSection() {
   const [search, setSearch] = useState('');
