@@ -138,6 +138,7 @@ export function SOPSection() {
 
   return (
     <div className="space-y-6">
+      <SectionCloudSync sectionKey="chemanalyst-custom-sops" label="Custom SOPs" isAdmin={true} />
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">
