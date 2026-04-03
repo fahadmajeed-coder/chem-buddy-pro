@@ -324,7 +324,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="📐"
                       label="Volume to Pipette"
                       value={`${r.volumeToPipette.toFixed(4)} mL`}
-                      detail={`(${r.massNeeded!.toFixed(4)} g ÷ ${r.density} g/mL) — adjusted for ${r.purityPercent}% purity`}
+                      detail={isAdmin ? `(${r.massNeeded!.toFixed(4)} g ÷ ${r.density} g/mL) — adjusted for ${r.purityPercent}% purity` : undefined}
                       highlight
                     />
                   )}
