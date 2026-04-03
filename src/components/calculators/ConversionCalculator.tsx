@@ -122,7 +122,7 @@ export function ConversionCalculator({ isAdmin: _isAdmin = false }: { isAdmin?: 
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground mb-3 font-mono">{activeConv.desc}</p>
+      {_isAdmin && <p className="text-xs text-muted-foreground mb-3 font-mono">{activeConv.desc}</p>}
 
       {/* Compound selector for inventory-linked conversions */}
       {activeConv.inventoryAutoFill && (

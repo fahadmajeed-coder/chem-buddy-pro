@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight, Send, Download, BookOpen, Pencil, Check, PlusCircle, RotateCcw } from 'lucide-react';
+import { SectionCloudSync } from './SectionCloudSync';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { toast } from 'sonner';
@@ -687,6 +688,8 @@ export function AnalyticalTestSection({ isAdmin = true }: { isAdmin?: boolean } 
 
   return (
     <div className="space-y-4">
+      <SectionCloudSync sectionKey="chemanalyst-analytical-blocks" label="Analytical Blocks" isAdmin={isAdmin} />
+      <SectionCloudSync sectionKey="chemanalyst-analytical-results" label="Analytical Results" isAdmin={isAdmin} />
       {/* Header */}
       <div className={`glass-panel rounded-lg relative ${showDropdown ? 'z-50' : 'z-10'}`}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">

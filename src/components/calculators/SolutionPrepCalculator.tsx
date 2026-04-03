@@ -324,7 +324,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="📐"
                       label="Volume to Pipette"
                       value={`${r.volumeToPipette.toFixed(4)} mL`}
-                      detail={`(${r.massNeeded!.toFixed(4)} g ÷ ${r.density} g/mL) — adjusted for ${r.purityPercent}% purity`}
+                      detail={isAdmin ? `(${r.massNeeded!.toFixed(4)} g ÷ ${r.density} g/mL) — adjusted for ${r.purityPercent}% purity` : undefined}
                       highlight
                     />
                   )}
@@ -335,7 +335,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="⚖️"
                       label="Mass of Solute to Weigh"
                       value={`${r.massNeeded.toFixed(4)} g`}
-                      detail={r.purityPercent < 100 ? `(adjusted for ${r.purityPercent}% purity)` : undefined}
+                      detail={isAdmin && r.purityPercent < 100 ? `(adjusted for ${r.purityPercent}% purity)` : undefined}
                       highlight
                     />
                   )}
@@ -376,7 +376,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="💎"
                       label="Pure Solute in Solution"
                       value={`${r.pureSoluteMass.toFixed(4)} g`}
-                      detail={`Actual active mass at ${r.purityPercent}%`}
+                      detail={isAdmin ? `Actual active mass at ${r.purityPercent}%` : undefined}
                     />
                   )}
 
@@ -386,7 +386,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="🔬"
                       label="Moles of Solute"
                       value={`${r.molesOfSolute.toFixed(6)} mol`}
-                      detail={r.equivalents !== null && r.nf !== 1 ? `= ${r.equivalents.toFixed(6)} eq` : undefined}
+                      detail={isAdmin && r.equivalents !== null && r.nf !== 1 ? `= ${r.equivalents.toFixed(6)} eq` : undefined}
                     />
                   )}
 
@@ -406,7 +406,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="📦"
                       label="Stock Reagent Concentration"
                       value={`${r.stockConc.toFixed(4)} ${step.targetUnit}`}
-                      detail={`(ρ=${r.density} × ${r.purityPercent}% × 1000${step.targetUnit === 'N' ? ` × n=${r.nf}` : ''}) / MW=${r.mw}`}
+                      detail={isAdmin ? `(ρ=${r.density} × ${r.purityPercent}% × 1000${step.targetUnit === 'N' ? ` × n=${r.nf}` : ''}) / MW=${r.mw}` : undefined}
                     />
                   )}
 
@@ -416,7 +416,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="⚗️"
                       label="Equivalent Weight"
                       value={`${r.eqWeight.toFixed(3)} g/eq`}
-                      detail={`MW ${r.mw} ÷ n-factor ${r.nf}`}
+                      detail={isAdmin ? `MW ${r.mw} ÷ n-factor ${r.nf}` : undefined}
                     />
                   )}
 
@@ -426,7 +426,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="📊"
                       label="Concentration"
                       value={`${r.mgPerMl.toFixed(2)} mg/mL`}
-                      detail={`= ${r.conc}% w/v × 10`}
+                      detail={isAdmin ? `= ${r.conc}% w/v × 10` : undefined}
                     />
                   )}
                 </div>

@@ -4,6 +4,7 @@ import { SOP_DATA, type SOPEntry } from '@/lib/sopData';
 import { SOP_FORMULAS, sopFormulaToSavedFormula } from '@/lib/sopFormulas';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useToast } from '@/hooks/use-toast';
+import { SectionCloudSync } from './SectionCloudSync';
 
 export function SOPSection() {
   const [search, setSearch] = useState('');
@@ -137,6 +138,7 @@ export function SOPSection() {
 
   return (
     <div className="space-y-6">
+      <SectionCloudSync sectionKey="chemanalyst-custom-sops" label="Custom SOPs" isAdmin={true} />
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">

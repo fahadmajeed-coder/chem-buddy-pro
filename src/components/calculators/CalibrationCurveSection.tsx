@@ -1,6 +1,7 @@
 import { TrendingUp, Plus } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { CalibrationCurveCard, CalibrationCurveData, DEFAULT_TEMPLATE } from './CalibrationCurveCard';
+import { SectionCloudSync } from './SectionCloudSync';
 
 function createCurve(overrides?: Partial<CalibrationCurveData>): CalibrationCurveData {
   return {
@@ -51,6 +52,7 @@ export function CalibrationCurveSection({ isAdmin: _isAdmin = false }: { isAdmin
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <SectionCloudSync sectionKey="calibration-curves" label="Calibration Curves" isAdmin={_isAdmin} />
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground flex items-center gap-2">

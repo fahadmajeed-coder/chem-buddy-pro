@@ -1,6 +1,7 @@
 import { useState, useRef, DragEvent } from 'react';
 import { Plus, Trash2, Save, Check, X, Variable, Calculator, Search, GripVertical, FlaskConical, Play, FileText, ChevronDown, ChevronUp, Copy, Pencil } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { SectionCloudSync } from './SectionCloudSync';
 
 interface FormulaVariable {
   id: string;
@@ -547,6 +548,7 @@ export function FormulaBuilder({ isAdmin = true }: { isAdmin?: boolean } = {}) {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <SectionCloudSync sectionKey="chem-formulas-v2" label="Custom Formulas" isAdmin={isAdmin} />
       {!isAdmin && (
         <div className="glass-panel rounded-lg p-4">
           <p className="text-xs text-muted-foreground flex items-center gap-2">

@@ -5,6 +5,7 @@ import { RotateCcw, Copy, Info, FileDown, FileSpreadsheet, Settings2 } from 'luc
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { SectionCloudSync } from './SectionCloudSync';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -207,7 +208,7 @@ export function CVPercentCalculator({ isAdmin = false }: { isAdmin?: boolean } =
 
   return (
     <div className="space-y-4">
-      {/* Formula reference — admin only */}
+      <SectionCloudSync sectionKey="chemanalyst-cv-limits" label="CV% Settings" isAdmin={isAdmin} />
       {isAdmin && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className={isMobile ? 'p-3' : 'p-4'}>

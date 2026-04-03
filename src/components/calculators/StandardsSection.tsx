@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, Save, ChevronDown, ChevronUp, Copy, Pencil, Shield, FileText, X, Columns } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { SectionCloudSync } from './SectionCloudSync';
 
 interface AnalysisParam {
   id: string;
@@ -206,7 +207,7 @@ export function StandardsSection() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Step 1: Template Builder */}
+      <SectionCloudSync sectionKey="chemanalyst-standards" label="Standards" isAdmin={true} />
       <div className="glass-panel rounded-lg">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <div className="flex items-center gap-2">

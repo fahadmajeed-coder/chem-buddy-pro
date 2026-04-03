@@ -3,6 +3,7 @@ import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upl
 import { toast } from 'sonner';
 import type { AnalyticalResult } from './AnalyticalTestSection';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { SectionCloudSync } from './SectionCloudSync';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -486,6 +487,7 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
 
   return (
     <div className="space-y-4">
+      <SectionCloudSync sectionKey="chemanalyst-standards" label="Report Standards" isAdmin={isAdmin} />
       {/* Data Sources Panel */}
       {(savedStandards.length > 0 || hasAnalyticalResults) && (
         <div className="glass-panel rounded-lg p-5 animate-fade-in">

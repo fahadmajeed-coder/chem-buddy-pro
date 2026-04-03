@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChemicalCompound } from '@/lib/chemicalInventory';
 import { loadInventory, saveInventory, resetInventory } from '@/lib/inventoryStore';
 import { Plus, Trash2, RotateCcw, Search, Edit2, Check, X } from 'lucide-react';
+import { SectionCloudSync } from './SectionCloudSync';
 
 export function InventoryManager({ isAdmin = true }: { isAdmin?: boolean } = {}) {
   const [inventory, setInventory] = useState<ChemicalCompound[]>([]);
@@ -64,6 +65,7 @@ export function InventoryManager({ isAdmin = true }: { isAdmin?: boolean } = {})
 
   return (
     <div className="space-y-4">
+      <SectionCloudSync sectionKey="chemanalyst-inventory" label="Chemical Inventory" isAdmin={isAdmin} />
       {/* Header */}
       <div className="glass-panel rounded-lg p-5">
         <div className="flex items-center justify-between mb-4">

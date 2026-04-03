@@ -106,6 +106,7 @@ export function NormalityCalculator({ initialMw, isAdmin = false }: NormalityCal
         <InputField label="Purity" unit="%" value={purity} onChange={setPurity} disabled={locked} />
         <InputField label="Density" unit="g/mL" value={density} onChange={setDensity} disabled={locked} placeholder={isLiquid ? 'Required' : 'Optional'} />
       </div>
+      {isAdmin && (
       <div className="mt-2 space-y-1">
         {mwVal > 0 && nFactorVal > 0 && (
           <p className="text-xs text-muted-foreground font-mono">
@@ -163,6 +164,7 @@ export function NormalityCalculator({ initialMw, isAdmin = false }: NormalityCal
           </p>
         )}
       </div>
+      )}
     </CalculatorCard>
   );
 }
