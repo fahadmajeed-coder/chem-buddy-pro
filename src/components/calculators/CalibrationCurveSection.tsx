@@ -1,6 +1,7 @@
 import { TrendingUp, Plus } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { CalibrationCurveCard, CalibrationCurveData, DEFAULT_TEMPLATE } from './CalibrationCurveCard';
+import { SectionCloudSync } from './SectionCloudSync';
 
 function createCurve(overrides?: Partial<CalibrationCurveData>): CalibrationCurveData {
   return {
