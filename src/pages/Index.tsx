@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sun, Moon, Shield, LogOut, Wifi, WifiOff } from 'lucide-react';
+import { Sun, Moon, Shield, LogOut, Wifi, WifiOff, Cloud, CloudOff } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAdminMode } from '@/hooks/useAdminMode';
 import { AppSidebar } from '@/components/layout/AppSidebar';
