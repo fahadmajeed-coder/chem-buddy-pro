@@ -18,6 +18,10 @@ export function SectionCloudSync({ sectionKey, label, isAdmin }: SectionCloudSyn
   const [editMode, setEditMode] = useState(false);
   const [editJson, setEditJson] = useState('');
 
+  useEffect(() => {
+    if (open && isAdmin) fetchCloudData();
+  }, [open, isAdmin]);
+
   if (!isAdmin) return null;
 
   const fetchCloudData = async () => {
