@@ -697,6 +697,18 @@ export function AnalyticalTestSection({ isAdmin = true }: { isAdmin?: boolean } 
           <div className="flex items-center gap-1">
             {allResults.length > 0 && (
               <button
+                onClick={() => {
+                  localStorage.removeItem('chemanalyst-analytical-results');
+                  toast.success('All COA results have been reset.');
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-warning/10 text-warning text-xs font-medium hover:bg-warning/20 transition-colors mr-1"
+                title="Reset all COA results"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Reset COA
+              </button>
+            )}
+            {allResults.length > 0 && (
+              <button
                 onClick={sendToCOA}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors mr-1"
                 title="Send results to COA Report"
