@@ -34,7 +34,8 @@ const Index = () => {
   const [elementMw, setElementMw] = useState<number | null>(null);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
-  const isOnline = navigator.onLine;
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [cloudMode, setCloudMode] = useState(false);
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
   const { isAdmin, login, logout } = useAdminMode();
