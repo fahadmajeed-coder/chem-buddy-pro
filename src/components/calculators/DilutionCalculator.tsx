@@ -123,8 +123,8 @@ export function DilutionCalculator({ initialMw, isAdmin = false }: DilutionCalcu
         </select>
       </div>
 
-      {/* Stock concentration from density */}
-      {stockConc !== null && (
+      {/* Stock concentration from density — admin only */}
+      {isAdmin && stockConc !== null && (
         <div className="p-2.5 bg-primary/5 border border-primary/20 rounded-md space-y-1.5">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-primary">
