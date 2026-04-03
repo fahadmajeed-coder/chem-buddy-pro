@@ -228,6 +228,22 @@ function FormulaBlockCard({
         <div className="flex items-center gap-1 shrink-0 ml-2">
           <button
             onClick={() => {
+              try {
+                const existing: AnalyticalResult[] = JSON.parse(localStorage.getItem('chemanalyst-analytical-results') || '[]');
+                const filtered = existing.filter(r => r.formulaName !== formula.name);
+                localStorage.setItem('chemanalyst-analytical-results', JSON.stringify(filtered));
+                toast.success(`Results for "${formula.name}" removed from COA.`);
+              } catch {
+                toast.error('Failed to reset results');
+              }
+            }}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-warning hover:bg-warning/10 transition-colors"
+            title="Reset this card's COA results"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => {
               const results = cardResultsRef.current;
               if (results.length === 0) {
                 toast.error('No results to send.');
