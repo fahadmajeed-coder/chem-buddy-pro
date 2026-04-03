@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight, Send, Download, BookOpen, Pencil, Check, PlusCircle } from 'lucide-react';
+import { Plus, Trash2, FlaskConical, Search, X, Lock, Unlock, ChevronDown, ChevronRight, Send, Download, BookOpen, Pencil, Check, PlusCircle, RotateCcw } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { toast } from 'sonner';
@@ -226,6 +226,22 @@ function FormulaBlockCard({
           <h3 className="text-sm font-semibold text-foreground truncate">{formula.name}</h3>
         </button>
         <div className="flex items-center gap-1 shrink-0 ml-2">
+          <button
+            onClick={() => {
+              try {
+                const existing: AnalyticalResult[] = JSON.parse(localStorage.getItem('chemanalyst-analytical-results') || '[]');
+                const filtered = existing.filter(r => r.formulaName !== formula.name);
+                localStorage.setItem('chemanalyst-analytical-results', JSON.stringify(filtered));
+                toast.success(`Results for "${formula.name}" removed from COA.`);
+              } catch {
+                toast.error('Failed to reset results');
+              }
+            }}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-warning hover:bg-warning/10 transition-colors"
+            title="Reset this card's COA results"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={() => {
               const results = cardResultsRef.current;
@@ -679,6 +695,18 @@ export function AnalyticalTestSection({ isAdmin = true }: { isAdmin?: boolean } 
             <p className="text-xs text-muted-foreground mt-0.5">Add formulas and enter sample data</p>
           </div>
           <div className="flex items-center gap-1">
+            {allResults.length > 0 && (
+              <button
+                onClick={() => {
+                  localStorage.removeItem('chemanalyst-analytical-results');
+                  toast.success('All COA results have been reset.');
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-warning/10 text-warning text-xs font-medium hover:bg-warning/20 transition-colors mr-1"
+                title="Reset all COA results"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Reset COA
+              </button>
+            )}
             {allResults.length > 0 && (
               <button
                 onClick={sendToCOA}

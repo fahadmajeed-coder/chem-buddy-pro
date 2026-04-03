@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sun, Moon, Shield, LogOut, Wifi, WifiOff } from 'lucide-react';
+import { Sun, Moon, Shield, LogOut, Wifi, WifiOff, Cloud, CloudOff } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAdminMode } from '@/hooks/useAdminMode';
 import { AppSidebar } from '@/components/layout/AppSidebar';
@@ -28,13 +28,14 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
 const Index = () => {
-  const [activeSection, setActiveSection] = useState('molarity');
+  const [activeSection, setActiveSection] = useState('solution');
   const [customSections, setCustomSections] = useState<{ id: string; name: string }[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [elementMw, setElementMw] = useState<number | null>(null);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
-  const isOnline = navigator.onLine;
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [cloudMode, setCloudMode] = useState(false);
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
   const { isAdmin, login, logout } = useAdminMode();
@@ -173,6 +174,18 @@ const Index = () => {
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
+            {isAdmin && (
+              <button
+                onClick={() => setCloudMode(c => !c)}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                  cloudMode ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                }`}
+                title={cloudMode ? 'Cloud sync ON — click to go offline' : 'Offline — click to enable cloud sync'}
+              >
+                {cloudMode ? <Cloud className="w-3.5 h-3.5" /> : <CloudOff className="w-3.5 h-3.5" />}
+                {!isMobile && (cloudMode ? 'Cloud' : 'Local')}
+              </button>
+            )}
             <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${isOnline ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
               {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
               {!isMobile && (isOnline ? 'Online' : 'Offline')}
