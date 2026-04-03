@@ -416,7 +416,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="⚗️"
                       label="Equivalent Weight"
                       value={`${r.eqWeight.toFixed(3)} g/eq`}
-                      detail={`MW ${r.mw} ÷ n-factor ${r.nf}`}
+                      detail={isAdmin ? `MW ${r.mw} ÷ n-factor ${r.nf}` : undefined}
                     />
                   )}
 
