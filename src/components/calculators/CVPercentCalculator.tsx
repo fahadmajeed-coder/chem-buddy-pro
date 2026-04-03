@@ -5,6 +5,7 @@ import { RotateCcw, Copy, Info, FileDown, FileSpreadsheet, Settings2 } from 'luc
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { SectionCloudSync } from './SectionCloudSync';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
