@@ -386,7 +386,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="🔬"
                       label="Moles of Solute"
                       value={`${r.molesOfSolute.toFixed(6)} mol`}
-                      detail={r.equivalents !== null && r.nf !== 1 ? `= ${r.equivalents.toFixed(6)} eq` : undefined}
+                      detail={isAdmin && r.equivalents !== null && r.nf !== 1 ? `= ${r.equivalents.toFixed(6)} eq` : undefined}
                     />
                   )}
 
