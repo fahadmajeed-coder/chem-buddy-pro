@@ -28,7 +28,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
 const Index = () => {
-  const [activeSection, setActiveSection] = useState('molarity');
+  const [activeSection, setActiveSection] = useState('solution');
   const [customSections, setCustomSections] = useState<{ id: string; name: string }[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [elementMw, setElementMw] = useState<number | null>(null);
