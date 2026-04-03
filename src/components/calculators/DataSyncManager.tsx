@@ -466,10 +466,15 @@ export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
         </div>
       )}
 
+      {/* Cloud Sync Section - Admin Only */}
+      {isAdmin && (
+        <CloudSyncSection allKeys={allKeys} />
+      )}
+
       {!isAdmin && (
         <div className="glass-panel rounded-lg p-4">
           <p className="text-xs text-muted-foreground flex items-center gap-2">
-            <span className="text-primary">ℹ️</span> You can export/import your own local data. Admin-level default data management requires admin login.
+            <span className="text-primary">ℹ️</span> You can export/import your own local data. Cloud sync and default data management requires admin login.
           </p>
         </div>
       )}
