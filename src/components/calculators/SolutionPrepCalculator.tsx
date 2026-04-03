@@ -335,7 +335,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="⚖️"
                       label="Mass of Solute to Weigh"
                       value={`${r.massNeeded.toFixed(4)} g`}
-                      detail={r.purityPercent < 100 ? `(adjusted for ${r.purityPercent}% purity)` : undefined}
+                      detail={isAdmin && r.purityPercent < 100 ? `(adjusted for ${r.purityPercent}% purity)` : undefined}
                       highlight
                     />
                   )}
