@@ -426,7 +426,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="📊"
                       label="Concentration"
                       value={`${r.mgPerMl.toFixed(2)} mg/mL`}
-                      detail={`= ${r.conc}% w/v × 10`}
+                      detail={isAdmin ? `= ${r.conc}% w/v × 10` : undefined}
                     />
                   )}
                 </div>
