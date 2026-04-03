@@ -406,7 +406,7 @@ export function SolutionPrepCalculator({ initialMw, isAdmin = false }: SolutionP
                       icon="📦"
                       label="Stock Reagent Concentration"
                       value={`${r.stockConc.toFixed(4)} ${step.targetUnit}`}
-                      detail={`(ρ=${r.density} × ${r.purityPercent}% × 1000${step.targetUnit === 'N' ? ` × n=${r.nf}` : ''}) / MW=${r.mw}`}
+                      detail={isAdmin ? `(ρ=${r.density} × ${r.purityPercent}% × 1000${step.targetUnit === 'N' ? ` × n=${r.nf}` : ''}) / MW=${r.mw}` : undefined}
                     />
                   )}
 
