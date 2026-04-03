@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Search, X, ChevronDown, ChevronRight, FlaskConical, Droplets, Zap, Link2, Sparkles, Eye, Layers, Info, Plus, Pencil, Trash2, Save } from 'lucide-react';
 import { INDICATORS as DEFAULT_INDICATORS, INDICATOR_TYPES, type Indicator } from '@/lib/indicatorsData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { SectionCloudSync } from './SectionCloudSync';
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   'pH': <Droplets className="w-3.5 h-3.5" />,
