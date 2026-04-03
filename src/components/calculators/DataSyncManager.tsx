@@ -30,6 +30,175 @@ interface ExportData {
   data: Record<string, unknown>;
 }
 
+// Cloud Sync Sub-component (Admin only)
+function CloudSyncSection({ allKeys }: { allKeys: { key: string; label: string }[] }) {
+  const [cloudData, setCloudData] = useState<{ section_key: string; data: unknown; updated_at: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadKeys, setUploadKeys] = useState<Set<string>>(new Set());
+
+  const fetchCloudData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('default_app_data').select('section_key, data, updated_at');
+      if (error) throw error;
+      setCloudData(data || []);
+    } catch (err) {
+      toast.error('Failed to fetch cloud data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchCloudData(); }, []);
+
+  const uploadToCloud = async () => {
+    if (uploadKeys.size === 0) { toast.error('Select sections to upload'); return; }
+    setUploading(true);
+    try {
+      const sections: Record<string, unknown> = {};
+      for (const { key } of allKeys) {
+        if (!uploadKeys.has(key)) continue;
+        const raw = localStorage.getItem(key);
+        if (raw) sections[key] = JSON.parse(raw);
+      }
+      const res = await supabase.functions.invoke('sync-data', {
+        method: 'POST',
+        body: { password: 'ChemAdmin2024', sections },
+      });
+      if (res.error) throw res.error;
+      toast.success(`Uploaded ${Object.keys(sections).length} section(s) to cloud as defaults.`);
+      fetchCloudData();
+    } catch {
+      toast.error('Failed to upload to cloud');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteFromCloud = async (sectionKey: string) => {
+    try {
+      const res = await supabase.functions.invoke('sync-data', {
+        method: 'POST',
+        body: { password: 'ChemAdmin2024', action: 'delete', keys: [sectionKey] },
+      });
+      if (res.error) throw res.error;
+      toast.success('Removed from cloud defaults');
+      fetchCloudData();
+    } catch {
+      toast.error('Failed to delete from cloud');
+    }
+  };
+
+  const loadCloudDefaults = () => {
+    let loaded = 0;
+    for (const item of cloudData) {
+      const existing = localStorage.getItem(item.section_key);
+      if (!existing) {
+        localStorage.setItem(item.section_key, JSON.stringify(item.data));
+        window.dispatchEvent(new CustomEvent('local-storage-sync', { detail: { key: item.section_key } }));
+        loaded++;
+      }
+    }
+    if (loaded > 0) toast.success(`Loaded ${loaded} default section(s) from cloud.`);
+    else toast.info('All cloud defaults are already present locally.');
+  };
+
+  const toggleUploadKey = (key: string) => {
+    setUploadKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  return (
+    <div className="glass-panel rounded-lg">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Cloud className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Cloud Sync (Admin)</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={fetchCloudData} disabled={loading} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Refresh">
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      </div>
+      <div className="p-5 space-y-4">
+        <p className="text-xs text-muted-foreground">Upload local data to cloud as <span className="text-foreground font-medium">default data</span> for all users. Cloud defaults load automatically when a section has no local data.</p>
+
+        {/* Cloud status */}
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Currently in Cloud</p>
+          {cloudData.length === 0 ? (
+            <p className="text-xs text-muted-foreground/60 py-2">No data uploaded yet.</p>
+          ) : (
+            cloudData.map(item => {
+              const def = allKeys.find(d => d.key === item.section_key);
+              return (
+                <div key={item.section_key} className="flex items-center justify-between px-3 py-2 rounded-md bg-primary/5 border border-primary/20">
+                  <div>
+                    <span className="text-xs font-medium text-foreground">{def?.label || item.section_key}</span>
+                    <span className="text-[10px] text-muted-foreground ml-2">Updated {new Date(item.updated_at).toLocaleDateString()}</span>
+                  </div>
+                  <button onClick={() => deleteFromCloud(item.section_key)} className="p-1 text-destructive/60 hover:text-destructive transition-colors" title="Remove from cloud">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Load cloud defaults */}
+        {cloudData.length > 0 && (
+          <button onClick={loadCloudDefaults} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-secondary/80 border border-border transition-colors">
+            <Download className="w-3.5 h-3.5" /> Load Cloud Defaults Locally
+          </button>
+        )}
+
+        {/* Upload sections */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Upload to Cloud</p>
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {allKeys.map(({ key, label }) => {
+              const raw = localStorage.getItem(key);
+              const hasData = !!raw;
+              return (
+                <button
+                  key={key}
+                  onClick={() => hasData && toggleUploadKey(key)}
+                  disabled={!hasData}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md border text-left text-xs transition-all ${
+                    uploadKeys.has(key) ? 'border-primary/40 bg-primary/5 text-foreground' : hasData ? 'border-border text-muted-foreground hover:border-primary/20' : 'border-border/30 text-muted-foreground/30 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${uploadKeys.has(key) ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
+                      {uploadKeys.has(key) && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                    </div>
+                    <span className="font-medium">{label}</span>
+                  </div>
+                  {!hasData && <span className="text-[10px]">empty</span>}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={uploadToCloud}
+            disabled={uploadKeys.size === 0 || uploading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            Upload {uploadKeys.size} Section{uploadKeys.size !== 1 ? 's' : ''} to Cloud
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DataSyncManager({ isAdmin = false }: { isAdmin?: boolean }) {
   const allKeys = isAdmin ? [...DATA_KEYS, ...ADMIN_DATA_KEYS] : DATA_KEYS;
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(allKeys.map(d => d.key)));
