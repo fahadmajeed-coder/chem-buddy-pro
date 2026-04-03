@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
-import { Download, Upload, Check, AlertTriangle, HardDrive, Smartphone, FileJson, X, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Download, Upload, Check, AlertTriangle, HardDrive, Smartphone, FileJson, X, Trash2, ChevronDown, ChevronRight, Cloud, CloudOff, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 // All localStorage keys that hold app data
 const DATA_KEYS = [
