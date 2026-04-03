@@ -101,6 +101,7 @@ export function FormalityCalculator({ initialMw, isAdmin = false }: FormalityCal
         <InputField label="Purity" unit="%" value={purity} onChange={setPurity} disabled={locked} />
         <InputField label="Density" unit="g/mL" value={density} onChange={setDensity} disabled={locked} placeholder={isLiquid ? 'Required' : 'Optional'} />
       </div>
+      {isAdmin && (
       <div className="mt-2 space-y-1">
         {formalityFromDensity !== null && fwVal > 0 && (
           <div className="p-2 bg-primary/5 border border-primary/20 rounded-md">
@@ -153,6 +154,7 @@ export function FormalityCalculator({ initialMw, isAdmin = false }: FormalityCal
           </p>
         )}
       </div>
+      )}
     </CalculatorCard>
   );
 }

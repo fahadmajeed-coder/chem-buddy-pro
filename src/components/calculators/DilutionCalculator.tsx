@@ -188,8 +188,8 @@ export function DilutionCalculator({ initialMw, isAdmin = false }: DilutionCalcu
       </div>
 
 
-      {/* Equation display */}
-      {calcRes && (
+      {/* Equation display — admin only */}
+      {isAdmin && calcRes && (
         <div className="p-2 bg-muted/40 border border-border rounded-md">
           <p className="text-xs font-mono text-muted-foreground text-center">
             {(useStock && stockConc ? stockConc.toFixed(4) : c1 || '?')} {unit} × {solveFor === 'V1' ? calcRes.value.toFixed(4) : (v1 || '?')} mL
