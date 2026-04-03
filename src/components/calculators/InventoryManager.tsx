@@ -65,6 +65,7 @@ export function InventoryManager({ isAdmin = true }: { isAdmin?: boolean } = {})
 
   return (
     <div className="space-y-4">
+      <SectionCloudSync sectionKey="chemanalyst-inventory" label="Chemical Inventory" isAdmin={isAdmin} />
       {/* Header */}
       <div className="glass-panel rounded-lg p-5">
         <div className="flex items-center justify-between mb-4">

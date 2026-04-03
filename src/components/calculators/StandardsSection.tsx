@@ -207,7 +207,7 @@ export function StandardsSection() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Step 1: Template Builder */}
+      <SectionCloudSync sectionKey="chemanalyst-standards" label="Standards" isAdmin={true} />
       <div className="glass-panel rounded-lg">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <div className="flex items-center gap-2">

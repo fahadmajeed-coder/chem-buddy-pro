@@ -688,6 +688,8 @@ export function AnalyticalTestSection({ isAdmin = true }: { isAdmin?: boolean } 
 
   return (
     <div className="space-y-4">
+      <SectionCloudSync sectionKey="chemanalyst-analytical-blocks" label="Analytical Blocks" isAdmin={isAdmin} />
+      <SectionCloudSync sectionKey="chemanalyst-analytical-results" label="Analytical Results" isAdmin={isAdmin} />
       {/* Header */}
       <div className={`glass-panel rounded-lg relative ${showDropdown ? 'z-50' : 'z-10'}`}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">

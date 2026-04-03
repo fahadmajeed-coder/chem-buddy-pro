@@ -3,6 +3,7 @@ import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upl
 import { toast } from 'sonner';
 import type { AnalyticalResult } from './AnalyticalTestSection';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { SectionCloudSync } from './SectionCloudSync';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 

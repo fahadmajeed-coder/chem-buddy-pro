@@ -267,6 +267,7 @@ export function IndicatorsInventory({ isAdmin = false }: { isAdmin?: boolean }) 
 
   return (
     <div className="space-y-4">
+      <SectionCloudSync sectionKey="chemanalyst-custom-indicators" label="Custom Indicators" isAdmin={isAdmin} />
       {/* Header */}
       <div className="glass-panel rounded-lg">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
