@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, Save, ChevronDown, ChevronUp, Copy, Pencil, Shield, FileText, X, Columns } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { SectionCloudSync } from './SectionCloudSync';
 
 interface AnalysisParam {
   id: string;
