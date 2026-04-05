@@ -1,7 +1,19 @@
-import { useState } from 'react';
-import { Plus, Trash2, Save, ChevronDown, ChevronUp, Copy, Pencil, Shield, FileText, X, Columns } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Trash2, Save, ChevronDown, ChevronUp, Copy, Pencil, Shield, FileText, X, Columns, ListPlus } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SectionCloudSync } from './SectionCloudSync';
+
+interface SubEntry {
+  id: string;
+  label: string;
+  value: string;
+}
+
+interface SubEntryGroup {
+  id: string;
+  heading: string;
+  entries: SubEntry[];
+}
 
 interface AnalysisParam {
   id: string;
@@ -18,16 +30,11 @@ interface AnalysisParam {
   reason: string;
   customValues: Record<string, string>;
   subEntries: SubEntry[];
+  subGroups: SubEntryGroup[];
   // Legacy compat
   normal?: string;
   withDeduction?: string;
   outlier?: string;
-}
-
-interface SubEntry {
-  id: string;
-  label: string;
-  value: string;
 }
 
 interface CustomStdColumn {
@@ -53,7 +60,7 @@ const emptyParam = (): AnalysisParam => ({
   id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
   analysis: '', normalMin: '', normalMax: '', min: '', max: '', standard: '',
   withDeductionMin: '', withDeductionMax: '', outlierMin: '', outlierMax: '', reason: '',
-  customValues: {}, subEntries: [],
+  customValues: {}, subEntries: [], subGroups: [],
 });
 
 export function StandardsSection() {
@@ -65,7 +72,7 @@ export function StandardsSection() {
   const [parameters, setParameters] = useState<AnalysisParam[]>([emptyParam()]);
   const [customColumns, setCustomColumns] = useState<CustomStdColumn[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [expandedParams, setExpandedParams] = useState<Set<string>>(new Set());
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   const addParam = () => setParameters(prev => [...prev, emptyParam()]);
 
@@ -83,6 +90,75 @@ export function StandardsSection() {
     ));
   };
 
+  // Sub-group management
+  const addSubGroup = (paramId: string) => {
+    setParameters(prev => prev.map(p =>
+      p.id === paramId ? {
+        ...p,
+        subGroups: [...(p.subGroups || []), {
+          id: `sg-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+          heading: '',
+          entries: [{ id: `sge-${Date.now()}`, label: '', value: '' }]
+        }]
+      } : p
+    ));
+  };
+
+  const updateSubGroupHeading = (paramId: string, groupId: string, heading: string) => {
+    setParameters(prev => prev.map(p =>
+      p.id === paramId ? {
+        ...p,
+        subGroups: (p.subGroups || []).map(g => g.id === groupId ? { ...g, heading } : g)
+      } : p
+    ));
+  };
+
+  const addSubGroupEntry = (paramId: string, groupId: string) => {
+    setParameters(prev => prev.map(p =>
+      p.id === paramId ? {
+        ...p,
+        subGroups: (p.subGroups || []).map(g => g.id === groupId ? {
+          ...g,
+          entries: [...g.entries, { id: `sge-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`, label: '', value: '' }]
+        } : g)
+      } : p
+    ));
+  };
+
+  const updateSubGroupEntry = (paramId: string, groupId: string, entryId: string, field: 'label' | 'value', val: string) => {
+    setParameters(prev => prev.map(p =>
+      p.id === paramId ? {
+        ...p,
+        subGroups: (p.subGroups || []).map(g => g.id === groupId ? {
+          ...g,
+          entries: g.entries.map(e => e.id === entryId ? { ...e, [field]: val } : e)
+        } : g)
+      } : p
+    ));
+  };
+
+  const removeSubGroupEntry = (paramId: string, groupId: string, entryId: string) => {
+    setParameters(prev => prev.map(p =>
+      p.id === paramId ? {
+        ...p,
+        subGroups: (p.subGroups || []).map(g => g.id === groupId ? {
+          ...g,
+          entries: g.entries.filter(e => e.id !== entryId)
+        } : g)
+      } : p
+    ));
+  };
+
+  const removeSubGroup = (paramId: string, groupId: string) => {
+    setParameters(prev => prev.map(p =>
+      p.id === paramId ? {
+        ...p,
+        subGroups: (p.subGroups || []).filter(g => g.id !== groupId)
+      } : p
+    ));
+  };
+
+  // Legacy sub-entries
   const addSubEntry = (paramId: string) => {
     setParameters(prev => prev.map(p =>
       p.id === paramId ? {
@@ -105,15 +181,6 @@ export function StandardsSection() {
     setParameters(prev => prev.map(p =>
       p.id === paramId ? { ...p, subEntries: p.subEntries.filter(s => s.id !== subId) } : p
     ));
-  };
-
-  const toggleParamExpand = (paramId: string) => {
-    setExpandedParams(prev => {
-      const next = new Set(prev);
-      if (next.has(paramId)) next.delete(paramId);
-      else next.add(paramId);
-      return next;
-    });
   };
 
   const addCustomColumn = () => {
@@ -175,6 +242,7 @@ export function StandardsSection() {
       outlierMax: p.outlierMax || '',
       customValues: p.customValues || {},
       subEntries: p.subEntries || [],
+      subGroups: p.subGroups || [],
     })));
     setCustomColumns(s.customColumns || []);
     setEditingId(s.id);
@@ -204,6 +272,9 @@ export function StandardsSection() {
     if (b) return `≤${b}`;
     return '—';
   };
+
+  const totalSubCount = (p: AnalysisParam) =>
+    (p.subEntries?.length || 0) + (p.subGroups || []).reduce((s, g) => s + g.entries.length, 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -263,7 +334,6 @@ export function StandardsSection() {
           </div>
         </div>
 
-        {/* Custom column headers management */}
         {customColumns.length > 0 && (
           <div className="px-5 py-2 border-b border-border/50 flex flex-wrap gap-2">
             {customColumns.map(cc => (
@@ -320,13 +390,6 @@ export function StandardsSection() {
                   <tr key={param.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
                     <td className="py-1.5 px-1.5">
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => toggleParamExpand(param.id)}
-                          className="p-0.5 text-muted-foreground/40 hover:text-primary transition-colors"
-                          title="Sub-entries"
-                        >
-                          {expandedParams.has(param.id) ? <ChevronDown className="w-3 h-3" /> : <ChevronDown className="w-3 h-3 -rotate-90" />}
-                        </button>
                         <input type="text" value={param.analysis} onChange={e => updateParam(param.id, 'analysis', e.target.value)}
                           placeholder="e.g. Moisture" className="w-24 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                       </div>
@@ -379,8 +442,18 @@ export function StandardsSection() {
                     ))}
                     <td className="py-1.5 px-1.5">
                       <div className="flex items-center gap-0.5">
-                        <button onClick={() => addSubEntry(param.id)} className="p-1 text-primary/60 hover:text-primary rounded transition-colors" title="Add sub-entry">
-                          <Plus className="w-3 h-3" />
+                        {/* Dropdown sub-entries button */}
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === param.id ? null : param.id)}
+                          className={`p-1 rounded transition-colors relative ${openDropdown === param.id ? 'text-primary bg-primary/10' : 'text-primary/60 hover:text-primary'}`}
+                          title="Sub-entries & groups"
+                        >
+                          <ListPlus className="w-3.5 h-3.5" />
+                          {totalSubCount(param) > 0 && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-primary-foreground text-[8px] flex items-center justify-center font-bold">
+                              {totalSubCount(param)}
+                            </span>
+                          )}
                         </button>
                         {parameters.length > 1 && (
                           <button onClick={() => removeParam(param.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
@@ -390,27 +463,119 @@ export function StandardsSection() {
                       </div>
                     </td>
                   </tr>
-                  {/* Sub-entries */}
-                  {expandedParams.has(param.id) && param.subEntries.map(sub => (
-                    <tr key={sub.id} className="border-b border-border/30 bg-secondary/10">
-                      <td className="py-1 px-1.5" colSpan={2}>
-                        <div className="flex items-center gap-1 pl-6">
-                          <span className="text-[9px] text-muted-foreground/50">└</span>
-                          <input type="text" value={sub.label} onChange={e => updateSubEntry(param.id, sub.id, 'label', e.target.value)}
-                            placeholder="Sub-label" className="w-20 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-0.5 text-[11px] font-mono text-muted-foreground focus:ring-0 focus:outline-none transition-colors" />
+                  {/* Dropdown Panel for sub-entries */}
+                  {openDropdown === param.id && (
+                    <tr>
+                      <td colSpan={11 + customColumns.length + 1}>
+                        <div className="mx-4 my-2 rounded-lg border border-primary/20 bg-card shadow-lg overflow-hidden">
+                          <div className="flex items-center justify-between px-4 py-2 bg-primary/5 border-b border-primary/10">
+                            <span className="text-xs font-semibold text-foreground">
+                              Sub-Entries for "{param.analysis || 'Untitled'}"
+                            </span>
+                            <button onClick={() => setOpenDropdown(null)} className="p-1 text-muted-foreground hover:text-foreground rounded">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="p-4 space-y-4 max-h-80 overflow-y-auto">
+                            {/* Sub-entry groups */}
+                            {(param.subGroups || []).map(group => (
+                              <div key={group.id} className="rounded-md border border-border bg-secondary/20 overflow-hidden">
+                                <div className="flex items-center gap-2 px-3 py-2 bg-secondary/30 border-b border-border/50">
+                                  <input
+                                    type="text"
+                                    value={group.heading}
+                                    onChange={e => updateSubGroupHeading(param.id, group.id, e.target.value)}
+                                    placeholder="Group heading (e.g. Moisture Specs)"
+                                    className="flex-1 bg-transparent text-xs font-semibold text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
+                                  />
+                                  <button onClick={() => removeSubGroup(param.id, group.id)} className="p-1 text-destructive/60 hover:text-destructive rounded">
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                <div className="p-2 space-y-1.5">
+                                  {group.entries.map(entry => (
+                                    <div key={entry.id} className="flex items-center gap-2">
+                                      <input
+                                        type="text"
+                                        value={entry.label}
+                                        onChange={e => updateSubGroupEntry(param.id, group.id, entry.id, 'label', e.target.value)}
+                                        placeholder="Label (e.g. USP, ISO)"
+                                        className="w-28 bg-input border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={entry.value}
+                                        onChange={e => updateSubGroupEntry(param.id, group.id, entry.id, 'value', e.target.value)}
+                                        placeholder="Value"
+                                        className="flex-1 bg-input border border-border rounded px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                                      />
+                                      <button onClick={() => removeSubGroupEntry(param.id, group.id, entry.id)} className="p-1 text-destructive/60 hover:text-destructive rounded">
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                  <button
+                                    onClick={() => addSubGroupEntry(param.id, group.id)}
+                                    className="w-full py-1.5 text-[11px] text-primary hover:text-primary/80 flex items-center justify-center gap-1 border border-dashed border-primary/20 rounded hover:border-primary/40 transition-colors"
+                                  >
+                                    <Plus className="w-3 h-3" /> Add Entry
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+
+                            {/* Legacy flat sub-entries */}
+                            {(param.subEntries || []).length > 0 && (
+                              <div className="rounded-md border border-border bg-secondary/20 overflow-hidden">
+                                <div className="px-3 py-2 bg-secondary/30 border-b border-border/50">
+                                  <span className="text-xs font-semibold text-muted-foreground">Quick Entries</span>
+                                </div>
+                                <div className="p-2 space-y-1.5">
+                                  {param.subEntries.map(sub => (
+                                    <div key={sub.id} className="flex items-center gap-2">
+                                      <input
+                                        type="text"
+                                        value={sub.label}
+                                        onChange={e => updateSubEntry(param.id, sub.id, 'label', e.target.value)}
+                                        placeholder="Label"
+                                        className="w-28 bg-input border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={sub.value}
+                                        onChange={e => updateSubEntry(param.id, sub.id, 'value', e.target.value)}
+                                        placeholder="Value"
+                                        className="flex-1 bg-input border border-border rounded px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                                      />
+                                      <button onClick={() => removeSubEntry(param.id, sub.id)} className="p-1 text-destructive/60 hover:text-destructive rounded">
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Add buttons */}
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => addSubGroup(param.id)}
+                                className="flex-1 py-2 text-xs text-primary hover:bg-primary/5 flex items-center justify-center gap-1 border border-dashed border-primary/30 rounded-md hover:border-primary/50 transition-colors"
+                              >
+                                <Plus className="w-3 h-3" /> Add Group
+                              </button>
+                              <button
+                                onClick={() => addSubEntry(param.id)}
+                                className="flex-1 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/50 flex items-center justify-center gap-1 border border-dashed border-border rounded-md hover:border-muted-foreground/40 transition-colors"
+                              >
+                                <Plus className="w-3 h-3" /> Quick Entry
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td className="py-1 px-1" colSpan={8 + customColumns.length}>
-                        <input type="text" value={sub.value} onChange={e => updateSubEntry(param.id, sub.id, 'value', e.target.value)}
-                          placeholder="Value" className="w-32 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-0.5 text-[11px] font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
-                      </td>
-                      <td className="py-1 px-1">
-                        <button onClick={() => removeSubEntry(param.id, sub.id)} className="p-0.5 text-destructive/60 hover:text-destructive rounded transition-colors">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </td>
                     </tr>
-                  ))}
+                  )}
                 </>
               ))}
             </tbody>
@@ -535,6 +700,25 @@ export function StandardsSection() {
                                     <td key={cc.id} className="py-1 px-2 font-mono text-foreground">{p.customValues?.[cc.id] || '—'}</td>
                                   ))}
                                 </tr>
+                                {/* Show sub-groups in saved view */}
+                                {(p.subGroups || []).map(group => (
+                                  <tr key={group.id} className="border-b border-border/20 bg-secondary/10">
+                                    <td colSpan={8 + (s.customColumns?.length || 0)} className="py-1 px-2">
+                                      <div className="pl-4">
+                                        <span className="text-[10px] font-semibold text-primary/70">{group.heading || 'Group'}</span>
+                                        <div className="ml-2 space-y-0.5 mt-0.5">
+                                          {group.entries.map(e => (
+                                            <div key={e.id} className="flex items-center gap-2 text-[11px]">
+                                              <span className="text-muted-foreground/50">└</span>
+                                              <span className="text-muted-foreground font-medium">{e.label || '—'}</span>
+                                              <span className="font-mono text-foreground">{e.value || '—'}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
                                 {(p.subEntries || []).map(sub => (
                                   <tr key={sub.id} className="border-b border-border/20 bg-secondary/10">
                                     <td className="py-0.5 px-2 pl-6 text-muted-foreground" colSpan={2}>
