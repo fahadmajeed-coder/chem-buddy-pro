@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette, Percent, ChevronUp, ChevronDown, RefreshCw, Trash2 } from 'lucide-react';
+import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette, Percent, ChevronUp, ChevronDown, RefreshCw, Trash2, Wheat } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -29,6 +29,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { id: 'indicators', label: 'Indicators', icon: <Palette className="w-4 h-4" /> },
   { id: 'cv-percent', label: 'CV%', icon: <Percent className="w-4 h-4" /> },
   { id: 'data-sync', label: 'Data Transfer', icon: <RefreshCw className="w-4 h-4" /> },
+  { id: 'feed-formulation', label: 'Formulation', icon: <Wheat className="w-4 h-4" /> },
 ];
 
 const ICON_MAP: Record<string, React.ReactNode> = {};
