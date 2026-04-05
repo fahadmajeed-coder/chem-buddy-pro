@@ -29,6 +29,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { id: 'indicators', label: 'Indicators', icon: <Palette className="w-4 h-4" /> },
   { id: 'cv-percent', label: 'CV%', icon: <Percent className="w-4 h-4" /> },
   { id: 'data-sync', label: 'Data Transfer', icon: <RefreshCw className="w-4 h-4" /> },
+  { id: 'feed-formulation', label: 'Formulation', icon: <Beaker className="w-4 h-4" /> },
 ];
 
 const ICON_MAP: Record<string, React.ReactNode> = {};
