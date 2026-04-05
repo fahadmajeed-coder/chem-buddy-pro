@@ -90,6 +90,7 @@ const Index = () => {
     indicators: 'Indicators Inventory',
     'cv-percent': 'CV% Calculator',
     'data-sync': 'Data Transfer',
+    'feed-formulation': 'Feed Formulation',
   };
 
   const sections: Record<string, React.ReactNode> = {
