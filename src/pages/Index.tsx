@@ -24,6 +24,7 @@ import { SOPSection } from '@/components/calculators/SOPSection';
 import { IndicatorsInventory } from '@/components/calculators/IndicatorsInventory';
 import { CVPercentCalculator } from '@/components/calculators/CVPercentCalculator';
 import { DataSyncManager } from '@/components/calculators/DataSyncManager';
+import { FeedFormulation } from '@/components/calculators/FeedFormulation';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
