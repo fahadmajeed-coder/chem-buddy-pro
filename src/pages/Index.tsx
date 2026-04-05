@@ -113,6 +113,7 @@ const Index = () => {
     indicators: <IndicatorsInventory isAdmin={isAdmin} />,
     'cv-percent': <CVPercentCalculator isAdmin={isAdmin} />,
     'data-sync': <DataSyncManager isAdmin={isAdmin} />,
+    'feed-formulation': <FeedFormulation isAdmin={isAdmin} />,
   };
 
   const renderSections = () => {
