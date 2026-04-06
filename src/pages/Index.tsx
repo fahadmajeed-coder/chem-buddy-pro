@@ -79,7 +79,7 @@ const Index = () => {
     dilution: 'Dilution Calculator',
     analytical: 'Analytical Testing',
     report: 'Reports & COA',
-    standards: 'Standards Matching',
+    standards: 'Raw Material Standards',
     assistant: 'Chemistry Assistant',
     inventory: 'Chemical Inventory',
     'periodic-table': 'Periodic Table',
