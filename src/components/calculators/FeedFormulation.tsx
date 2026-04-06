@@ -1,70 +1,37 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Search, ChevronDown, ChevronUp, Save, FileDown, Beaker, Target, BarChart3, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Search, ChevronDown, ChevronUp, Save, FileDown, Beaker, Target, BarChart3, AlertTriangle, Calculator, Undo2, X } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SectionCloudSync } from './SectionCloudSync';
-
-interface SubEntry {
-  id: string;
-  label: string;
-  value: string;
-}
-
-interface SubEntryGroup {
-  id: string;
-  heading: string;
-  entries: SubEntry[];
-}
-
-interface AnalysisParam {
-  id: string;
-  analysis: string;
-  normalMin: string;
-  normalMax: string;
-  min: string;
-  max: string;
-  standard: string;
-  withDeductionMin: string;
-  withDeductionMax: string;
-  outlierMin: string;
-  outlierMax: string;
-  reason: string;
-  customValues: Record<string, string>;
-  subEntries: SubEntry[];
-  subGroups?: SubEntryGroup[];
-  normal?: string;
-  withDeduction?: string;
-  outlier?: string;
-}
-
-interface SavedStandard {
-  id: string;
-  name: string;
-  description: string;
-  parameters: AnalysisParam[];
-  customColumns: { id: string; header: string }[];
-  createdAt: number;
-}
+import { toast } from 'sonner';
+import type { SavedStandard } from './StandardsSection';
 
 interface Ingredient {
   id: string;
   name: string;
-  percentage: number; // inclusion %
-  contributions: Record<string, number>; // paramName -> nutrient % in this ingredient
+  percentage: number;
+  contributions: Record<string, number>;
+  linkedStandardId?: string; // link to raw material standard
 }
 
 interface FormulationTemplate {
   id: string;
   name: string;
-  standardId: string;
+  standardId: string; // formulation standard
   standardName: string;
-  targetParams: string[]; // which parameters to optimize
+  targetParams: string[];
   ingredients: Ingredient[];
   createdAt: number;
+}
+
+interface TrashItem {
+  formulation: FormulationTemplate;
+  deletedAt: number;
 }
 
 export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
   const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
   const [formulations, setFormulations] = useLocalStorage<FormulationTemplate[]>('chemanalyst-formulations', []);
+  const [trash, setTrash] = useLocalStorage<TrashItem[]>('chemanalyst-formulations-trash', []);
 
   const [selectedStandardId, setSelectedStandardId] = useState<string | null>(null);
   const [formulationName, setFormulationName] = useState('');
@@ -74,16 +41,40 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
   const [expandedFormId, setExpandedFormId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [showSubEntries, setShowSubEntries] = useState<string | null>(null);
+  const [batchSize, setBatchSize] = useState<number>(0);
+  const [showTrash, setShowTrash] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ type: string; id: string; name: string } | null>(null);
+
+  // Separate standards by type
+  const rawMaterialStandards = savedStandards.filter(s => (s.type || 'raw-material') === 'raw-material');
+  const formulationStandards = savedStandards.filter(s => (s.type || 'raw-material') === 'formulation');
 
   const selectedStandard = savedStandards.find(s => s.id === selectedStandardId);
   const paramNames = selectedStandard?.parameters.map(p => p.analysis).filter(Boolean) || [];
 
+  // Auto-populate ingredient data from raw material standard
+  const linkIngredientToStandard = (ingredientId: string, standardId: string) => {
+    const std = rawMaterialStandards.find(s => s.id === standardId);
+    if (!std) return;
+    setIngredients(prev => prev.map(ing => {
+      if (ing.id !== ingredientId) return ing;
+      const contributions: Record<string, number> = { ...ing.contributions };
+      // Auto-fill from raw material standard's custom columns (use standard value)
+      std.parameters.forEach(p => {
+        if (selectedParams.includes(p.analysis)) {
+          const val = parseFloat(p.standard) || parseFloat(p.max) || parseFloat(p.normalMax) || 0;
+          contributions[p.analysis] = val;
+        }
+      });
+      return { ...ing, name: std.name, linkedStandardId: standardId, contributions };
+    }));
+    toast.success(`Linked "${std.name}" data to ingredient`);
+  };
+
   const addIngredient = () => {
     setIngredients(prev => [...prev, {
       id: `ing-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
-      name: '',
-      percentage: 0,
-      contributions: {},
+      name: '', percentage: 0, contributions: {},
     }]);
   };
 
@@ -111,7 +102,6 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
   const totals = useMemo(() => {
     const result: Record<string, number> = {};
     const totalInclusion = ingredients.reduce((s, i) => s + (i.percentage || 0), 0);
-
     selectedParams.forEach(param => {
       let total = 0;
       ingredients.forEach(ing => {
@@ -125,7 +115,18 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
     return result;
   }, [ingredients, selectedParams]);
 
-  // Compare with standard
+  // Calculate batch quantities
+  const batchQuantities = useMemo(() => {
+    if (!batchSize || batchSize <= 0) return {};
+    const result: Record<string, number> = {};
+    ingredients.forEach(ing => {
+      if (ing.name.trim()) {
+        result[ing.id] = (ing.percentage / 100) * batchSize;
+      }
+    });
+    return result;
+  }, [ingredients, batchSize]);
+
   const getParamStatus = (param: string): 'pass' | 'warn' | 'fail' | 'none' => {
     if (!selectedStandard) return 'none';
     const p = selectedStandard.parameters.find(pp => pp.analysis === param);
@@ -142,16 +143,18 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
 
   const saveFormulation = () => {
     if (!formulationName.trim() || !selectedStandardId) return;
+    setConfirmAction({ type: 'save', id: editingFormId || 'new', name: formulationName });
+  };
+
+  const confirmSave = () => {
     const form: FormulationTemplate = {
       id: editingFormId || `form-${Date.now()}`,
       name: formulationName.trim(),
-      standardId: selectedStandardId,
+      standardId: selectedStandardId!,
       standardName: selectedStandard?.name || '',
       targetParams: [...selectedParams],
       ingredients: ingredients.filter(i => i.name.trim()),
-      createdAt: editingFormId
-        ? (formulations.find(f => f.id === editingFormId)?.createdAt || Date.now())
-        : Date.now(),
+      createdAt: editingFormId ? (formulations.find(f => f.id === editingFormId)?.createdAt || Date.now()) : Date.now(),
     };
     if (editingFormId) {
       setFormulations(prev => prev.map(f => f.id === editingFormId ? form : f));
@@ -159,6 +162,8 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
       setFormulations(prev => [form, ...prev]);
     }
     resetForm();
+    setConfirmAction(null);
+    toast.success('Formulation saved');
   };
 
   const loadFormulation = (f: FormulationTemplate) => {
@@ -170,8 +175,24 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
   };
 
   const deleteFormulation = (id: string) => {
-    setFormulations(prev => prev.filter(f => f.id !== id));
-    if (editingFormId === id) resetForm();
+    const f = formulations.find(ff => ff.id === id);
+    setConfirmAction({ type: 'delete', id, name: f?.name || '' });
+  };
+
+  const confirmDelete = () => {
+    if (!confirmAction) return;
+    const f = formulations.find(ff => ff.id === confirmAction.id);
+    if (f) setTrash(prev => [{ formulation: f, deletedAt: Date.now() }, ...prev]);
+    setFormulations(prev => prev.filter(ff => ff.id !== confirmAction.id));
+    if (editingFormId === confirmAction.id) resetForm();
+    toast.success(`"${confirmAction.name}" moved to trash`);
+    setConfirmAction(null);
+  };
+
+  const restoreFromTrash = (item: TrashItem) => {
+    setFormulations(prev => [item.formulation, ...prev]);
+    setTrash(prev => prev.filter(t => t.formulation.id !== item.formulation.id));
+    toast.success('Restored');
   };
 
   const resetForm = () => {
@@ -179,13 +200,13 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
     setSelectedParams([]);
     setIngredients([]);
     setEditingFormId(null);
+    setBatchSize(0);
   };
 
   const filteredFormulations = search
     ? formulations.filter(f => f.name.toLowerCase().includes(search.toLowerCase()) || f.standardName.toLowerCase().includes(search.toLowerCase()))
     : formulations;
 
-  // Get sub-entries for a parameter
   const getParamSubData = (param: string) => {
     if (!selectedStandard) return null;
     const p = selectedStandard.parameters.find(pp => pp.analysis === param);
@@ -196,48 +217,79 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
     return { groups, subs };
   };
 
+  // Get sub-entry data from a raw material standard for a given param
+  const getIngredientSubData = (ing: Ingredient, param: string) => {
+    if (!ing.linkedStandardId) return null;
+    const std = rawMaterialStandards.find(s => s.id === ing.linkedStandardId);
+    if (!std) return null;
+    const p = std.parameters.find(pp => pp.analysis === param);
+    if (!p) return null;
+    const groups = p.subGroups || [];
+    const subs = p.subEntries || [];
+    if (groups.length === 0 && subs.length === 0) return null;
+    return { groups, subs, inclusionPct: ing.percentage };
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <SectionCloudSync sectionKey="chemanalyst-formulations" label="Formulations" isAdmin={isAdmin} />
 
-      {/* Step 1: Select Standard */}
+      {/* Confirmation Dialog */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setConfirmAction(null)}>
+          <div className="bg-card border border-border rounded-lg p-6 w-80 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-5 h-5 text-warning" />
+              <h3 className="text-sm font-semibold text-foreground">Confirm {confirmAction.type === 'save' ? 'Save' : 'Delete'}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              {confirmAction.type === 'save'
+                ? `Save "${confirmAction.name}"?`
+                : `Delete "${confirmAction.name}"? It will be moved to trash.`}
+            </p>
+            <div className="flex gap-2">
+              <button onClick={confirmAction.type === 'save' ? confirmSave : confirmDelete}
+                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${confirmAction.type === 'delete' ? 'bg-destructive text-destructive-foreground' : 'bg-primary text-primary-foreground'}`}>
+                {confirmAction.type === 'save' ? 'Save' : 'Delete'}
+              </button>
+              <button onClick={() => setConfirmAction(null)} className="px-4 py-2 rounded-md bg-secondary text-secondary-foreground text-sm font-medium">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 1: Select Formulation Standard */}
       <div className="glass-panel rounded-lg">
         <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
           <Target className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Step 1 — Select Standard & Parameters</h3>
+          <h3 className="text-sm font-semibold text-foreground">Step 1 — Select Formulation Standard & Parameters</h3>
         </div>
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Formulation Name *</label>
-              <input
-                value={formulationName}
-                onChange={e => setFormulationName(e.target.value)}
+              <input value={formulationName} onChange={e => setFormulationName(e.target.value)}
                 placeholder="e.g. Poultry Feed Layer-1"
-                className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+                className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Standard Template *</label>
-              <select
-                value={selectedStandardId || ''}
-                onChange={e => {
-                  setSelectedStandardId(e.target.value || null);
-                  setSelectedParams([]);
-                }}
-                className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="">Select a standard...</option>
-                {savedStandards.map(s => (
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Formulation Standard *</label>
+              <select value={selectedStandardId || ''} onChange={e => { setSelectedStandardId(e.target.value || null); setSelectedParams([]); }}
+                className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                <option value="">Select a formulation standard...</option>
+                {formulationStandards.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.parameters.length} params)</option>
+                ))}
+                {formulationStandards.length === 0 && rawMaterialStandards.length > 0 && (
+                  <option disabled>— No formulation standards found. Create one in Standards section with type "Formulation" —</option>
+                )}
+                {/* Fallback: show all standards if no formulation-type standards exist */}
+                {formulationStandards.length === 0 && savedStandards.map(s => (
                   <option key={s.id} value={s.id}>{s.name} ({s.parameters.length} params)</option>
                 ))}
               </select>
             </div>
           </div>
-
-          {savedStandards.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-4">No standards found. Create standards first in the Standards section.</p>
-          )}
 
           {selectedStandard && (
             <div>
@@ -246,19 +298,12 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
               </label>
               <div className="flex flex-wrap gap-2">
                 {paramNames.map(param => (
-                  <button
-                    key={param}
-                    onClick={() => toggleParam(param)}
+                  <button key={param} onClick={() => toggleParam(param)}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all border ${
-                      selectedParams.includes(param)
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-secondary text-secondary-foreground border-border hover:border-primary/40'
-                    }`}
-                  >
+                      selectedParams.includes(param) ? 'bg-primary text-primary-foreground border-primary' : 'bg-secondary text-secondary-foreground border-border hover:border-primary/40'
+                    }`}>
                     {param}
-                    {getParamSubData(param) && (
-                      <span className="ml-1 text-[9px] opacity-70">📋</span>
-                    )}
+                    {getParamSubData(param) && <span className="ml-1 text-[9px] opacity-70">📋</span>}
                   </button>
                 ))}
               </div>
@@ -267,18 +312,15 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
         </div>
       </div>
 
-      {/* Step 2: Add Ingredients */}
+      {/* Step 2: Add Ingredients (linked to Raw Material Standards) */}
       {selectedStandard && selectedParams.length > 0 && (
         <div className="glass-panel rounded-lg">
           <div className="flex items-center justify-between px-5 py-3 border-b border-border">
             <div className="flex items-center gap-2">
               <Beaker className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">Step 2 — Add Ingredients</h3>
+              <h3 className="text-sm font-semibold text-foreground">Step 2 — Add Ingredients (from Raw Material Standards)</h3>
             </div>
-            <button
-              onClick={addIngredient}
-              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors"
-            >
+            <button onClick={addIngredient} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors">
               <Plus className="w-3 h-3" /> Add Ingredient
             </button>
           </div>
@@ -287,23 +329,19 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-secondary/30">
-                  <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Ingredient</th>
+                  <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Ingredient (Raw Material)</th>
                   <th className="text-center py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Inclusion %</th>
                   {selectedParams.map(param => (
                     <th key={param} className="text-center py-2.5 px-2 text-xs font-medium text-primary uppercase tracking-wider whitespace-nowrap">
                       <div className="flex flex-col items-center gap-0.5">
                         <span>{param} %</span>
                         {getParamSubData(param) && (
-                          <button
-                            onClick={() => setShowSubEntries(showSubEntries === param ? null : param)}
-                            className="text-[9px] text-primary/60 hover:text-primary underline"
-                          >
-                            specs
-                          </button>
+                          <button onClick={() => setShowSubEntries(showSubEntries === param ? null : param)} className="text-[9px] text-primary/60 hover:text-primary underline">specs</button>
                         )}
                       </div>
                     </th>
                   ))}
+                  {batchSize > 0 && <th className="text-center py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Kg</th>}
                   <th className="py-2.5 px-2 w-10"></th>
                 </tr>
               </thead>
@@ -311,34 +349,34 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                 {ingredients.map(ing => (
                   <tr key={ing.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
                     <td className="py-1.5 px-3">
-                      <input
-                        type="text"
-                        value={ing.name}
-                        onChange={e => updateIngredient(ing.id, 'name', e.target.value)}
-                        placeholder="e.g. PBM, Soybean Meal"
-                        className="w-36 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors"
-                      />
+                      <div className="flex flex-col gap-1">
+                        <select value={ing.linkedStandardId || ''} onChange={e => {
+                          if (e.target.value) linkIngredientToStandard(ing.id, e.target.value);
+                          else updateIngredient(ing.id, 'linkedStandardId', undefined);
+                        }}
+                          className="w-40 bg-input border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                          <option value="">Select or type below...</option>
+                          {rawMaterialStandards.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                        <input type="text" value={ing.name} onChange={e => updateIngredient(ing.id, 'name', e.target.value)}
+                          placeholder="Or type name" className="w-40 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                      </div>
                     </td>
                     <td className="py-1.5 px-2">
-                      <input
-                        type="number"
-                        value={ing.percentage || ''}
-                        onChange={e => updateIngredient(ing.id, 'percentage', parseFloat(e.target.value) || 0)}
-                        placeholder="0"
-                        className="w-16 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center"
-                      />
+                      <input type="number" value={ing.percentage || ''} onChange={e => updateIngredient(ing.id, 'percentage', parseFloat(e.target.value) || 0)}
+                        placeholder="0" className="w-16 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
                     </td>
                     {selectedParams.map(param => (
                       <td key={param} className="py-1.5 px-2">
-                        <input
-                          type="number"
-                          value={ing.contributions[param] || ''}
-                          onChange={e => updateIngredientContribution(ing.id, param, parseFloat(e.target.value) || 0)}
-                          placeholder="0"
-                          className="w-16 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center"
-                        />
+                        <input type="number" value={ing.contributions[param] || ''} onChange={e => updateIngredientContribution(ing.id, param, parseFloat(e.target.value) || 0)}
+                          placeholder="0" className="w-16 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
                       </td>
                     ))}
+                    {batchSize > 0 && (
+                      <td className="py-1.5 px-2 text-center">
+                        <span className="text-xs font-mono text-foreground font-semibold">{(batchQuantities[ing.id] || 0).toFixed(2)}</span>
+                      </td>
+                    )}
                     <td className="py-1.5 px-2">
                       <button onClick={() => removeIngredient(ing.id)} className="p-1 text-destructive/60 hover:text-destructive rounded transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
@@ -347,19 +385,14 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                   </tr>
                 ))}
                 {ingredients.length === 0 && (
-                  <tr>
-                    <td colSpan={selectedParams.length + 3} className="py-6 text-center text-xs text-muted-foreground">
-                      Click "Add Ingredient" to start building your formulation
-                    </td>
-                  </tr>
+                  <tr><td colSpan={selectedParams.length + 3 + (batchSize > 0 ? 1 : 0)} className="py-6 text-center text-xs text-muted-foreground">
+                    Click "Add Ingredient" to start building your formulation
+                  </td></tr>
                 )}
-                {/* Totals row */}
                 {ingredients.length > 0 && (
                   <tr className="border-t-2 border-primary/30 bg-primary/5 font-semibold">
                     <td className="py-2 px-3 text-xs text-foreground">Total</td>
-                    <td className={`py-2 px-2 text-xs text-center font-mono ${
-                      Math.abs((totals['_totalInclusion'] || 0) - 100) < 0.01 ? 'text-success' : 'text-destructive'
-                    }`}>
+                    <td className={`py-2 px-2 text-xs text-center font-mono ${Math.abs((totals['_totalInclusion'] || 0) - 100) < 0.01 ? 'text-success' : 'text-destructive'}`}>
                       {(totals['_totalInclusion'] || 0).toFixed(2)}%
                     </td>
                     {selectedParams.map(param => {
@@ -368,22 +401,19 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                       return (
                         <td key={param} className="py-2 px-2 text-center">
                           <div className="flex flex-col items-center gap-0.5">
-                            <span className={`text-xs font-mono font-bold ${
-                              status === 'pass' ? 'text-success' :
-                              status === 'warn' ? 'text-warning' :
-                              status === 'fail' ? 'text-destructive' : 'text-foreground'
-                            }`}>
+                            <span className={`text-xs font-mono font-bold ${status === 'pass' ? 'text-success' : status === 'warn' ? 'text-warning' : status === 'fail' ? 'text-destructive' : 'text-foreground'}`}>
                               {(totals[param] || 0).toFixed(2)}%
                             </span>
-                            {stdParam && (
-                              <span className="text-[9px] text-muted-foreground">
-                                target: {stdParam.min || '—'}–{stdParam.max || '—'}
-                              </span>
-                            )}
+                            {stdParam && <span className="text-[9px] text-muted-foreground">target: {stdParam.min || '—'}–{stdParam.max || '—'}</span>}
                           </div>
                         </td>
                       );
                     })}
+                    {batchSize > 0 && (
+                      <td className="py-2 px-2 text-center text-xs font-mono text-foreground font-bold">
+                        {batchSize.toFixed(2)} kg
+                      </td>
+                    )}
                     <td></td>
                   </tr>
                 )}
@@ -391,19 +421,15 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
             </table>
           </div>
 
-          {/* Sub-entries comparison panel */}
+          {/* Sub-entries comparison */}
           {showSubEntries && (() => {
             const subData = getParamSubData(showSubEntries);
             if (!subData) return null;
             return (
               <div className="mx-4 mb-4 rounded-lg border border-primary/20 bg-card shadow-md overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2 bg-primary/5 border-b border-primary/10">
-                  <span className="text-xs font-semibold text-foreground">
-                    Specs for "{showSubEntries}"
-                  </span>
-                  <button onClick={() => setShowSubEntries(null)} className="p-1 text-muted-foreground hover:text-foreground rounded">
-                    <ChevronUp className="w-3.5 h-3.5" />
-                  </button>
+                  <span className="text-xs font-semibold text-foreground">Specs for "{showSubEntries}"</span>
+                  <button onClick={() => setShowSubEntries(null)} className="p-1 text-muted-foreground hover:text-foreground rounded"><ChevronUp className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="p-3 space-y-2">
                   {subData.groups.map(g => (
@@ -426,18 +452,67 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                     </div>
                   ))}
                 </div>
+
+                {/* Show sub-entries from each linked ingredient */}
+                {ingredients.filter(i => i.linkedStandardId).length > 0 && (
+                  <div className="border-t border-primary/10 p-3 space-y-2">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Ingredient Sub-entries for {showSubEntries}</span>
+                    {ingredients.filter(i => i.linkedStandardId && i.name.trim()).map(ing => {
+                      const ingSub = getIngredientSubData(ing, showSubEntries!);
+                      if (!ingSub) return null;
+                      return (
+                        <div key={ing.id} className="rounded border border-border/50 p-2 bg-secondary/10">
+                          <span className="text-[10px] font-semibold text-foreground">{ing.name} ({ing.percentage}% inclusion)</span>
+                          {ingSub.groups.map(g => (
+                            <div key={g.id} className="ml-2 mt-1">
+                              <span className="text-[9px] font-semibold text-primary/60">{g.heading}</span>
+                              {g.entries.map(e => {
+                                const contribution = ((parseFloat(e.value) || 0) * ing.percentage / 100);
+                                return (
+                                  <div key={e.id} className="flex items-center gap-2 text-[10px] pl-2">
+                                    <span className="text-muted-foreground">{e.label}:</span>
+                                    <span className="font-mono text-foreground">{e.value}%</span>
+                                    <span className="text-primary/60">→ {contribution.toFixed(3)}% in formulation</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+                          {ingSub.subs.map(s => {
+                            const contribution = ((parseFloat(s.value) || 0) * ing.percentage / 100);
+                            return (
+                              <div key={s.id} className="flex items-center gap-2 text-[10px] pl-4">
+                                <span className="text-muted-foreground">{s.label}:</span>
+                                <span className="font-mono text-foreground">{s.value}%</span>
+                                <span className="text-primary/60">→ {contribution.toFixed(3)}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })()}
         </div>
       )}
 
-      {/* Step 3: Results Summary */}
+      {/* Step 3: Batch Calculator & Summary */}
       {ingredients.length > 0 && selectedParams.length > 0 && (
         <div className="glass-panel rounded-lg">
-          <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
-            <BarChart3 className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Step 3 — Formulation Summary</h3>
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Step 3 — Summary & Batch Calculator</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calculator className="w-3.5 h-3.5 text-muted-foreground" />
+              <input type="number" value={batchSize || ''} onChange={e => setBatchSize(parseFloat(e.target.value) || 0)}
+                placeholder="Batch kg" className="w-24 bg-input border border-border rounded-md px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+              <span className="text-[10px] text-muted-foreground">kg</span>
+            </div>
           </div>
           <div className="p-5 space-y-3">
             {/* Status cards */}
@@ -446,49 +521,45 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                 const status = getParamStatus(param);
                 const stdParam = selectedStandard?.parameters.find(p => p.analysis === param);
                 return (
-                  <div key={param} className={`rounded-md border p-3 ${
-                    status === 'pass' ? 'border-success/30 bg-success/5' :
-                    status === 'warn' ? 'border-warning/30 bg-warning/5' :
-                    status === 'fail' ? 'border-destructive/30 bg-destructive/5' :
-                    'border-border bg-secondary/20'
-                  }`}>
+                  <div key={param} className={`rounded-md border p-3 ${status === 'pass' ? 'border-success/30 bg-success/5' : status === 'warn' ? 'border-warning/30 bg-warning/5' : status === 'fail' ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-secondary/20'}`}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{param}</span>
                       {status === 'pass' && <span className="text-[9px] text-success font-bold">✓ PASS</span>}
                       {status === 'warn' && <AlertTriangle className="w-3 h-3 text-warning" />}
                       {status === 'fail' && <span className="text-[9px] text-destructive font-bold">✗ FAIL</span>}
                     </div>
-                    <p className={`text-lg font-bold font-mono ${
-                      status === 'pass' ? 'text-success' :
-                      status === 'warn' ? 'text-warning' :
-                      status === 'fail' ? 'text-destructive' : 'text-foreground'
-                    }`}>
+                    <p className={`text-lg font-bold font-mono ${status === 'pass' ? 'text-success' : status === 'warn' ? 'text-warning' : status === 'fail' ? 'text-destructive' : 'text-foreground'}`}>
                       {(totals[param] || 0).toFixed(2)}%
                     </p>
-                    {stdParam && (
-                      <p className="text-[9px] text-muted-foreground mt-0.5">
-                        Range: {stdParam.min || '—'} – {stdParam.max || '—'}
-                      </p>
-                    )}
+                    {stdParam && <p className="text-[9px] text-muted-foreground mt-0.5">Range: {stdParam.min || '—'} – {stdParam.max || '—'}</p>}
                   </div>
                 );
               })}
-
-              {/* Total inclusion card */}
-              <div className={`rounded-md border p-3 ${
-                Math.abs((totals['_totalInclusion'] || 0) - 100) < 0.5 ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total %</span>
-                </div>
-                <p className={`text-lg font-bold font-mono ${
-                  Math.abs((totals['_totalInclusion'] || 0) - 100) < 0.5 ? 'text-success' : 'text-warning'
-                }`}>
+              <div className={`rounded-md border p-3 ${Math.abs((totals['_totalInclusion'] || 0) - 100) < 0.5 ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'}`}>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total %</span>
+                <p className={`text-lg font-bold font-mono ${Math.abs((totals['_totalInclusion'] || 0) - 100) < 0.5 ? 'text-success' : 'text-warning'}`}>
                   {(totals['_totalInclusion'] || 0).toFixed(2)}%
                 </p>
                 <p className="text-[9px] text-muted-foreground mt-0.5">Target: 100%</p>
               </div>
             </div>
+
+            {/* Batch breakdown */}
+            {batchSize > 0 && (
+              <div className="rounded-md border border-border p-3 bg-secondary/10">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 block">
+                  Batch: {batchSize} kg — Ingredient Quantities
+                </span>
+                <div className="space-y-1">
+                  {ingredients.filter(i => i.name.trim()).map(ing => (
+                    <div key={ing.id} className="flex items-center justify-between text-xs">
+                      <span className="text-foreground font-medium">{ing.name}</span>
+                      <span className="font-mono text-primary font-bold">{(batchQuantities[ing.id] || 0).toFixed(2)} kg</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Ingredient breakdown */}
             <div className="space-y-1.5 mt-3">
@@ -497,10 +568,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                 <div key={ing.id} className="flex items-center gap-3 text-xs">
                   <span className="w-32 text-foreground font-medium truncate">{ing.name}</span>
                   <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary/60 rounded-full transition-all"
-                      style={{ width: `${Math.min(ing.percentage, 100)}%` }}
-                    />
+                    <div className="h-full bg-primary/60 rounded-full transition-all" style={{ width: `${Math.min(ing.percentage, 100)}%` }} />
                   </div>
                   <span className="text-muted-foreground font-mono w-12 text-right">{ing.percentage}%</span>
                 </div>
@@ -509,17 +577,12 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
 
             {/* Save */}
             <div className="flex items-center gap-2 pt-2 border-t border-border">
-              <button
-                onClick={saveFormulation}
-                disabled={!formulationName.trim() || !selectedStandardId}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
+              <button onClick={saveFormulation} disabled={!formulationName.trim() || !selectedStandardId}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 <Save className="w-4 h-4" /> {editingFormId ? 'Update' : 'Save'} Formulation
               </button>
               {editingFormId && (
-                <button onClick={resetForm} className="px-4 py-2.5 rounded-md text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80">
-                  Cancel
-                </button>
+                <button onClick={resetForm} className="px-4 py-2.5 rounded-md text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80">Cancel</button>
               )}
             </div>
           </div>
@@ -534,17 +597,20 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
             <h3 className="text-sm font-semibold text-foreground">Saved Formulations</h3>
             <span className="text-[10px] text-muted-foreground">{formulations.length} saved</span>
           </div>
-          {formulations.length > 0 && (
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search..."
-                className="pl-7 pr-3 py-1 bg-input border border-border rounded-md text-xs text-foreground w-40 focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {trash.length > 0 && (
+              <button onClick={() => setShowTrash(!showTrash)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-secondary text-muted-foreground hover:text-foreground border border-border">
+                <Trash2 className="w-3 h-3" /> Trash ({trash.length})
+              </button>
+            )}
+            {formulations.length > 0 && (
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
+                  className="pl-7 pr-3 py-1 bg-input border border-border rounded-md text-xs text-foreground w-40 focus:outline-none focus:ring-1 focus:ring-primary" />
+              </div>
+            )}
+          </div>
         </div>
         <div className="p-5">
           {formulations.length === 0 ? (
@@ -553,21 +619,14 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
             <div className="space-y-2">
               {filteredFormulations.map(f => (
                 <div key={f.id} className="rounded-md border border-border hover:border-primary/30 transition-colors overflow-hidden">
-                  <div
-                    className="flex items-center justify-between px-4 py-3 cursor-pointer"
-                    onClick={() => setExpandedFormId(expandedFormId === f.id ? null : f.id)}
-                  >
+                  <div className="flex items-center justify-between px-4 py-3 cursor-pointer" onClick={() => setExpandedFormId(expandedFormId === f.id ? null : f.id)}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground">{f.name}</p>
                       <p className="text-xs text-muted-foreground">{f.standardName} • {f.ingredients.length} ingredients • {f.targetParams.length} params</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <button onClick={ev => { ev.stopPropagation(); loadFormulation(f); }} className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20">
-                        Load
-                      </button>
-                      <button onClick={ev => { ev.stopPropagation(); deleteFormulation(f.id); }} className="p-1.5 text-muted-foreground hover:text-destructive">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <button onClick={ev => { ev.stopPropagation(); loadFormulation(f); }} className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20">Load</button>
+                      <button onClick={ev => { ev.stopPropagation(); deleteFormulation(f.id); }} className="p-1.5 text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
                       {expandedFormId === f.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                     </div>
                   </div>
@@ -578,9 +637,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                           <tr className="border-b border-border">
                             <th className="text-left py-1 px-2 text-muted-foreground font-medium">Ingredient</th>
                             <th className="text-center py-1 px-2 text-muted-foreground font-medium">%</th>
-                            {f.targetParams.map(p => (
-                              <th key={p} className="text-center py-1 px-2 text-primary font-medium">{p}</th>
-                            ))}
+                            {f.targetParams.map(p => <th key={p} className="text-center py-1 px-2 text-primary font-medium">{p}</th>)}
                           </tr>
                         </thead>
                         <tbody>
@@ -588,9 +645,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                             <tr key={ing.id} className="border-b border-border/30">
                               <td className="py-1 px-2 font-medium text-foreground">{ing.name}</td>
                               <td className="py-1 px-2 font-mono text-center text-muted-foreground">{ing.percentage}</td>
-                              {f.targetParams.map(p => (
-                                <td key={p} className="py-1 px-2 font-mono text-center text-foreground">{ing.contributions[p] || '—'}</td>
-                              ))}
+                              {f.targetParams.map(p => <td key={p} className="py-1 px-2 font-mono text-center text-foreground">{ing.contributions[p] || '—'}</td>)}
                             </tr>
                           ))}
                         </tbody>
@@ -604,6 +659,35 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
           )}
         </div>
       </div>
+
+      {/* Trash */}
+      {showTrash && trash.length > 0 && (
+        <div className="glass-panel rounded-lg border-destructive/20">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
+            <Trash2 className="w-4 h-4 text-destructive" />
+            <h3 className="text-sm font-semibold text-foreground">Trash</h3>
+          </div>
+          <div className="p-5 space-y-2">
+            {trash.map(item => (
+              <div key={item.formulation.id} className="flex items-center justify-between px-4 py-3 rounded-md border border-border bg-secondary/20">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{item.formulation.name}</p>
+                  <p className="text-[10px] text-muted-foreground">Deleted {new Date(item.deletedAt).toLocaleDateString()}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => restoreFromTrash(item)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20">
+                    <Undo2 className="w-3 h-3" /> Restore
+                  </button>
+                  <button onClick={() => setTrash(prev => prev.filter(t => t.formulation.id !== item.formulation.id))}
+                    className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20">
+                    <Trash2 className="w-3 h-3" /> Delete Forever
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
