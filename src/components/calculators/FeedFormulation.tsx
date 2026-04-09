@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Search, ChevronDown, ChevronUp, Save, FileDown, Beaker, Target, BarChart3, AlertTriangle, Calculator, Undo2, X } from 'lucide-react';
+import { Plus, Trash2, Search, ChevronDown, ChevronUp, Save, FileDown, Beaker, Target, BarChart3, AlertTriangle, Calculator, Undo2, X, Copy } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SectionCloudSync } from './SectionCloudSync';
 import { toast } from 'sonner';
@@ -10,13 +10,13 @@ interface Ingredient {
   name: string;
   percentage: number;
   contributions: Record<string, number>;
-  linkedStandardId?: string; // link to raw material standard
+  linkedStandardId?: string;
 }
 
 interface FormulationTemplate {
   id: string;
   name: string;
-  standardId: string; // formulation standard
+  standardId: string;
   standardName: string;
   targetParams: string[];
   ingredients: Ingredient[];
@@ -44,22 +44,22 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
   const [batchSize, setBatchSize] = useState<number>(0);
   const [showTrash, setShowTrash] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: string; id: string; name: string } | null>(null);
+  // Batch calc from saved dropdown
+  const [batchCalcId, setBatchCalcId] = useState<string | null>(null);
+  const [batchCalcSize, setBatchCalcSize] = useState<number>(0);
 
-  // Separate standards by type
   const rawMaterialStandards = savedStandards.filter(s => (s.type || 'raw-material') === 'raw-material');
   const formulationStandards = savedStandards.filter(s => (s.type || 'raw-material') === 'formulation');
 
   const selectedStandard = savedStandards.find(s => s.id === selectedStandardId);
   const paramNames = selectedStandard?.parameters.map(p => p.analysis).filter(Boolean) || [];
 
-  // Auto-populate ingredient data from raw material standard
   const linkIngredientToStandard = (ingredientId: string, standardId: string) => {
     const std = rawMaterialStandards.find(s => s.id === standardId);
     if (!std) return;
     setIngredients(prev => prev.map(ing => {
       if (ing.id !== ingredientId) return ing;
       const contributions: Record<string, number> = { ...ing.contributions };
-      // Auto-fill from raw material standard's custom columns (use standard value)
       std.parameters.forEach(p => {
         if (selectedParams.includes(p.analysis)) {
           const val = parseFloat(p.standard) || parseFloat(p.max) || parseFloat(p.normalMax) || 0;
@@ -68,7 +68,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
       });
       return { ...ing, name: std.name, linkedStandardId: standardId, contributions };
     }));
-    toast.success(`Linked "${std.name}" data to ingredient`);
+    toast.success(`Linked "${std.name}" data`);
   };
 
   const addIngredient = () => {
@@ -98,10 +98,8 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
     );
   };
 
-  // Calculate totals
   const totals = useMemo(() => {
     const result: Record<string, number> = {};
-    const totalInclusion = ingredients.reduce((s, i) => s + (i.percentage || 0), 0);
     selectedParams.forEach(param => {
       let total = 0;
       ingredients.forEach(ing => {
@@ -111,18 +109,15 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
       });
       result[param] = total;
     });
-    result['_totalInclusion'] = totalInclusion;
+    result['_totalInclusion'] = ingredients.reduce((s, i) => s + (i.percentage || 0), 0);
     return result;
   }, [ingredients, selectedParams]);
 
-  // Calculate batch quantities
   const batchQuantities = useMemo(() => {
     if (!batchSize || batchSize <= 0) return {};
     const result: Record<string, number> = {};
     ingredients.forEach(ing => {
-      if (ing.name.trim()) {
-        result[ing.id] = (ing.percentage / 100) * batchSize;
-      }
+      if (ing.name.trim()) result[ing.id] = (ing.percentage / 100) * batchSize;
     });
     return result;
   }, [ingredients, batchSize]);
@@ -164,6 +159,22 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
     resetForm();
     setConfirmAction(null);
     toast.success('Formulation saved');
+  };
+
+  const saveAsCopy = () => {
+    if (!formulationName.trim() || !selectedStandardId) return;
+    const form: FormulationTemplate = {
+      id: `form-${Date.now()}`,
+      name: formulationName.trim() + ' (Copy)',
+      standardId: selectedStandardId!,
+      standardName: selectedStandard?.name || '',
+      targetParams: [...selectedParams],
+      ingredients: ingredients.filter(i => i.name.trim()),
+      createdAt: Date.now(),
+    };
+    setFormulations(prev => [form, ...prev]);
+    resetForm();
+    toast.success('Saved as new copy');
   };
 
   const loadFormulation = (f: FormulationTemplate) => {
@@ -217,7 +228,6 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
     return { groups, subs };
   };
 
-  // Get sub-entry data from a raw material standard for a given param
   const getIngredientSubData = (ing: Ingredient, param: string) => {
     if (!ing.linkedStandardId) return null;
     const std = rawMaterialStandards.find(s => s.id === ing.linkedStandardId);
@@ -229,6 +239,17 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
     if (groups.length === 0 && subs.length === 0) return null;
     return { groups, subs, inclusionPct: ing.percentage };
   };
+
+  // Batch calc for saved formulation
+  const batchCalcForm = batchCalcId ? formulations.find(f => f.id === batchCalcId) : null;
+  const savedBatchQty = useMemo(() => {
+    if (!batchCalcForm || !batchCalcSize) return {};
+    const r: Record<string, number> = {};
+    batchCalcForm.ingredients.forEach(i => {
+      if (i.name.trim()) r[i.id] = (i.percentage / 100) * batchCalcSize;
+    });
+    return r;
+  }, [batchCalcForm, batchCalcSize]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -243,9 +264,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
               <h3 className="text-sm font-semibold text-foreground">Confirm {confirmAction.type === 'save' ? 'Save' : 'Delete'}</h3>
             </div>
             <p className="text-xs text-muted-foreground mb-4">
-              {confirmAction.type === 'save'
-                ? `Save "${confirmAction.name}"?`
-                : `Delete "${confirmAction.name}"? It will be moved to trash.`}
+              {confirmAction.type === 'save' ? `Save "${confirmAction.name}"?` : `Delete "${confirmAction.name}"? It will be moved to trash.`}
             </p>
             <div className="flex gap-2">
               <button onClick={confirmAction.type === 'save' ? confirmSave : confirmDelete}
@@ -280,10 +299,6 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                 {formulationStandards.map(s => (
                   <option key={s.id} value={s.id}>{s.name} ({s.parameters.length} params)</option>
                 ))}
-                {formulationStandards.length === 0 && rawMaterialStandards.length > 0 && (
-                  <option disabled>— No formulation standards found. Create one in Standards section with type "Formulation" —</option>
-                )}
-                {/* Fallback: show all standards if no formulation-type standards exist */}
                 {formulationStandards.length === 0 && savedStandards.map(s => (
                   <option key={s.id} value={s.id}>{s.name} ({s.parameters.length} params)</option>
                 ))}
@@ -293,9 +308,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
 
           {selectedStandard && (
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 block">
-                Select Parameters to Optimize
-              </label>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 block">Select Parameters to Optimize</label>
               <div className="flex flex-wrap gap-2">
                 {paramNames.map(param => (
                   <button key={param} onClick={() => toggleParam(param)}
@@ -312,7 +325,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
         </div>
       </div>
 
-      {/* Step 2: Add Ingredients (linked to Raw Material Standards) */}
+      {/* Step 2: Add Ingredients */}
       {selectedStandard && selectedParams.length > 0 && (
         <div className="glass-panel rounded-lg">
           <div className="flex items-center justify-between px-5 py-3 border-b border-border">
@@ -329,7 +342,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-secondary/30">
-                  <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Ingredient (Raw Material)</th>
+                  <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Ingredient</th>
                   <th className="text-center py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Inclusion %</th>
                   {selectedParams.map(param => (
                     <th key={param} className="text-center py-2.5 px-2 text-xs font-medium text-primary uppercase tracking-wider whitespace-nowrap">
@@ -355,7 +368,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                           else updateIngredient(ing.id, 'linkedStandardId', undefined);
                         }}
                           className="w-40 bg-input border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
-                          <option value="">Select or type below...</option>
+                          <option value="">Select raw material...</option>
                           {rawMaterialStandards.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                         <input type="text" value={ing.name} onChange={e => updateIngredient(ing.id, 'name', e.target.value)}
@@ -410,9 +423,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                       );
                     })}
                     {batchSize > 0 && (
-                      <td className="py-2 px-2 text-center text-xs font-mono text-foreground font-bold">
-                        {batchSize.toFixed(2)} kg
-                      </td>
+                      <td className="py-2 px-2 text-center text-xs font-mono text-foreground font-bold">{batchSize.toFixed(2)} kg</td>
                     )}
                     <td></td>
                   </tr>
@@ -452,8 +463,6 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                     </div>
                   ))}
                 </div>
-
-                {/* Show sub-entries from each linked ingredient */}
                 {ingredients.filter(i => i.linkedStandardId).length > 0 && (
                   <div className="border-t border-primary/10 p-3 space-y-2">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase">Ingredient Sub-entries for {showSubEntries}</span>
@@ -499,7 +508,7 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
         </div>
       )}
 
-      {/* Step 3: Batch Calculator & Summary */}
+      {/* Step 3: Summary & Batch Calculator */}
       {ingredients.length > 0 && selectedParams.length > 0 && (
         <div className="glass-panel rounded-lg">
           <div className="flex items-center justify-between px-5 py-3 border-b border-border">
@@ -515,7 +524,6 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
             </div>
           </div>
           <div className="p-5 space-y-3">
-            {/* Status cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {selectedParams.map(param => {
                 const status = getParamStatus(param);
@@ -544,12 +552,9 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
             </div>
 
-            {/* Batch breakdown */}
             {batchSize > 0 && (
               <div className="rounded-md border border-border p-3 bg-secondary/10">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 block">
-                  Batch: {batchSize} kg — Ingredient Quantities
-                </span>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 block">Batch: {batchSize} kg</span>
                 <div className="space-y-1">
                   {ingredients.filter(i => i.name.trim()).map(ing => (
                     <div key={ing.id} className="flex items-center justify-between text-xs">
@@ -561,28 +566,19 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
             )}
 
-            {/* Ingredient breakdown */}
-            <div className="space-y-1.5 mt-3">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Ingredient Breakdown</span>
-              {ingredients.filter(i => i.name.trim()).map(ing => (
-                <div key={ing.id} className="flex items-center gap-3 text-xs">
-                  <span className="w-32 text-foreground font-medium truncate">{ing.name}</span>
-                  <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-primary/60 rounded-full transition-all" style={{ width: `${Math.min(ing.percentage, 100)}%` }} />
-                  </div>
-                  <span className="text-muted-foreground font-mono w-12 text-right">{ing.percentage}%</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Save */}
             <div className="flex items-center gap-2 pt-2 border-t border-border">
               <button onClick={saveFormulation} disabled={!formulationName.trim() || !selectedStandardId}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 <Save className="w-4 h-4" /> {editingFormId ? 'Update' : 'Save'} Formulation
               </button>
               {editingFormId && (
-                <button onClick={resetForm} className="px-4 py-2.5 rounded-md text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80">Cancel</button>
+                <>
+                  <button onClick={saveAsCopy} disabled={!formulationName.trim()}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
+                    <Copy className="w-4 h-4" /> Save as Copy
+                  </button>
+                  <button onClick={resetForm} className="px-4 py-2.5 rounded-md text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80">Cancel</button>
+                </>
               )}
             </div>
           </div>
@@ -625,11 +621,43 @@ export function FeedFormulation({ isAdmin = false }: { isAdmin?: boolean }) {
                       <p className="text-xs text-muted-foreground">{f.standardName} • {f.ingredients.length} ingredients • {f.targetParams.length} params</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <button onClick={ev => { ev.stopPropagation(); loadFormulation(f); }} className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20">Load</button>
+                      <button onClick={ev => { ev.stopPropagation(); loadFormulation(f); }} className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20">Edit</button>
+                      <button onClick={ev => { ev.stopPropagation(); setBatchCalcId(batchCalcId === f.id ? null : f.id); }}
+                        className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${batchCalcId === f.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-secondary/50 text-muted-foreground border-border hover:border-primary/40'}`}>
+                        <Calculator className="w-3 h-3 inline mr-1" />Batch
+                      </button>
                       <button onClick={ev => { ev.stopPropagation(); deleteFormulation(f.id); }} className="p-1.5 text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
                       {expandedFormId === f.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                     </div>
                   </div>
+
+                  {/* Batch calc inline */}
+                  {batchCalcId === f.id && (
+                    <div className="px-4 py-3 border-t border-border/50 bg-primary/5">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Calculator className="w-4 h-4 text-primary" />
+                        <span className="text-xs font-semibold text-foreground">Batch Calculator</span>
+                        <input type="number" value={batchCalcSize || ''} onChange={e => setBatchCalcSize(parseFloat(e.target.value) || 0)}
+                          placeholder="Enter kg" className="w-28 bg-input border border-border rounded-md px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                        <span className="text-[10px] text-muted-foreground">kg</span>
+                      </div>
+                      {batchCalcSize > 0 && (
+                        <div className="space-y-1">
+                          {f.ingredients.filter(i => i.name.trim()).map(ing => (
+                            <div key={ing.id} className="flex items-center justify-between text-xs">
+                              <span className="text-foreground">{ing.name} ({ing.percentage}%)</span>
+                              <span className="font-mono text-primary font-bold">{(savedBatchQty[ing.id] || 0).toFixed(2)} kg</span>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between text-xs font-bold border-t border-border pt-1 mt-1">
+                            <span className="text-foreground">Total</span>
+                            <span className="font-mono text-foreground">{batchCalcSize.toFixed(2)} kg</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {expandedFormId === f.id && (
                     <div className="px-4 pb-3 border-t border-border/50 pt-2">
                       <table className="w-full text-xs">
