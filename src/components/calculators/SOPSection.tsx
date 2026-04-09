@@ -12,6 +12,7 @@ export function SOPSection() {
   const [customSOPs, setCustomSOPs] = useLocalStorage<SOPEntry[]>('chemanalyst-custom-sops', []);
   const [editedSOPs, setEditedSOPs] = useLocalStorage<Record<string, Partial<SOPEntry>>>('chemanalyst-edited-sops', {});
   const [customSections, setCustomSections] = useLocalStorage<string[]>('chemanalyst-sop-sections', []);
+  const [sectionOrder, setSectionOrder] = useLocalStorage<string[]>('chemanalyst-sop-section-order', []);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddSection, setShowAddSection] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
@@ -20,6 +21,9 @@ export function SOPSection() {
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [dragOverItem, setDragOverItem] = useState<string | null>(null);
   const [sopOrder, setSopOrder] = useLocalStorage<string[]>('chemanalyst-sop-order', []);
+  // Section drag state
+  const [dragSection, setDragSection] = useState<string | null>(null);
+  const [dragOverSection, setDragOverSection] = useState<string | null>(null);
 
   const allSOPs: SOPEntry[] = [
     ...SOP_DATA.map(sop => ({ ...sop, ...(editedSOPs[sop.id] || {}) })),
@@ -31,7 +35,11 @@ export function SOPSection() {
     ? [...sopOrder.map(id => allSOPs.find(s => s.id === id)).filter(Boolean) as SOPEntry[], ...allSOPs.filter(s => !sopOrder.includes(s.id))]
     : allSOPs;
 
-  const allCategories = [...new Set([...orderedSOPs.map(s => s.category), ...customSections])];
+  const rawCategories = [...new Set([...orderedSOPs.map(s => s.category), ...customSections])];
+  // Apply section ordering
+  const allCategories = sectionOrder.length > 0
+    ? [...sectionOrder.filter(c => rawCategories.includes(c)), ...rawCategories.filter(c => !sectionOrder.includes(c))]
+    : rawCategories;
 
   const filtered = orderedSOPs.filter(sop =>
     sop.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -92,6 +100,13 @@ export function SOPSection() {
     setNewSectionName('');
     setShowAddSection(false);
     toast({ title: 'Section Added', description: `"${newSectionName}" section created.` });
+  };
+
+  const handleDeleteSection = (cat: string) => {
+    if (!customSections.includes(cat)) return;
+    setCustomSections(prev => prev.filter(c => c !== cat));
+    setSectionOrder(prev => prev.filter(c => c !== cat));
+    toast({ title: 'Section Removed' });
   };
 
   const handleImportPDF = () => { fileInputRef.current?.click(); };
@@ -176,6 +191,51 @@ export function SOPSection() {
     setSopOrder(currentOrder);
   };
 
+  // Section drag
+  const handleSectionDragStart = (cat: string) => setDragSection(cat);
+  const handleSectionDragEnter = (cat: string) => setDragOverSection(cat);
+  const handleSectionDragEnd = () => {
+    if (dragSection && dragOverSection && dragSection !== dragOverSection) {
+      const currentOrder = sectionOrder.length > 0 ? [...sectionOrder] : [...allCategories];
+      const fromIdx = currentOrder.indexOf(dragSection);
+      const toIdx = currentOrder.indexOf(dragOverSection);
+      if (fromIdx >= 0 && toIdx >= 0) {
+        const [removed] = currentOrder.splice(fromIdx, 1);
+        currentOrder.splice(toIdx, 0, removed);
+        setSectionOrder(currentOrder);
+      } else {
+        // section not in order yet, insert it
+        const newOrder = [...allCategories];
+        const fi = newOrder.indexOf(dragSection);
+        const ti = newOrder.indexOf(dragOverSection);
+        if (fi >= 0 && ti >= 0) {
+          const [rem] = newOrder.splice(fi, 1);
+          newOrder.splice(ti, 0, rem);
+          setSectionOrder(newOrder);
+        }
+      }
+    }
+    setDragSection(null);
+    setDragOverSection(null);
+  };
+
+  const moveSectionDir = (cat: string, dir: 'up' | 'down') => {
+    const currentOrder = sectionOrder.length > 0 ? [...sectionOrder] : [...allCategories];
+    const idx = currentOrder.indexOf(cat);
+    if (idx < 0) {
+      // not yet in order
+      const fullOrder = [...allCategories];
+      const fi = fullOrder.indexOf(cat);
+      if (dir === 'up' && fi > 0) { [fullOrder[fi - 1], fullOrder[fi]] = [fullOrder[fi], fullOrder[fi - 1]]; }
+      else if (dir === 'down' && fi < fullOrder.length - 1) { [fullOrder[fi], fullOrder[fi + 1]] = [fullOrder[fi + 1], fullOrder[fi]]; }
+      setSectionOrder(fullOrder);
+      return;
+    }
+    if (dir === 'up' && idx > 0) { [currentOrder[idx - 1], currentOrder[idx]] = [currentOrder[idx], currentOrder[idx - 1]]; }
+    else if (dir === 'down' && idx < currentOrder.length - 1) { [currentOrder[idx], currentOrder[idx + 1]] = [currentOrder[idx + 1], currentOrder[idx]]; }
+    setSectionOrder(currentOrder);
+  };
+
   return (
     <div className="space-y-6">
       <SectionCloudSync sectionKey="chemanalyst-custom-sops" label="Custom SOPs" isAdmin={true} />
@@ -227,27 +287,53 @@ export function SOPSection() {
       {/* Add SOP Form */}
       {showAddForm && <AddSOPForm onAdd={handleAddSOP} onCancel={() => setShowAddForm(false)} categories={allCategories} />}
 
-      {/* Results grouped by category */}
-      {allCategories.map(cat => {
+      {/* Results grouped by category with drag-drop sections */}
+      {allCategories.map((cat, catIdx) => {
         const catSOPs = filtered.filter(s => s.category === cat);
         if (catSOPs.length === 0 && !customSections.includes(cat)) return null;
         return (
-          <div key={cat} className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-primary flex items-center gap-2">
-              <Beaker className="w-3.5 h-3.5" /> {cat}
-              {customSections.includes(cat) && catSOPs.length === 0 && (
-                <span className="text-[9px] text-muted-foreground normal-case font-normal">(empty section)</span>
-              )}
-            </h3>
+          <div key={cat}
+            draggable
+            onDragStart={() => handleSectionDragStart(cat)}
+            onDragEnter={() => handleSectionDragEnter(cat)}
+            onDragEnd={handleSectionDragEnd}
+            onDragOver={e => e.preventDefault()}
+            className={`space-y-2 ${dragOverSection === cat ? 'border-t-2 border-primary rounded-t' : 'border-t-2 border-transparent'}`}
+          >
+            <div className="flex items-center gap-2">
+              <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 cursor-grab shrink-0" />
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-primary flex items-center gap-2 flex-1">
+                <Beaker className="w-3.5 h-3.5" /> {cat}
+                {customSections.includes(cat) && catSOPs.length === 0 && (
+                  <span className="text-[9px] text-muted-foreground normal-case font-normal">(empty section)</span>
+                )}
+              </h3>
+              <div className="flex items-center gap-0.5">
+                <button onClick={() => moveSectionDir(cat, 'up')} disabled={catIdx === 0}
+                  className="p-0.5 text-muted-foreground/40 hover:text-primary disabled:opacity-20 transition-colors">
+                  <ArrowUp className="w-3 h-3" />
+                </button>
+                <button onClick={() => moveSectionDir(cat, 'down')} disabled={catIdx === allCategories.length - 1}
+                  className="p-0.5 text-muted-foreground/40 hover:text-primary disabled:opacity-20 transition-colors">
+                  <ArrowDown className="w-3 h-3" />
+                </button>
+                {customSections.includes(cat) && (
+                  <button onClick={() => handleDeleteSection(cat)}
+                    className="p-0.5 text-muted-foreground/30 hover:text-destructive transition-colors ml-1" title="Remove section">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="space-y-1">
-              {catSOPs.map((sop, idx) => {
+              {catSOPs.map((sop) => {
                 const hasFormula = SOP_FORMULAS.some(f => f.sopId === sop.id);
                 return (
                   <div key={sop.id}
                     draggable
-                    onDragStart={() => handleDragStart(sop.id)}
-                    onDragEnter={() => handleDragEnter(sop.id)}
-                    onDragEnd={handleDragEnd}
+                    onDragStart={(e) => { e.stopPropagation(); handleDragStart(sop.id); }}
+                    onDragEnter={(e) => { e.stopPropagation(); handleDragEnter(sop.id); }}
+                    onDragEnd={(e) => { e.stopPropagation(); handleDragEnd(); }}
                     onDragOver={e => e.preventDefault()}
                     className={`${dragOverItem === sop.id ? 'border-t-2 border-primary' : ''}`}
                   >
