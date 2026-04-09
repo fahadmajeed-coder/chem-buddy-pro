@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield, Settings2, FlaskConical, Save, FolderOpen, AlertTriangle } from 'lucide-react';
+import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield, Settings2, FlaskConical, Save, FolderOpen, AlertTriangle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AnalyticalResult } from './AnalyticalTestSection';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -39,7 +39,7 @@ interface CustomColumn {
   id: string;
   header: string;
   formula: string;
-  deductionFormula?: string; // NEW: formula for deduction calc
+  deductionFormula?: string;
 }
 
 interface ReportTemplate {
@@ -64,6 +64,17 @@ interface ReportEntry {
   deduction: string;
   customValues: Record<string, string>;
 }
+
+const AVAILABLE_TOKENS = [
+  { token: '{result}', label: 'Result' },
+  { token: '{greenMin}', label: 'Good Min' },
+  { token: '{greenMax}', label: 'Good Max' },
+  { token: '{yellowMin}', label: 'Fair Min' },
+  { token: '{yellowMax}', label: 'Fair Max' },
+  { token: '{deduction}', label: 'Deduction' },
+];
+
+const MATH_OPS = ['+', '-', '*', '/', '(', ')', 'abs('];
 
 const formatRangeStr = (min?: string, max?: string, legacy?: string) => {
   const a = min || ''; const b = max || '';
@@ -94,9 +105,6 @@ const computeStatus = (result: string, greenRange: string, yellowRange: string):
   return 'pending';
 };
 
-/** Compute deduction using configurable formula.
- *  Default: absolute difference. Supports {result}, {greenMin}, {greenMax}, {yellowMin}, {yellowMax}, abs()
- */
 const computeDeduction = (result: string, greenRange: string, yellowRange: string, formula?: string): string => {
   const res = parseFloat(result);
   if (isNaN(res)) return '';
@@ -123,7 +131,6 @@ const computeDeduction = (result: string, greenRange: string, yellowRange: strin
     } catch { /* fallback */ }
   }
 
-  // Default
   if (res < gMin) return (gMin - res).toFixed(4);
   if (res > gMax) return (res - gMax).toFixed(4);
   return '';
@@ -136,22 +143,90 @@ const makeEntry = (overrides?: Partial<ReportEntry>): ReportEntry => ({
   ...overrides,
 });
 
-const evalColumnFormula = (formula: string, entry: ReportEntry): string => {
+const evalColumnFormula = (formula: string, entry: ReportEntry, allEntries?: ReportEntry[], colId?: string): string => {
   if (!formula.trim()) return '';
   try {
     const greenMatch = entry.greenRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
+    const yellowMatch = entry.yellowRange.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)/);
     let expr = formula
       .replace(/\{result\}/gi, entry.result || '0')
       .replace(/\{deduction\}/gi, entry.deduction || '0')
       .replace(/\{greenMin\}/gi, greenMatch ? greenMatch[1] : '0')
-      .replace(/\{greenMax\}/gi, greenMatch ? greenMatch[2] : '0');
-    if (/^[\d\s+\-*/().]+$/.test(expr)) {
+      .replace(/\{greenMax\}/gi, greenMatch ? greenMatch[2] : '0')
+      .replace(/\{yellowMin\}/gi, yellowMatch ? yellowMatch[1] : '0')
+      .replace(/\{yellowMax\}/gi, yellowMatch ? yellowMatch[2] : '0')
+      .replace(/abs\(/gi, 'Math.abs(');
+    if (/^[\d\s+\-*/().a-zA-Z]+$/.test(expr)) {
       const result = Function('"use strict"; return (' + expr + ')')();
       return typeof result === 'number' && !isNaN(result) ? result.toFixed(4) : '';
     }
   } catch { /* ignore */ }
   return '';
 };
+
+// Formula builder helper component
+function FormulaBuilderInline({ formula, onChange, label, availableColumns }: {
+  formula: string; onChange: (f: string) => void; label: string;
+  availableColumns?: { id: string; header: string }[];
+}) {
+  const [showBuilder, setShowBuilder] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const insertToken = (token: string) => {
+    if (!inputRef.current) { onChange(formula + token); return; }
+    const start = inputRef.current.selectionStart || formula.length;
+    const end = inputRef.current.selectionEnd || formula.length;
+    const newFormula = formula.slice(0, start) + token + formula.slice(end);
+    onChange(newFormula);
+    setTimeout(() => {
+      inputRef.current?.setSelectionRange(start + token.length, start + token.length);
+      inputRef.current?.focus();
+    }, 0);
+  };
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <input ref={inputRef} type="text" value={formula} onChange={e => onChange(e.target.value)}
+          placeholder={`e.g. {result} - {greenMax}`}
+          className="flex-1 bg-input border border-border rounded px-2 py-1 text-[10px] font-mono text-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+        <button onClick={() => setShowBuilder(!showBuilder)}
+          className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${showBuilder ? 'bg-primary/10 text-primary border-primary/30' : 'bg-secondary text-muted-foreground border-border hover:border-primary/30'}`}>
+          ƒx
+        </button>
+      </div>
+      {showBuilder && (
+        <div className="p-2 rounded-md border border-primary/20 bg-primary/5 space-y-1.5">
+          <div className="flex flex-wrap gap-1">
+            <span className="text-[8px] text-muted-foreground uppercase w-full">Columns</span>
+            {AVAILABLE_TOKENS.map(t => (
+              <button key={t.token} onClick={() => insertToken(t.token)}
+                className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-secondary border border-border text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                {t.label}
+              </button>
+            ))}
+            {availableColumns?.map(c => (
+              <button key={c.id} onClick={() => insertToken(`{col:${c.header}}`)}
+                className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors">
+                {c.header}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            <span className="text-[8px] text-muted-foreground uppercase w-full">Math</span>
+            {MATH_OPS.map(op => (
+              <button key={op} onClick={() => insertToken(op)}
+                className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-secondary border border-border text-foreground hover:border-primary/50 transition-colors">
+                {op}
+              </button>
+            ))}
+          </div>
+          <p className="text-[8px] text-muted-foreground">Click tokens to insert at cursor position</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
@@ -174,6 +249,9 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [entries, setEntries] = useState<ReportEntry[]>([makeEntry()]);
   const [confirmAction, setConfirmAction] = useState<{ type: string; fn: () => void; msg: string } | null>(null);
+  // Per-row formula overrides
+  const [rowFormulas, setRowFormulas] = useState<Record<string, Record<string, string>>>({});
+  const [editingRowFormula, setEditingRowFormula] = useState<{ entryId: string; colId: string } | null>(null);
 
   const normalizeParam = (name: string) => name.replace(/\s*\(.*\)\s*$/, '').trim().toLowerCase();
 
@@ -275,7 +353,6 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
     });
   };
 
-  // Recalculate all deductions when formula changes
   const applyDeductionFormula = () => {
     setEntries(prev => prev.map(e => ({
       ...e,
@@ -334,6 +411,14 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
     reader.readAsDataURL(file);
   };
 
+  const getColValue = (entry: ReportEntry, cc: CustomColumn): string => {
+    // Check for per-row formula override
+    const rowFormula = rowFormulas[entry.id]?.[cc.id];
+    const effectiveFormula = rowFormula !== undefined ? rowFormula : cc.formula;
+    if (effectiveFormula) return evalColumnFormula(effectiveFormula, entry);
+    return entry.customValues[cc.id] || '';
+  };
+
   const exportPDF = () => {
     const exportEntries = entries.filter(e => e.included);
     const reportTitle = title || 'Certificate of Analysis';
@@ -369,7 +454,7 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
       if (statusIdx >= 0) finalCols.splice(statusIdx + 1, 0, dedCol); else finalCols.push(dedCol);
     }
     for (const cc of customColumns) {
-      finalCols.push({ key: 'status' as ColKey, header: cc.header, getValue: (e) => e.customValues[cc.id] || '—' });
+      finalCols.push({ key: 'status' as ColKey, header: cc.header, getValue: (e) => getColValue(e, cc) || '—' });
     }
     const statusColIndex = finalCols.findIndex(c => c.header === 'Status');
     autoTable(doc, {
@@ -535,7 +620,7 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
               const rows = csvEntries.map(e => {
                 const row = [e.parameter, e.method, e.result, e.unit, e.greenRange, e.yellowRange, e.status === 'good' ? 'GOOD' : e.status === 'fair' ? 'FAIR' : e.status === 'reject' ? 'REJECT' : 'Pending'];
                 if (showDeduction) row.push(e.deduction || '');
-                customColumns.forEach(cc => row.push(e.customValues[cc.id] || ''));
+                customColumns.forEach(cc => row.push(getColValue(e, cc)));
                 return row;
               });
               const metaRows: string[][] = [];
@@ -596,18 +681,14 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
           <div className="mb-3 p-2 rounded-md bg-warning/5 border border-warning/20">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] uppercase tracking-wider text-warning font-medium">Deduction Formula</span>
-              {isAdmin ? (
-                <span className="text-[9px] text-muted-foreground">Tokens: {'{result}'}, {'{greenMin}'}, {'{greenMax}'}, {'{yellowMin}'}, {'{yellowMax}'}, abs()</span>
-              ) : (
-                <span className="text-[9px] text-muted-foreground">Set by admin</span>
-              )}
+              {!isAdmin && <span className="text-[9px] text-muted-foreground">Set by admin</span>}
             </div>
             {isAdmin ? (
               <div className="flex items-center gap-2">
-                <input type="text" value={deductionFormula} onChange={e => setDeductionFormula(e.target.value)}
-                  placeholder="Default: |result - range boundary|. E.g. abs({result} - {greenMax}) * 2"
-                  className="flex-1 bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-warning" />
-                <button onClick={applyDeductionFormula} className="px-2 py-1 rounded-md bg-warning/10 text-warning text-[10px] font-medium hover:bg-warning/20 border border-warning/20">Apply</button>
+                <div className="flex-1">
+                  <FormulaBuilderInline formula={deductionFormula} onChange={setDeductionFormula} label="Deduction" />
+                </div>
+                <button onClick={applyDeductionFormula} className="px-2 py-1 rounded-md bg-warning/10 text-warning text-[10px] font-medium hover:bg-warning/20 border border-warning/20 shrink-0">Apply</button>
               </div>
             ) : deductionFormula ? (
               <span className="text-[10px] font-mono text-warning/70">ƒ {deductionFormula}</span>
@@ -617,20 +698,25 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
           </div>
         )}
 
-        {/* Custom columns */}
+        {/* Custom columns with formula builder */}
         {customColumns.length > 0 && (
           <div className="space-y-2 mb-3">
             {customColumns.map(cc => (
-              <div key={cc.id} className="flex items-center gap-2 bg-secondary/50 border border-border rounded-md px-2 py-1.5">
-                <input type="text" value={cc.header} onChange={e => updateColumnHeader(cc.id, e.target.value)}
-                  className="bg-transparent text-xs font-medium text-foreground w-24 focus:outline-none focus:ring-0 border-none" placeholder="Header name" />
+              <div key={cc.id} className="bg-secondary/50 border border-border rounded-md px-2 py-1.5 space-y-1">
+                <div className="flex items-center gap-2">
+                  <input type="text" value={cc.header} onChange={e => updateColumnHeader(cc.id, e.target.value)}
+                    className="bg-transparent text-xs font-medium text-foreground w-24 focus:outline-none focus:ring-0 border-none" placeholder="Header name" />
+                  {cc.formula && !isAdmin && <span className="text-[10px] text-muted-foreground font-mono">ƒ auto</span>}
+                  <button onClick={() => removeCustomColumn(cc.id)} className="text-destructive hover:text-destructive/80 p-0.5 ml-auto"><Trash2 className="w-3 h-3" /></button>
+                </div>
                 {isAdmin && (
-                  <input type="text" value={cc.formula} onChange={e => updateColumnFormula(cc.id, e.target.value)}
-                    className="bg-input border border-border rounded px-2 py-0.5 text-[10px] font-mono text-primary w-40 focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="Formula: {result}*0.5" title="Use {result}, {deduction}, {greenMin}, {greenMax}" />
+                  <FormulaBuilderInline
+                    formula={cc.formula}
+                    onChange={f => updateColumnFormula(cc.id, f)}
+                    label={cc.header}
+                    availableColumns={customColumns.filter(c => c.id !== cc.id)}
+                  />
                 )}
-                {cc.formula && !isAdmin && <span className="text-[10px] text-muted-foreground font-mono">ƒ auto</span>}
-                <button onClick={() => removeCustomColumn(cc.id)} className="text-destructive hover:text-destructive/80 p-0.5 ml-auto"><Trash2 className="w-3 h-3" /></button>
               </div>
             ))}
           </div>
@@ -688,7 +774,12 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
                 </th>
                 <th className="text-center py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
                 {showDeduction && <th className="text-left py-2.5 px-3 text-xs font-medium text-warning uppercase tracking-wider">Deduction</th>}
-                {customColumns.map(cc => <th key={cc.id} className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">{cc.header}</th>)}
+                {customColumns.map(cc => (
+                  <th key={cc.id} className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {cc.header}
+                    {cc.formula && <span className="ml-1 text-[8px] text-primary">ƒx</span>}
+                  </th>
+                ))}
                 <th className="py-2.5 px-3"></th>
               </tr>
             </thead>
@@ -733,14 +824,53 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
                     </td>
                   )}
                   {customColumns.map(cc => {
-                    const formulaVal = cc.formula ? evalColumnFormula(cc.formula, entry) : '';
+                    const effectiveFormula = rowFormulas[entry.id]?.[cc.id] !== undefined ? rowFormulas[entry.id][cc.id] : cc.formula;
+                    const formulaVal = effectiveFormula ? evalColumnFormula(effectiveFormula, entry) : '';
+                    const isEditingThis = editingRowFormula?.entryId === entry.id && editingRowFormula?.colId === cc.id;
                     return (
                       <td key={cc.id} className="py-2 px-2">
-                        {cc.formula ? (
-                          <span className="text-xs font-mono text-foreground px-2 py-1">{formulaVal || '—'}</span>
+                        {effectiveFormula ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-mono text-foreground px-1">{formulaVal || '—'}</span>
+                            {isAdmin && (
+                              <button onClick={() => setEditingRowFormula(isEditingThis ? null : { entryId: entry.id, colId: cc.id })}
+                                className={`text-[8px] px-1 py-0.5 rounded ${isEditingThis ? 'bg-primary/10 text-primary' : 'text-muted-foreground/40 hover:text-primary'}`}>
+                                ƒ
+                              </button>
+                            )}
+                          </div>
                         ) : (
-                          <input type="text" value={entry.customValues[cc.id] || ''} onChange={e => updateCustomValue(entry.id, cc.id, e.target.value)}
-                            placeholder="—" className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                          <div className="flex items-center gap-1">
+                            <input type="text" value={entry.customValues[cc.id] || ''} onChange={e => updateCustomValue(entry.id, cc.id, e.target.value)}
+                              placeholder="—" className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                            {isAdmin && (
+                              <button onClick={() => setEditingRowFormula(isEditingThis ? null : { entryId: entry.id, colId: cc.id })}
+                                className={`text-[8px] px-1 py-0.5 rounded shrink-0 ${isEditingThis ? 'bg-primary/10 text-primary' : 'text-muted-foreground/40 hover:text-primary'}`}>
+                                ƒ
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {isEditingThis && isAdmin && (
+                          <div className="mt-1">
+                            <FormulaBuilderInline
+                              formula={rowFormulas[entry.id]?.[cc.id] || cc.formula}
+                              onChange={f => setRowFormulas(prev => ({ ...prev, [entry.id]: { ...(prev[entry.id] || {}), [cc.id]: f } }))}
+                              label="Row formula"
+                              availableColumns={customColumns.filter(c => c.id !== cc.id)}
+                            />
+                            <div className="flex gap-1 mt-1">
+                              <button onClick={() => {
+                                setRowFormulas(prev => {
+                                  const n = { ...prev };
+                                  if (n[entry.id]) { delete n[entry.id][cc.id]; if (!Object.keys(n[entry.id]).length) delete n[entry.id]; }
+                                  return n;
+                                });
+                                setEditingRowFormula(null);
+                              }} className="text-[8px] px-1 py-0.5 rounded bg-secondary text-muted-foreground">Use column default</button>
+                              <button onClick={() => setEditingRowFormula(null)} className="text-[8px] px-1 py-0.5 rounded bg-primary/10 text-primary">Done</button>
+                            </div>
+                          </div>
                         )}
                       </td>
                     );

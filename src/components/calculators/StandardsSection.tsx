@@ -32,7 +32,7 @@ export interface AnalysisParam {
   customValues: Record<string, string>;
   subEntries: SubEntry[];
   subGroups: SubEntryGroup[];
-  operator?: string; // '<', '>', '<=', '>=', '=', 'range'
+  operator?: string;
   normal?: string;
   withDeduction?: string;
   outlier?: string;
@@ -50,7 +50,7 @@ export interface SavedStandard {
   parameters: AnalysisParam[];
   customColumns: CustomStdColumn[];
   createdAt: number;
-  type?: 'raw-material' | 'formulation'; // NEW
+  type?: 'raw-material' | 'formulation';
 }
 
 const OPERATORS = [
@@ -111,6 +111,7 @@ export function StandardsSection() {
     ));
   };
 
+  // Sub-entry group functions (now only on Standard column)
   const addSubGroup = (paramId: string) => {
     setParameters(prev => prev.map(p =>
       p.id === paramId ? {
@@ -216,7 +217,7 @@ export function StandardsSection() {
 
   const saveStandard = () => {
     if (!templateName.trim() || parameters.length === 0) return;
-    if (confirmAction) return; // prevent double
+    if (confirmAction) return;
     setConfirmAction({ type: 'save', id: editingId || 'new', name: templateName });
   };
 
@@ -301,17 +302,6 @@ export function StandardsSection() {
     if (a && b) return `${a}–${b}`;
     if (a) return `≥${a}`;
     if (b) return `≤${b}`;
-    return '—';
-  };
-
-  const formatOperatorValue = (p: AnalysisParam) => {
-    const op = p.operator || 'range';
-    if (op === 'range') return formatRange(p.min, p.max);
-    if (op === '<') return `< ${p.max || '—'}`;
-    if (op === '>') return `> ${p.min || '—'}`;
-    if (op === '<=') return `≤ ${p.max || '—'}`;
-    if (op === '>=') return `≥ ${p.min || '—'}`;
-    if (op === '=') return `= ${p.standard || '—'}`;
     return '—';
   };
 
@@ -434,7 +424,9 @@ export function StandardsSection() {
                 <th colSpan={2} className="text-center py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Normal Range</th>
                 <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Min</th>
                 <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Max</th>
-                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Standard</th>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-primary uppercase tracking-wider whitespace-nowrap">
+                  Standard ▾
+                </th>
                 <th colSpan={2} className="text-center py-2.5 px-2 text-xs font-medium text-warning uppercase tracking-wider whitespace-nowrap">With Ded.</th>
                 <th colSpan={2} className="text-center py-2.5 px-2 text-xs font-medium text-destructive uppercase tracking-wider whitespace-nowrap">Outlier</th>
                 <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Reason</th>
@@ -474,9 +466,22 @@ export function StandardsSection() {
                       <input type="text" value={param.max} onChange={e => updateParam(param.id, 'max', e.target.value)}
                         placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                     </td>
+                    {/* Standard column with caret dropdown for sub-entries */}
                     <td className="py-1.5 px-1.5">
-                      <input type="text" value={param.standard} onChange={e => updateParam(param.id, 'standard', e.target.value)}
-                        placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                      <div className="flex items-center gap-0.5">
+                        <input type="text" value={param.standard} onChange={e => updateParam(param.id, 'standard', e.target.value)}
+                          placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                        <button onClick={() => setOpenDropdown(openDropdown === param.id ? null : param.id)}
+                          className={`p-0.5 rounded transition-colors relative ${openDropdown === param.id ? 'text-primary bg-primary/10' : 'text-primary/40 hover:text-primary'}`}
+                          title="Sub-entries">
+                          <ChevronDown className="w-3.5 h-3.5" />
+                          {totalSubCount(param) > 0 && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-primary-foreground text-[8px] flex items-center justify-center font-bold">
+                              {totalSubCount(param)}
+                            </span>
+                          )}
+                        </button>
+                      </div>
                     </td>
                     <td className="py-1.5 px-1">
                       <input type="text" value={param.withDeductionMin} onChange={e => updateParam(param.id, 'withDeductionMin', e.target.value)}
@@ -505,31 +510,20 @@ export function StandardsSection() {
                       </td>
                     ))}
                     <td className="py-1.5 px-1.5">
-                      <div className="flex items-center gap-0.5">
-                        <button onClick={() => setOpenDropdown(openDropdown === param.id ? null : param.id)}
-                          className={`p-1 rounded transition-colors relative ${openDropdown === param.id ? 'text-primary bg-primary/10' : 'text-primary/60 hover:text-primary'}`}
-                          title="Sub-entries & groups">
-                          <ListPlus className="w-3.5 h-3.5" />
-                          {totalSubCount(param) > 0 && (
-                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-primary-foreground text-[8px] flex items-center justify-center font-bold">
-                              {totalSubCount(param)}
-                            </span>
-                          )}
+                      {parameters.length > 1 && (
+                        <button onClick={() => removeParam(param.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                        {parameters.length > 1 && (
-                          <button onClick={() => removeParam(param.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </td>
                   </tr>
+                  {/* Sub-entries dropdown panel under Standard column */}
                   {openDropdown === param.id && (
                     <tr>
                       <td colSpan={13 + customColumns.length}>
                         <div className="mx-4 my-2 rounded-lg border border-primary/20 bg-card shadow-lg overflow-hidden">
                           <div className="flex items-center justify-between px-4 py-2 bg-primary/5 border-b border-primary/10">
-                            <span className="text-xs font-semibold text-foreground">Sub-Entries for "{param.analysis || 'Untitled'}"</span>
+                            <span className="text-xs font-semibold text-foreground">Sub-Entries for "{param.analysis || 'Untitled'}" — Standard Column</span>
                             <button onClick={() => setOpenDropdown(null)} className="p-1 text-muted-foreground hover:text-foreground rounded">
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -539,7 +533,7 @@ export function StandardsSection() {
                               <div key={group.id} className="rounded-md border border-border bg-secondary/20 overflow-hidden">
                                 <div className="flex items-center gap-2 px-3 py-2 bg-secondary/30 border-b border-border/50">
                                   <input type="text" value={group.heading} onChange={e => updateSubGroupHeading(param.id, group.id, e.target.value)}
-                                    placeholder="Group heading" className="flex-1 bg-transparent text-xs font-semibold text-foreground placeholder:text-muted-foreground/40 focus:outline-none" />
+                                    placeholder="Group heading (e.g. Amino Acids)" className="flex-1 bg-transparent text-xs font-semibold text-foreground placeholder:text-muted-foreground/40 focus:outline-none" />
                                   <button onClick={() => removeSubGroup(param.id, group.id)} className="p-1 text-destructive/60 hover:text-destructive rounded">
                                     <Trash2 className="w-3 h-3" />
                                   </button>
@@ -548,9 +542,9 @@ export function StandardsSection() {
                                   {group.entries.map(entry => (
                                     <div key={entry.id} className="flex items-center gap-2">
                                       <input type="text" value={entry.label} onChange={e => updateSubGroupEntry(param.id, group.id, entry.id, 'label', e.target.value)}
-                                        placeholder="Label" className="w-28 bg-input border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
+                                        placeholder="Label (e.g. Lysine)" className="w-28 bg-input border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
                                       <input type="text" value={entry.value} onChange={e => updateSubGroupEntry(param.id, group.id, entry.id, 'value', e.target.value)}
-                                        placeholder="Value" className="flex-1 bg-input border border-border rounded px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
+                                        placeholder="Value (e.g. 20%)" className="flex-1 bg-input border border-border rounded px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
                                       <button onClick={() => removeSubGroupEntry(param.id, group.id, entry.id)} className="p-1 text-destructive/60 hover:text-destructive rounded">
                                         <Trash2 className="w-3 h-3" />
                                       </button>
@@ -627,9 +621,28 @@ export function StandardsSection() {
               <Save className="w-4 h-4" /> {editingId ? 'Update Standard' : 'Save Standard'}
             </button>
             {editingId && (
-              <button onClick={resetBuilder} className="flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
-                <X className="w-4 h-4" /> Cancel Edit
-              </button>
+              <>
+                <button onClick={() => {
+                  // Save as copy
+                  const standard: SavedStandard = {
+                    id: `std-${Date.now()}`,
+                    name: templateName.trim() + ' (Copy)',
+                    description: templateDesc.trim(),
+                    parameters: parameters.filter(p => p.analysis.trim()),
+                    customColumns: [...customColumns],
+                    createdAt: Date.now(),
+                    type: standardType,
+                  };
+                  setSavedStandards(prev => [standard, ...prev]);
+                  resetBuilder();
+                  toast.success('Saved as new copy');
+                }} className="flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
+                  <Copy className="w-4 h-4" /> Save as Copy
+                </button>
+                <button onClick={resetBuilder} className="flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
+                  <X className="w-4 h-4" /> Cancel Edit
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -696,7 +709,7 @@ export function StandardsSection() {
                               <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Normal</th>
                               <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Min</th>
                               <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Max</th>
-                              <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Standard</th>
+                              <th className="text-left py-1.5 px-2 text-primary font-medium">Standard</th>
                               <th className="text-left py-1.5 px-2 text-warning font-medium">With Ded.</th>
                               <th className="text-left py-1.5 px-2 text-destructive font-medium">Outlier</th>
                               <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Reason</th>
@@ -714,7 +727,12 @@ export function StandardsSection() {
                                   <td className="py-1 px-2 font-mono text-muted-foreground">{formatRange(p.normalMin, p.normalMax)}</td>
                                   <td className="py-1 px-2 font-mono text-muted-foreground">{p.min || '—'}</td>
                                   <td className="py-1 px-2 font-mono text-muted-foreground">{p.max || '—'}</td>
-                                  <td className="py-1 px-2 font-mono text-primary">{p.standard || '—'}</td>
+                                  <td className="py-1 px-2 font-mono text-primary">
+                                    {p.standard || '—'}
+                                    {totalSubCount(p) > 0 && (
+                                      <span className="ml-1 text-[8px] bg-primary/10 text-primary px-1 rounded">+{totalSubCount(p)}</span>
+                                    )}
+                                  </td>
                                   <td className="py-1 px-2 font-mono text-warning">{formatRange(p.withDeductionMin, p.withDeductionMax)}</td>
                                   <td className="py-1 px-2 font-mono text-destructive">{formatRange(p.outlierMin, p.outlierMax)}</td>
                                   <td className="py-1 px-2 text-muted-foreground">{p.reason || '—'}</td>
@@ -722,6 +740,7 @@ export function StandardsSection() {
                                     <td key={cc.id} className="py-1 px-2 font-mono text-foreground">{p.customValues?.[cc.id] || '—'}</td>
                                   ))}
                                 </tr>
+                                {/* Sub-entries displayed under Standard column */}
                                 {(p.subGroups || []).map(group => (
                                   <tr key={group.id} className="border-b border-border/20 bg-secondary/10">
                                     <td colSpan={9 + (s.customColumns?.length || 0)} className="py-1 px-2">
