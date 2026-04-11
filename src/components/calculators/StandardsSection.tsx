@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, Save, ChevronDown, ChevronUp, Copy, Pencil, Shield, FileText, X, Columns, ListPlus, RotateCcw, AlertTriangle, Undo2 } from 'lucide-react';
+import { Plus, Trash2, Save, ChevronDown, ChevronUp, Copy, Pencil, Shield, FileText, X, Columns, ListPlus, RotateCcw, AlertTriangle, Undo2, Search, CheckSquare } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SectionCloudSync } from './SectionCloudSync';
 import { toast } from 'sonner';
@@ -85,6 +85,8 @@ export function StandardsSection() {
   const [expandedStandard, setExpandedStandard] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: string; id: string; name: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [trashSelected, setTrashSelected] = useState<Set<string>>(new Set());
 
   const [templateName, setTemplateName] = useState('');
   const [templateDesc, setTemplateDesc] = useState('');
@@ -111,7 +113,7 @@ export function StandardsSection() {
     ));
   };
 
-  // Sub-entry group functions (now only on Standard column)
+  // Sub-entry group functions
   const addSubGroup = (paramId: string) => {
     setParameters(prev => prev.map(p =>
       p.id === paramId ? {
@@ -297,6 +299,33 @@ export function StandardsSection() {
     toast.success('Permanently deleted');
   };
 
+  const restoreSelected = () => {
+    const selected = trash.filter(t => trashSelected.has(t.standard.id));
+    setSavedStandards(prev => [...selected.map(t => t.standard), ...prev]);
+    setTrash(prev => prev.filter(t => !trashSelected.has(t.standard.id)));
+    setTrashSelected(new Set());
+    toast.success(`${selected.length} items restored`);
+  };
+
+  const deleteSelectedPermanently = () => {
+    setTrash(prev => prev.filter(t => !trashSelected.has(t.standard.id)));
+    setTrashSelected(new Set());
+    toast.success('Selected items permanently deleted');
+  };
+
+  const toggleTrashSelect = (id: string) => {
+    setTrashSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllTrash = () => {
+    if (trashSelected.size === trash.length) setTrashSelected(new Set());
+    else setTrashSelected(new Set(trash.map(t => t.standard.id)));
+  };
+
   const formatRange = (min?: string, max?: string) => {
     const a = min || ''; const b = max || '';
     if (a && b) return `${a}–${b}`;
@@ -309,9 +338,25 @@ export function StandardsSection() {
     (p.subEntries?.length || 0) + (p.subGroups || []).reduce((s, g) => s + g.entries.length, 0);
 
   const filteredStandards = savedStandards.filter(s => {
-    if (filterType === 'all') return true;
-    return (s.type || 'raw-material') === filterType;
+    const typeMatch = filterType === 'all' || (s.type || 'raw-material') === filterType;
+    const searchMatch = !searchQuery.trim() || s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return typeMatch && searchMatch;
   });
+
+  // Handle Enter key to move to next row
+  const handleParamKeyDown = (e: React.KeyboardEvent, paramIdx: number, field: string) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (paramIdx === parameters.length - 1) {
+        addParam();
+      }
+      // Focus next row same field after render
+      setTimeout(() => {
+        const nextRow = document.querySelector(`[data-param-idx="${paramIdx + 1}"][data-field="${field}"]`) as HTMLInputElement;
+        nextRow?.focus();
+      }, 50);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -347,7 +392,7 @@ export function StandardsSection() {
 
       {/* Step 1 */}
       <div className="glass-panel rounded-lg">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Step 1 — Define Standard Template</h3>
@@ -356,12 +401,12 @@ export function StandardsSection() {
             <button onClick={resetBuilder} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors">
               <RotateCcw className="w-3 h-3" /> Reset
             </button>
-            <button onClick={loadDefaultParams} className="text-xs px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors">
+            <button onClick={loadDefaultParams} className="text-xs px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors hidden sm:flex">
               Load Default Parameters
             </button>
           </div>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="p-4 sm:p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Template Name *</label>
@@ -388,7 +433,7 @@ export function StandardsSection() {
 
       {/* Step 2: Analysis Parameters */}
       <div className="glass-panel rounded-lg">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Step 2 — Analysis Parameters</h3>
@@ -402,7 +447,7 @@ export function StandardsSection() {
         </div>
 
         {customColumns.length > 0 && (
-          <div className="px-5 py-2 border-b border-border/50 flex flex-wrap gap-2">
+          <div className="px-4 sm:px-5 py-2 border-b border-border/50 flex flex-wrap gap-2">
             {customColumns.map(cc => (
               <div key={cc.id} className="flex items-center gap-1 bg-secondary/50 border border-border rounded-md px-2 py-1">
                 <input type="text" value={cc.header} onChange={e => updateCustomColumnHeader(cc.id, e.target.value)}
@@ -416,12 +461,12 @@ export function StandardsSection() {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={{ minWidth: '800px' }}>
             <thead>
               <tr className="border-b border-border bg-secondary/30">
                 <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Analysis</th>
-                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Operator</th>
-                <th colSpan={2} className="text-center py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Normal Range</th>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Op</th>
+                <th colSpan={2} className="text-center py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Normal</th>
                 <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Min</th>
                 <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Max</th>
                 <th className="text-left py-2.5 px-2 text-xs font-medium text-primary uppercase tracking-wider whitespace-nowrap">
@@ -437,39 +482,50 @@ export function StandardsSection() {
               </tr>
             </thead>
             <tbody>
-              {parameters.map((param) => (
+              {parameters.map((param, paramIdx) => (
                 <>
                   <tr key={param.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
                     <td className="py-1.5 px-1.5">
                       <input type="text" value={param.analysis} onChange={e => updateParam(param.id, 'analysis', e.target.value)}
+                        data-param-idx={paramIdx} data-field="analysis"
+                        onKeyDown={e => handleParamKeyDown(e, paramIdx, 'analysis')}
                         placeholder="e.g. Moisture" className="w-24 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                     </td>
                     <td className="py-1.5 px-1">
                       <select value={param.operator || 'range'} onChange={e => updateParam(param.id, 'operator', e.target.value)}
-                        className="w-16 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-1 py-1 text-[10px] font-mono text-foreground focus:ring-0 focus:outline-none transition-colors">
+                        className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-1 py-1 text-[10px] font-mono text-foreground focus:ring-0 focus:outline-none transition-colors">
                         {OPERATORS.map(op => <option key={op.value} value={op.value}>{op.value === 'range' ? '↔' : op.value}</option>)}
                       </select>
                     </td>
                     <td className="py-1.5 px-1">
                       <input type="text" value={param.normalMin} onChange={e => updateParam(param.id, 'normalMin', e.target.value)}
+                        data-param-idx={paramIdx} data-field="normalMin"
+                        onKeyDown={e => handleParamKeyDown(e, paramIdx, 'normalMin')}
                         placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
                     </td>
                     <td className="py-1.5 px-1">
                       <input type="text" value={param.normalMax} onChange={e => updateParam(param.id, 'normalMax', e.target.value)}
+                        data-param-idx={paramIdx} data-field="normalMax"
+                        onKeyDown={e => handleParamKeyDown(e, paramIdx, 'normalMax')}
                         placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
                     </td>
                     <td className="py-1.5 px-1.5">
                       <input type="text" value={param.min} onChange={e => updateParam(param.id, 'min', e.target.value)}
+                        data-param-idx={paramIdx} data-field="min"
+                        onKeyDown={e => handleParamKeyDown(e, paramIdx, 'min')}
                         placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                     </td>
                     <td className="py-1.5 px-1.5">
                       <input type="text" value={param.max} onChange={e => updateParam(param.id, 'max', e.target.value)}
+                        data-param-idx={paramIdx} data-field="max"
+                        onKeyDown={e => handleParamKeyDown(e, paramIdx, 'max')}
                         placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                     </td>
-                    {/* Standard column with caret dropdown for sub-entries */}
                     <td className="py-1.5 px-1.5">
                       <div className="flex items-center gap-0.5">
                         <input type="text" value={param.standard} onChange={e => updateParam(param.id, 'standard', e.target.value)}
+                          data-param-idx={paramIdx} data-field="standard"
+                          onKeyDown={e => handleParamKeyDown(e, paramIdx, 'standard')}
                           placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                         <button onClick={() => setOpenDropdown(openDropdown === param.id ? null : param.id)}
                           className={`p-0.5 rounded transition-colors relative ${openDropdown === param.id ? 'text-primary bg-primary/10' : 'text-primary/40 hover:text-primary'}`}
@@ -485,10 +541,14 @@ export function StandardsSection() {
                     </td>
                     <td className="py-1.5 px-1">
                       <input type="text" value={param.withDeductionMin} onChange={e => updateParam(param.id, 'withDeductionMin', e.target.value)}
+                        data-param-idx={paramIdx} data-field="withDeductionMin"
+                        onKeyDown={e => handleParamKeyDown(e, paramIdx, 'withDeductionMin')}
                         placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-warning rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
                     </td>
                     <td className="py-1.5 px-1">
                       <input type="text" value={param.withDeductionMax} onChange={e => updateParam(param.id, 'withDeductionMax', e.target.value)}
+                        data-param-idx={paramIdx} data-field="withDeductionMax"
+                        onKeyDown={e => handleParamKeyDown(e, paramIdx, 'withDeductionMax')}
                         placeholder="0" className="w-14 bg-transparent border border-transparent hover:border-border focus:border-warning rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors text-center" />
                     </td>
                     <td className="py-1.5 px-1">
@@ -517,24 +577,24 @@ export function StandardsSection() {
                       )}
                     </td>
                   </tr>
-                  {/* Sub-entries dropdown panel under Standard column */}
+                  {/* Sub-entries dropdown panel */}
                   {openDropdown === param.id && (
                     <tr>
                       <td colSpan={13 + customColumns.length}>
-                        <div className="mx-4 my-2 rounded-lg border border-primary/20 bg-card shadow-lg overflow-hidden">
-                          <div className="flex items-center justify-between px-4 py-2 bg-primary/5 border-b border-primary/10">
-                            <span className="text-xs font-semibold text-foreground">Sub-Entries for "{param.analysis || 'Untitled'}" — Standard Column</span>
-                            <button onClick={() => setOpenDropdown(null)} className="p-1 text-muted-foreground hover:text-foreground rounded">
+                        <div className="mx-2 sm:mx-4 my-2 rounded-lg border border-primary/20 bg-card shadow-lg overflow-hidden max-w-full">
+                          <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-primary/5 border-b border-primary/10">
+                            <span className="text-xs font-semibold text-foreground truncate">Sub-Entries for "{param.analysis || 'Untitled'}" — Standard</span>
+                            <button onClick={() => setOpenDropdown(null)} className="p-1 text-muted-foreground hover:text-foreground rounded shrink-0">
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                          <div className="p-4 space-y-4 max-h-80 overflow-y-auto">
+                          <div className="p-3 sm:p-4 space-y-4 max-h-80 overflow-y-auto">
                             {(param.subGroups || []).map(group => (
                               <div key={group.id} className="rounded-md border border-border bg-secondary/20 overflow-hidden">
                                 <div className="flex items-center gap-2 px-3 py-2 bg-secondary/30 border-b border-border/50">
                                   <input type="text" value={group.heading} onChange={e => updateSubGroupHeading(param.id, group.id, e.target.value)}
-                                    placeholder="Group heading (e.g. Amino Acids)" className="flex-1 bg-transparent text-xs font-semibold text-foreground placeholder:text-muted-foreground/40 focus:outline-none" />
-                                  <button onClick={() => removeSubGroup(param.id, group.id)} className="p-1 text-destructive/60 hover:text-destructive rounded">
+                                    placeholder="Group heading (e.g. Amino Acids)" className="flex-1 bg-transparent text-xs font-semibold text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-w-0" />
+                                  <button onClick={() => removeSubGroup(param.id, group.id)} className="p-1 text-destructive/60 hover:text-destructive rounded shrink-0">
                                     <Trash2 className="w-3 h-3" />
                                   </button>
                                 </div>
@@ -542,10 +602,10 @@ export function StandardsSection() {
                                   {group.entries.map(entry => (
                                     <div key={entry.id} className="flex items-center gap-2">
                                       <input type="text" value={entry.label} onChange={e => updateSubGroupEntry(param.id, group.id, entry.id, 'label', e.target.value)}
-                                        placeholder="Label (e.g. Lysine)" className="w-28 bg-input border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
+                                        placeholder="Label" className="w-24 sm:w-28 bg-input border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
                                       <input type="text" value={entry.value} onChange={e => updateSubGroupEntry(param.id, group.id, entry.id, 'value', e.target.value)}
-                                        placeholder="Value (e.g. 20%)" className="flex-1 bg-input border border-border rounded px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
-                                      <button onClick={() => removeSubGroupEntry(param.id, group.id, entry.id)} className="p-1 text-destructive/60 hover:text-destructive rounded">
+                                        placeholder="Value" className="flex-1 bg-input border border-border rounded px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary min-w-0" />
+                                      <button onClick={() => removeSubGroupEntry(param.id, group.id, entry.id)} className="p-1 text-destructive/60 hover:text-destructive rounded shrink-0">
                                         <Trash2 className="w-3 h-3" />
                                       </button>
                                     </div>
@@ -567,10 +627,10 @@ export function StandardsSection() {
                                   {param.subEntries.map(sub => (
                                     <div key={sub.id} className="flex items-center gap-2">
                                       <input type="text" value={sub.label} onChange={e => updateSubEntry(param.id, sub.id, 'label', e.target.value)}
-                                        placeholder="Label" className="w-28 bg-input border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
+                                        placeholder="Label" className="w-24 sm:w-28 bg-input border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
                                       <input type="text" value={sub.value} onChange={e => updateSubEntry(param.id, sub.id, 'value', e.target.value)}
-                                        placeholder="Value" className="flex-1 bg-input border border-border rounded px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
-                                      <button onClick={() => removeSubEntry(param.id, sub.id)} className="p-1 text-destructive/60 hover:text-destructive rounded">
+                                        placeholder="Value" className="flex-1 bg-input border border-border rounded px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary min-w-0" />
+                                      <button onClick={() => removeSubEntry(param.id, sub.id)} className="p-1 text-destructive/60 hover:text-destructive rounded shrink-0">
                                         <Trash2 className="w-3 h-3" />
                                       </button>
                                     </div>
@@ -609,12 +669,12 @@ export function StandardsSection() {
 
       {/* Step 3: Save */}
       <div className="glass-panel rounded-lg">
-        <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
+        <div className="flex items-center gap-2 px-4 sm:px-5 py-3 border-b border-border">
           <Save className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Step 3 — Save Standard</h3>
         </div>
-        <div className="p-5 space-y-3">
-          <div className="flex items-center gap-2">
+        <div className="p-4 sm:p-5 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button onClick={saveStandard}
               disabled={!templateName.trim() || parameters.filter(p => p.analysis.trim()).length === 0}
               className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
@@ -623,7 +683,6 @@ export function StandardsSection() {
             {editingId && (
               <>
                 <button onClick={() => {
-                  // Save as copy
                   const standard: SavedStandard = {
                     id: `std-${Date.now()}`,
                     name: templateName.trim() + ' (Copy)',
@@ -648,15 +707,20 @@ export function StandardsSection() {
         </div>
       </div>
 
-      {/* Saved Standards */}
+      {/* Saved Standards - Professional table layout */}
       <div className="glass-panel rounded-lg">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">My Standards</h3>
             <span className="text-[10px] text-muted-foreground">{savedStandards.length} saved</span>
           </div>
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search standards..."
+                className="pl-7 pr-3 py-1 bg-input border border-border rounded-md text-xs text-foreground w-32 sm:w-40 focus:outline-none focus:ring-1 focus:ring-primary" />
+            </div>
             <select value={filterType} onChange={e => setFilterType(e.target.value as any)}
               className="bg-input border border-border rounded-md px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
               <option value="all">All Types</option>
@@ -671,140 +735,191 @@ export function StandardsSection() {
             )}
           </div>
         </div>
-        <div className="p-5">
+        <div className="p-4 sm:p-5">
           {filteredStandards.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">No standards found.</p>
           ) : (
-            <div className="space-y-2">
-              {filteredStandards.map(s => (
-                <div key={s.id} className="rounded-md border border-border hover:border-primary/30 transition-colors overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 cursor-pointer" onClick={() => setExpandedStandard(expandedStandard === s.id ? null : s.id)}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">{s.name}</p>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                          (s.type || 'raw-material') === 'formulation' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'
-                        }`}>
-                          {(s.type || 'raw-material') === 'formulation' ? 'Formulation' : 'Raw Material'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{s.parameters.length} parameters{s.customColumns?.length ? ` • ${s.customColumns.length} custom col` : ''}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <button onClick={ev => { ev.stopPropagation(); loadStandard(s); }} className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors">Edit</button>
-                      <button onClick={ev => { ev.stopPropagation(); duplicateStandard(s); }} className="p-1.5 rounded-md text-muted-foreground hover:text-primary transition-colors" title="Duplicate"><Copy className="w-3.5 h-3.5" /></button>
-                      <button onClick={ev => { ev.stopPropagation(); deleteStandard(s.id); }} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                      {expandedStandard === s.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                    </div>
-                  </div>
-                  {expandedStandard === s.id && (
-                    <div className="px-4 pb-3 border-t border-border/50 pt-2">
-                      {s.description && <p className="text-xs text-muted-foreground mb-2">{s.description}</p>}
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="border-b border-border">
-                              <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Analysis</th>
-                              <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Op</th>
-                              <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Normal</th>
-                              <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Min</th>
-                              <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Max</th>
-                              <th className="text-left py-1.5 px-2 text-primary font-medium">Standard</th>
-                              <th className="text-left py-1.5 px-2 text-warning font-medium">With Ded.</th>
-                              <th className="text-left py-1.5 px-2 text-destructive font-medium">Outlier</th>
-                              <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Reason</th>
-                              {(s.customColumns || []).map(cc => (
-                                <th key={cc.id} className="text-left py-1.5 px-2 text-primary font-medium">{cc.header}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {s.parameters.map(p => (
-                              <>
-                                <tr key={p.id} className="border-b border-border/30">
-                                  <td className="py-1 px-2 font-medium text-foreground">{p.analysis}</td>
-                                  <td className="py-1 px-2 font-mono text-muted-foreground text-[10px]">{p.operator || '↔'}</td>
-                                  <td className="py-1 px-2 font-mono text-muted-foreground">{formatRange(p.normalMin, p.normalMax)}</td>
-                                  <td className="py-1 px-2 font-mono text-muted-foreground">{p.min || '—'}</td>
-                                  <td className="py-1 px-2 font-mono text-muted-foreground">{p.max || '—'}</td>
-                                  <td className="py-1 px-2 font-mono text-primary">
-                                    {p.standard || '—'}
-                                    {totalSubCount(p) > 0 && (
-                                      <span className="ml-1 text-[8px] bg-primary/10 text-primary px-1 rounded">+{totalSubCount(p)}</span>
-                                    )}
-                                  </td>
-                                  <td className="py-1 px-2 font-mono text-warning">{formatRange(p.withDeductionMin, p.withDeductionMax)}</td>
-                                  <td className="py-1 px-2 font-mono text-destructive">{formatRange(p.outlierMin, p.outlierMax)}</td>
-                                  <td className="py-1 px-2 text-muted-foreground">{p.reason || '—'}</td>
-                                  {(s.customColumns || []).map(cc => (
-                                    <td key={cc.id} className="py-1 px-2 font-mono text-foreground">{p.customValues?.[cc.id] || '—'}</td>
-                                  ))}
-                                </tr>
-                                {/* Sub-entries displayed under Standard column */}
-                                {(p.subGroups || []).map(group => (
-                                  <tr key={group.id} className="border-b border-border/20 bg-secondary/10">
-                                    <td colSpan={9 + (s.customColumns?.length || 0)} className="py-1 px-2">
-                                      <div className="pl-4">
-                                        <span className="text-[10px] font-semibold text-primary/70">{group.heading || 'Group'}</span>
-                                        <div className="ml-2 space-y-0.5 mt-0.5">
-                                          {group.entries.map(e => (
-                                            <div key={e.id} className="flex items-center gap-2 text-[11px]">
-                                              <span className="text-muted-foreground/50">└</span>
-                                              <span className="text-muted-foreground font-medium">{e.label || '—'}</span>
-                                              <span className="font-mono text-foreground">{e.value || '—'}</span>
-                                            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/20">
+                    <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Type</th>
+                    <th className="text-center py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Params</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Description</th>
+                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStandards.map(s => (
+                    <>
+                      <tr key={s.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors cursor-pointer" onClick={() => setExpandedStandard(expandedStandard === s.id ? null : s.id)}>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-foreground">{s.name}</span>
+                            <span className="sm:hidden">
+                              <span className={`text-[8px] px-1 py-0.5 rounded font-medium ${(s.type || 'raw-material') === 'formulation' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'}`}>
+                                {(s.type || 'raw-material') === 'formulation' ? 'F' : 'RM'}
+                              </span>
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 hidden sm:table-cell">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                            (s.type || 'raw-material') === 'formulation' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'
+                          }`}>
+                            {(s.type || 'raw-material') === 'formulation' ? 'Formulation' : 'Raw Material'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className="text-xs font-mono text-muted-foreground">{s.parameters.length}</span>
+                        </td>
+                        <td className="py-2.5 px-3 hidden sm:table-cell">
+                          <span className="text-xs text-muted-foreground truncate block max-w-[200px]">{s.description || '—'}</span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-1 justify-end">
+                            <button onClick={ev => { ev.stopPropagation(); loadStandard(s); }} className="text-[10px] px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors">Edit</button>
+                            <button onClick={ev => { ev.stopPropagation(); duplicateStandard(s); }} className="p-1 rounded text-muted-foreground hover:text-primary transition-colors" title="Duplicate"><Copy className="w-3 h-3" /></button>
+                            <button onClick={ev => { ev.stopPropagation(); deleteStandard(s.id); }} className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3 h-3" /></button>
+                            {expandedStandard === s.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedStandard === s.id && (
+                        <tr key={`exp-${s.id}`}>
+                          <td colSpan={5} className="p-0">
+                            <div className="px-3 sm:px-4 pb-3 pt-2 bg-secondary/10 border-b border-border">
+                              {s.description && <p className="text-xs text-muted-foreground mb-2">{s.description}</p>}
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs" style={{ minWidth: '600px' }}>
+                                  <thead>
+                                    <tr className="border-b border-border">
+                                      <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Analysis</th>
+                                      <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Op</th>
+                                      <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Normal</th>
+                                      <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Min</th>
+                                      <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Max</th>
+                                      <th className="text-left py-1.5 px-2 text-primary font-medium">Standard</th>
+                                      <th className="text-left py-1.5 px-2 text-warning font-medium">With Ded.</th>
+                                      <th className="text-left py-1.5 px-2 text-destructive font-medium">Outlier</th>
+                                      <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">Reason</th>
+                                      {(s.customColumns || []).map(cc => (
+                                        <th key={cc.id} className="text-left py-1.5 px-2 text-primary font-medium">{cc.header}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {s.parameters.map(p => (
+                                      <>
+                                        <tr key={p.id} className="border-b border-border/30">
+                                          <td className="py-1 px-2 font-medium text-foreground">{p.analysis}</td>
+                                          <td className="py-1 px-2 font-mono text-muted-foreground text-[10px]">{p.operator || '↔'}</td>
+                                          <td className="py-1 px-2 font-mono text-muted-foreground">{formatRange(p.normalMin, p.normalMax)}</td>
+                                          <td className="py-1 px-2 font-mono text-muted-foreground">{p.min || '—'}</td>
+                                          <td className="py-1 px-2 font-mono text-muted-foreground">{p.max || '—'}</td>
+                                          <td className="py-1 px-2 font-mono text-primary">
+                                            {p.standard || '—'}
+                                            {totalSubCount(p) > 0 && (
+                                              <span className="ml-1 text-[8px] bg-primary/10 text-primary px-1 rounded">+{totalSubCount(p)}</span>
+                                            )}
+                                          </td>
+                                          <td className="py-1 px-2 font-mono text-warning">{formatRange(p.withDeductionMin, p.withDeductionMax)}</td>
+                                          <td className="py-1 px-2 font-mono text-destructive">{formatRange(p.outlierMin, p.outlierMax)}</td>
+                                          <td className="py-1 px-2 text-muted-foreground">{p.reason || '—'}</td>
+                                          {(s.customColumns || []).map(cc => (
+                                            <td key={cc.id} className="py-1 px-2 font-mono text-foreground">{p.customValues?.[cc.id] || '—'}</td>
                                           ))}
-                                        </div>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                                {(p.subEntries || []).map(sub => (
-                                  <tr key={sub.id} className="border-b border-border/20 bg-secondary/10">
-                                    <td className="py-0.5 px-2 pl-6 text-muted-foreground" colSpan={2}>
-                                      <span className="text-[9px] mr-1">└</span>{sub.label || '—'}
-                                    </td>
-                                    <td className="py-0.5 px-2 font-mono text-foreground" colSpan={7 + (s.customColumns?.length || 0)}>
-                                      {sub.value || '—'}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-2">Saved {new Date(s.createdAt).toLocaleDateString()}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
+                                        </tr>
+                                        {(p.subGroups || []).map(group => (
+                                          <tr key={group.id} className="border-b border-border/20 bg-secondary/10">
+                                            <td colSpan={9 + (s.customColumns?.length || 0)} className="py-1 px-2">
+                                              <div className="pl-4">
+                                                <span className="text-[10px] font-semibold text-primary/70">{group.heading || 'Group'}</span>
+                                                <div className="ml-2 space-y-0.5 mt-0.5">
+                                                  {group.entries.map(e => (
+                                                    <div key={e.id} className="flex items-center gap-2 text-[11px]">
+                                                      <span className="text-muted-foreground/50">└</span>
+                                                      <span className="text-muted-foreground font-medium">{e.label || '—'}</span>
+                                                      <span className="font-mono text-foreground">{e.value || '—'}</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                        {(p.subEntries || []).map(sub => (
+                                          <tr key={sub.id} className="border-b border-border/20 bg-secondary/10">
+                                            <td className="py-0.5 px-2 pl-6 text-muted-foreground" colSpan={2}>
+                                              <span className="text-[9px] mr-1">└</span>{sub.label || '—'}
+                                            </td>
+                                            <td className="py-0.5 px-2 font-mono text-foreground" colSpan={7 + (s.customColumns?.length || 0)}>
+                                              {sub.value || '—'}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground mt-2">Saved {new Date(s.createdAt).toLocaleDateString()}</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
       </div>
 
-      {/* Trash Section */}
+      {/* Trash Section with select all / selective restore */}
       {showTrash && trash.length > 0 && (
         <div className="glass-panel rounded-lg border-destructive/20">
-          <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
-            <Trash2 className="w-4 h-4 text-destructive" />
-            <h3 className="text-sm font-semibold text-foreground">Trash</h3>
-            <span className="text-[10px] text-muted-foreground">{trash.length} items</span>
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Trash2 className="w-4 h-4 text-destructive" />
+              <h3 className="text-sm font-semibold text-foreground">Trash</h3>
+              <span className="text-[10px] text-muted-foreground">{trash.length} items</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={selectAllTrash} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-secondary text-muted-foreground hover:text-foreground border border-border">
+                <CheckSquare className="w-3 h-3" /> {trashSelected.size === trash.length ? 'Deselect All' : 'Select All'}
+              </button>
+              {trashSelected.size > 0 && (
+                <>
+                  <button onClick={restoreSelected} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20">
+                    <Undo2 className="w-3 h-3" /> Restore ({trashSelected.size})
+                  </button>
+                  <button onClick={deleteSelectedPermanently} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-destructive/10 text-destructive hover:bg-destructive/20">
+                    <Trash2 className="w-3 h-3" /> Delete ({trashSelected.size})
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <div className="p-5 space-y-2">
+          <div className="p-4 sm:p-5 space-y-2">
             {trash.map(item => (
-              <div key={item.standard.id} className="flex items-center justify-between px-4 py-3 rounded-md border border-border bg-secondary/20">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{item.standard.name}</p>
-                  <p className="text-[10px] text-muted-foreground">Deleted {new Date(item.deletedAt).toLocaleDateString()}</p>
+              <div key={item.standard.id} className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-md border transition-colors ${trashSelected.has(item.standard.id) ? 'border-primary/40 bg-primary/5' : 'border-border bg-secondary/20'}`}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <input type="checkbox" checked={trashSelected.has(item.standard.id)} onChange={() => toggleTrashSelect(item.standard.id)}
+                    className="rounded border-border text-primary focus:ring-primary w-3.5 h-3.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{item.standard.name}</p>
+                    <p className="text-[10px] text-muted-foreground">Deleted {new Date(item.deletedAt).toLocaleDateString()}</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => restoreFromTrash(item)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20">
                     <Undo2 className="w-3 h-3" /> Restore
                   </button>
                   <button onClick={() => permanentDelete(item.standard.id)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20">
-                    <Trash2 className="w-3 h-3" /> Delete Forever
+                    <Trash2 className="w-3 h-3" /> Delete
                   </button>
                 </div>
               </div>
