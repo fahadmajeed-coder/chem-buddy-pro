@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Search, BookOpen, FlaskConical, Beaker, ChevronDown, ChevronRight, Lock, Unlock, Plus, FileUp, Printer, Download, X, Trash2, Save, TestTubes, GripVertical, ArrowUp, ArrowDown, FolderPlus } from 'lucide-react';
+import { Search, BookOpen, FlaskConical, Beaker, ChevronDown, ChevronRight, Lock, Unlock, Plus, FileUp, Printer, Download, X, Trash2, Save, TestTubes, GripVertical, ArrowUp, ArrowDown, FolderPlus, Pencil } from 'lucide-react';
 import { SOP_DATA, type SOPEntry } from '@/lib/sopData';
 import { SOP_FORMULAS, sopFormulaToSavedFormula } from '@/lib/sopFormulas';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -14,14 +14,11 @@ export function SOPSection() {
   const [customSections, setCustomSections] = useLocalStorage<string[]>('chemanalyst-sop-sections', []);
   const [sectionOrder, setSectionOrder] = useLocalStorage<string[]>('chemanalyst-sop-section-order', []);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showAddSection, setShowAddSection] = useState(false);
-  const [newSectionName, setNewSectionName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [dragOverItem, setDragOverItem] = useState<string | null>(null);
   const [sopOrder, setSopOrder] = useLocalStorage<string[]>('chemanalyst-sop-order', []);
-  // Section drag state
   const [dragSection, setDragSection] = useState<string | null>(null);
   const [dragOverSection, setDragOverSection] = useState<string | null>(null);
 
@@ -30,13 +27,11 @@ export function SOPSection() {
     ...customSOPs,
   ];
 
-  // Apply custom ordering
   const orderedSOPs = sopOrder.length > 0
     ? [...sopOrder.map(id => allSOPs.find(s => s.id === id)).filter(Boolean) as SOPEntry[], ...allSOPs.filter(s => !sopOrder.includes(s.id))]
     : allSOPs;
 
   const rawCategories = [...new Set([...orderedSOPs.map(s => s.category), ...customSections])];
-  // Apply section ordering
   const allCategories = sectionOrder.length > 0
     ? [...sectionOrder.filter(c => rawCategories.includes(c)), ...rawCategories.filter(c => !sectionOrder.includes(c))]
     : rawCategories;
@@ -90,16 +85,22 @@ export function SOPSection() {
     toast({ title: 'SOP Added', description: `"${sop.name}" has been added.` });
   };
 
-  const handleAddSection = () => {
-    if (!newSectionName.trim()) return;
-    if (allCategories.includes(newSectionName.trim())) {
+  const handleAddSection = (name: string) => {
+    if (!name.trim()) return;
+    if (allCategories.includes(name.trim())) {
       toast({ title: 'Already exists', description: 'This section already exists.', variant: 'destructive' });
       return;
     }
-    setCustomSections(prev => [...prev, newSectionName.trim()]);
-    setNewSectionName('');
-    setShowAddSection(false);
-    toast({ title: 'Section Added', description: `"${newSectionName}" section created.` });
+    setCustomSections(prev => [...prev, name.trim()]);
+    toast({ title: 'Section Added', description: `"${name}" section created.` });
+  };
+
+  const handleRenameSection = (oldName: string, newName: string) => {
+    if (!newName.trim() || oldName === newName.trim()) return;
+    setCustomSections(prev => prev.map(c => c === oldName ? newName.trim() : c));
+    setSectionOrder(prev => prev.map(c => c === oldName ? newName.trim() : c));
+    setCustomSOPs(prev => prev.map(s => s.category === oldName ? { ...s, category: newName.trim() } : s));
+    toast({ title: 'Section Renamed' });
   };
 
   const handleDeleteSection = (cat: string) => {
@@ -204,7 +205,6 @@ export function SOPSection() {
         currentOrder.splice(toIdx, 0, removed);
         setSectionOrder(currentOrder);
       } else {
-        // section not in order yet, insert it
         const newOrder = [...allCategories];
         const fi = newOrder.indexOf(dragSection);
         const ti = newOrder.indexOf(dragOverSection);
@@ -223,7 +223,6 @@ export function SOPSection() {
     const currentOrder = sectionOrder.length > 0 ? [...sectionOrder] : [...allCategories];
     const idx = currentOrder.indexOf(cat);
     if (idx < 0) {
-      // not yet in order
       const fullOrder = [...allCategories];
       const fi = fullOrder.indexOf(cat);
       if (dir === 'up' && fi > 0) { [fullOrder[fi - 1], fullOrder[fi]] = [fullOrder[fi], fullOrder[fi - 1]]; }
@@ -241,7 +240,7 @@ export function SOPSection() {
       <SectionCloudSync sectionKey="chemanalyst-custom-sops" label="Custom SOPs" isAdmin={true} />
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-[140px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search SOPs..."
@@ -249,9 +248,6 @@ export function SOPSection() {
         </div>
         <button onClick={() => setShowAddForm(true)} className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
           <Plus className="w-3.5 h-3.5" /> Add SOP
-        </button>
-        <button onClick={() => setShowAddSection(true)} className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-xs font-medium hover:bg-primary/10 transition-colors">
-          <FolderPlus className="w-3.5 h-3.5" /> Add Section
         </button>
         <button onClick={handleImportPDF} className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-border bg-card text-foreground text-xs font-medium hover:bg-accent transition-colors">
           <FileUp className="w-3.5 h-3.5" /> Import PDF
@@ -265,18 +261,6 @@ export function SOPSection() {
         <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
       </div>
 
-      {/* Add Section Dialog */}
-      {showAddSection && (
-        <div className="border border-primary/30 rounded-lg bg-card p-4 flex items-center gap-3">
-          <FolderPlus className="w-4 h-4 text-primary shrink-0" />
-          <input value={newSectionName} onChange={e => setNewSectionName(e.target.value)}
-            placeholder="New section name" className="flex-1 bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
-            onKeyDown={e => e.key === 'Enter' && handleAddSection()} autoFocus />
-          <button onClick={handleAddSection} disabled={!newSectionName.trim()} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-40">Add</button>
-          <button onClick={() => { setShowAddSection(false); setNewSectionName(''); }} className="p-2 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
-        </div>
-      )}
-
       {/* Stats */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {filtered.length} SOPs</span>
@@ -284,77 +268,41 @@ export function SOPSection() {
         {customSOPs.length > 0 && <span className="text-primary font-medium">{customSOPs.length} custom</span>}
       </div>
 
-      {/* Add SOP Form */}
-      {showAddForm && <AddSOPForm onAdd={handleAddSOP} onCancel={() => setShowAddForm(false)} categories={allCategories} />}
+      {/* Add SOP Form - now includes "Add New Section" inline */}
+      {showAddForm && <AddSOPForm onAdd={handleAddSOP} onCancel={() => setShowAddForm(false)} categories={allCategories} onAddSection={handleAddSection} />}
 
       {/* Results grouped by category with drag-drop sections */}
       {allCategories.map((cat, catIdx) => {
         const catSOPs = filtered.filter(s => s.category === cat);
         if (catSOPs.length === 0 && !customSections.includes(cat)) return null;
         return (
-          <div key={cat}
-            draggable
-            onDragStart={() => handleSectionDragStart(cat)}
-            onDragEnter={() => handleSectionDragEnter(cat)}
-            onDragEnd={handleSectionDragEnd}
-            onDragOver={e => e.preventDefault()}
-            className={`space-y-2 ${dragOverSection === cat ? 'border-t-2 border-primary rounded-t' : 'border-t-2 border-transparent'}`}
-          >
-            <div className="flex items-center gap-2">
-              <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 cursor-grab shrink-0" />
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-primary flex items-center gap-2 flex-1">
-                <Beaker className="w-3.5 h-3.5" /> {cat}
-                {customSections.includes(cat) && catSOPs.length === 0 && (
-                  <span className="text-[9px] text-muted-foreground normal-case font-normal">(empty section)</span>
-                )}
-              </h3>
-              <div className="flex items-center gap-0.5">
-                <button onClick={() => moveSectionDir(cat, 'up')} disabled={catIdx === 0}
-                  className="p-0.5 text-muted-foreground/40 hover:text-primary disabled:opacity-20 transition-colors">
-                  <ArrowUp className="w-3 h-3" />
-                </button>
-                <button onClick={() => moveSectionDir(cat, 'down')} disabled={catIdx === allCategories.length - 1}
-                  className="p-0.5 text-muted-foreground/40 hover:text-primary disabled:opacity-20 transition-colors">
-                  <ArrowDown className="w-3 h-3" />
-                </button>
-                {customSections.includes(cat) && (
-                  <button onClick={() => handleDeleteSection(cat)}
-                    className="p-0.5 text-muted-foreground/30 hover:text-destructive transition-colors ml-1" title="Remove section">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="space-y-1">
-              {catSOPs.map((sop) => {
-                const hasFormula = SOP_FORMULAS.some(f => f.sopId === sop.id);
-                return (
-                  <div key={sop.id}
-                    draggable
-                    onDragStart={(e) => { e.stopPropagation(); handleDragStart(sop.id); }}
-                    onDragEnter={(e) => { e.stopPropagation(); handleDragEnter(sop.id); }}
-                    onDragEnd={(e) => { e.stopPropagation(); handleDragEnd(); }}
-                    onDragOver={e => e.preventDefault()}
-                    className={`${dragOverItem === sop.id ? 'border-t-2 border-primary' : ''}`}
-                  >
-                    <SOPCard
-                      sop={sop}
-                      expanded={expandedId === sop.id}
-                      onToggle={() => toggle(sop.id)}
-                      onEdit={(updates) => handleEditSOP(sop.id, updates)}
-                      onPrint={() => handlePrint(sop)}
-                      isCustom={customSOPs.some(s => s.id === sop.id)}
-                      onDelete={() => handleDeleteSOP(sop.id)}
-                      hasFormula={hasFormula}
-                      onUseInAnalytical={() => handleUseInAnalytical(sop.id)}
-                      onMoveUp={() => moveSOP(sop.id, 'up')}
-                      onMoveDown={() => moveSOP(sop.id, 'down')}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <SectionBlock
+            key={cat}
+            cat={cat}
+            catIdx={catIdx}
+            totalCategories={allCategories.length}
+            catSOPs={catSOPs}
+            isCustom={customSections.includes(cat)}
+            dragOverSection={dragOverSection}
+            onSectionDragStart={handleSectionDragStart}
+            onSectionDragEnter={handleSectionDragEnter}
+            onSectionDragEnd={handleSectionDragEnd}
+            onMoveSection={moveSectionDir}
+            onDeleteSection={handleDeleteSection}
+            onRenameSection={handleRenameSection}
+            expandedId={expandedId}
+            onToggle={toggle}
+            onEditSOP={handleEditSOP}
+            onPrint={handlePrint}
+            customSOPs={customSOPs}
+            onDeleteSOP={handleDeleteSOP}
+            onUseInAnalytical={handleUseInAnalytical}
+            onMoveSOP={moveSOP}
+            dragOverItem={dragOverItem}
+            onDragStart={handleDragStart}
+            onDragEnter={handleDragEnter}
+            onDragEnd={handleDragEnd}
+          />
         );
       })}
 
@@ -368,8 +316,109 @@ export function SOPSection() {
   );
 }
 
-/* ---- Add SOP Form ---- */
-function AddSOPForm({ onAdd, onCancel, categories }: { onAdd: (sop: SOPEntry) => void; onCancel: () => void; categories: string[] }) {
+/* ---- Section Block with rename support ---- */
+function SectionBlock({ cat, catIdx, totalCategories, catSOPs, isCustom, dragOverSection, onSectionDragStart, onSectionDragEnter, onSectionDragEnd, onMoveSection, onDeleteSection, onRenameSection, expandedId, onToggle, onEditSOP, onPrint, customSOPs, onDeleteSOP, onUseInAnalytical, onMoveSOP, dragOverItem, onDragStart, onDragEnter, onDragEnd }: {
+  cat: string; catIdx: number; totalCategories: number; catSOPs: SOPEntry[]; isCustom: boolean;
+  dragOverSection: string | null;
+  onSectionDragStart: (c: string) => void; onSectionDragEnter: (c: string) => void; onSectionDragEnd: () => void;
+  onMoveSection: (c: string, d: 'up' | 'down') => void; onDeleteSection: (c: string) => void;
+  onRenameSection: (old: string, n: string) => void;
+  expandedId: string | null; onToggle: (id: string) => void;
+  onEditSOP: (id: string, u: Partial<SOPEntry>) => void; onPrint: (s: SOPEntry) => void;
+  customSOPs: SOPEntry[]; onDeleteSOP: (id: string) => void;
+  onUseInAnalytical: (id: string) => void; onMoveSOP: (id: string, d: 'up' | 'down') => void;
+  dragOverItem: string | null;
+  onDragStart: (id: string) => void; onDragEnter: (id: string) => void; onDragEnd: () => void;
+}) {
+  const [editingName, setEditingName] = useState(false);
+  const [nameVal, setNameVal] = useState(cat);
+
+  return (
+    <div
+      draggable
+      onDragStart={() => onSectionDragStart(cat)}
+      onDragEnter={() => onSectionDragEnter(cat)}
+      onDragEnd={onSectionDragEnd}
+      onDragOver={e => e.preventDefault()}
+      className={`space-y-2 ${dragOverSection === cat ? 'border-t-2 border-primary rounded-t' : 'border-t-2 border-transparent'}`}
+    >
+      <div className="flex items-center gap-2">
+        <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 cursor-grab shrink-0" />
+        {editingName ? (
+          <div className="flex items-center gap-1.5 flex-1">
+            <input value={nameVal} onChange={e => setNameVal(e.target.value)} autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') { onRenameSection(cat, nameVal); setEditingName(false); } if (e.key === 'Escape') setEditingName(false); }}
+              className="bg-input border border-primary rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-primary focus:outline-none focus:ring-1 focus:ring-primary w-40" />
+            <button onClick={() => { onRenameSection(cat, nameVal); setEditingName(false); }}
+              className="text-[9px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground">Save</button>
+            <button onClick={() => setEditingName(false)} className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">Cancel</button>
+          </div>
+        ) : (
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-primary flex items-center gap-2 flex-1">
+            <Beaker className="w-3.5 h-3.5" /> {cat}
+            {isCustom && catSOPs.length === 0 && (
+              <span className="text-[9px] text-muted-foreground normal-case font-normal">(empty section)</span>
+            )}
+          </h3>
+        )}
+        <div className="flex items-center gap-0.5">
+          {isCustom && !editingName && (
+            <button onClick={() => { setNameVal(cat); setEditingName(true); }}
+              className="p-0.5 text-muted-foreground/40 hover:text-primary transition-colors" title="Rename section">
+              <Pencil className="w-3 h-3" />
+            </button>
+          )}
+          <button onClick={() => onMoveSection(cat, 'up')} disabled={catIdx === 0}
+            className="p-0.5 text-muted-foreground/40 hover:text-primary disabled:opacity-20 transition-colors">
+            <ArrowUp className="w-3 h-3" />
+          </button>
+          <button onClick={() => onMoveSection(cat, 'down')} disabled={catIdx === totalCategories - 1}
+            className="p-0.5 text-muted-foreground/40 hover:text-primary disabled:opacity-20 transition-colors">
+            <ArrowDown className="w-3 h-3" />
+          </button>
+          {isCustom && (
+            <button onClick={() => onDeleteSection(cat)}
+              className="p-0.5 text-muted-foreground/30 hover:text-destructive transition-colors ml-1" title="Remove section">
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="space-y-1">
+        {catSOPs.map((sop) => {
+          const hasFormula = SOP_FORMULAS.some(f => f.sopId === sop.id);
+          return (
+            <div key={sop.id}
+              draggable
+              onDragStart={(e) => { e.stopPropagation(); onDragStart(sop.id); }}
+              onDragEnter={(e) => { e.stopPropagation(); onDragEnter(sop.id); }}
+              onDragEnd={(e) => { e.stopPropagation(); onDragEnd(); }}
+              onDragOver={e => e.preventDefault()}
+              className={`${dragOverItem === sop.id ? 'border-t-2 border-primary' : ''}`}
+            >
+              <SOPCard
+                sop={sop}
+                expanded={expandedId === sop.id}
+                onToggle={() => onToggle(sop.id)}
+                onEdit={(updates) => onEditSOP(sop.id, updates)}
+                onPrint={() => onPrint(sop)}
+                isCustom={customSOPs.some(s => s.id === sop.id)}
+                onDelete={() => onDeleteSOP(sop.id)}
+                hasFormula={hasFormula}
+                onUseInAnalytical={() => onUseInAnalytical(sop.id)}
+                onMoveUp={() => onMoveSOP(sop.id, 'up')}
+                onMoveDown={() => onMoveSOP(sop.id, 'down')}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---- Add SOP Form - now includes "Add New Section" inline ---- */
+function AddSOPForm({ onAdd, onCancel, categories, onAddSection }: { onAdd: (sop: SOPEntry) => void; onCancel: () => void; categories: string[]; onAddSection: (name: string) => void }) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [customCat, setCustomCat] = useState('');
@@ -378,6 +427,8 @@ function AddSOPForm({ onAdd, onCancel, categories }: { onAdd: (sop: SOPEntry) =>
   const [calculations, setCalculations] = useState('');
   const [apparatus, setApparatus] = useState('');
   const [reagents, setReagents] = useState('');
+  const [showNewSection, setShowNewSection] = useState(false);
+  const [newSectionName, setNewSectionName] = useState('');
 
   const handleSubmit = () => {
     if (!name.trim() || !procedure.trim()) return;
@@ -392,8 +443,16 @@ function AddSOPForm({ onAdd, onCancel, categories }: { onAdd: (sop: SOPEntry) =>
     });
   };
 
+  const handleAddNewSection = () => {
+    if (!newSectionName.trim()) return;
+    onAddSection(newSectionName.trim());
+    setCategory(newSectionName.trim());
+    setNewSectionName('');
+    setShowNewSection(false);
+  };
+
   return (
-    <div className="border border-primary/30 rounded-lg bg-card p-5 space-y-4">
+    <div className="border border-primary/30 rounded-lg bg-card p-4 sm:p-5 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /> Add New SOP</h3>
         <button onClick={onCancel} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
@@ -401,12 +460,27 @@ function AddSOPForm({ onAdd, onCancel, categories }: { onAdd: (sop: SOPEntry) =>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <FieldInput label="Test Name *" value={name} onChange={setName} placeholder="e.g. Salt Purity Test" />
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</label>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category / Section</label>
           <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
             <option value="">Select or type new below</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <input value={customCat} onChange={e => setCustomCat(e.target.value)} placeholder="Or type new category" className="w-full bg-input border border-border rounded-md px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
+          {/* Add New Section inline */}
+          {!showNewSection ? (
+            <button onClick={() => setShowNewSection(true)} className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 mt-1">
+              <FolderPlus className="w-3 h-3" /> Add New Section
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 mt-1">
+              <FolderPlus className="w-3.5 h-3.5 text-primary shrink-0" />
+              <input value={newSectionName} onChange={e => setNewSectionName(e.target.value)}
+                placeholder="New section name" className="flex-1 bg-input border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+                onKeyDown={e => e.key === 'Enter' && handleAddNewSection()} autoFocus />
+              <button onClick={handleAddNewSection} disabled={!newSectionName.trim()} className="px-2 py-1 rounded-md bg-primary text-primary-foreground text-[10px] font-medium hover:bg-primary/90 disabled:opacity-40">Add</button>
+              <button onClick={() => { setShowNewSection(false); setNewSectionName(''); }} className="p-1 text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button>
+            </div>
+          )}
         </div>
       </div>
       <FieldTextarea label="Principle" value={principle} onChange={setPrinciple} placeholder="Describe the scientific principle..." rows={2} />
@@ -461,14 +535,14 @@ function SOPCard({ sop, expanded, onToggle, onEdit, onPrint, isCustom, onDelete,
   return (
     <div className={`border rounded-lg bg-card overflow-hidden transition-colors ${unlocked ? 'border-primary/50' : 'border-border'}`}>
       <div className="flex items-center">
-        <button onClick={onToggle} className="flex-1 flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/50 transition-colors">
+        <button onClick={onToggle} className="flex-1 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 text-left hover:bg-accent/50 transition-colors min-w-0">
           <GripVertical className="w-3 h-3 text-muted-foreground/40 cursor-grab shrink-0" />
           {expanded ? <ChevronDown className="w-4 h-4 text-primary shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
-          <span className="text-sm font-medium text-foreground flex-1">{sop.name}</span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{sop.category}</span>
+          <span className="text-sm font-medium text-foreground flex-1 truncate">{sop.name}</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground hidden sm:inline">{sop.category}</span>
         </button>
         {expanded && (
-          <div className="flex items-center gap-1 pr-3">
+          <div className="flex items-center gap-1 pr-2 sm:pr-3 shrink-0">
             <button onClick={onMoveUp} title="Move up" className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
               <ArrowUp className="w-3 h-3" />
             </button>
@@ -502,7 +576,7 @@ function SOPCard({ sop, expanded, onToggle, onEdit, onPrint, isCustom, onDelete,
       </div>
 
       {expanded && (
-        <div className="px-5 pb-5 space-y-4 border-t border-border pt-4">
+        <div className="px-4 sm:px-5 pb-5 space-y-4 border-t border-border pt-4">
           {unlocked ? (
             <SectionEditable title="Principle">
               <textarea value={editingPrinciple} onChange={e => setEditingPrinciple(e.target.value)} rows={3}
