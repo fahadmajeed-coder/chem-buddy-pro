@@ -429,16 +429,19 @@ function AddSOPForm({ onAdd, onCancel, categories, onAddSection }: { onAdd: (sop
   const [reagents, setReagents] = useState('');
   const [showNewSection, setShowNewSection] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
+  const [extraBoxes, setExtraBoxes] = useState<{ id: string; title: string; content: string }[]>([]);
 
   const handleSubmit = () => {
     if (!name.trim() || !procedure.trim()) return;
     const finalCat = customCat.trim() || category || 'Uncategorized';
+    const extraNotes = extraBoxes.filter(b => b.content.trim()).map(b => `[${b.title || 'Note'}]: ${b.content.trim()}`);
+    const allProcedure = [...procedure.split('\n').map(s => s.trim()).filter(Boolean), ...extraNotes];
     onAdd({
       id: `custom-${Date.now()}`, name: name.trim(), category: finalCat,
       principle: principle.trim() || undefined,
       apparatus: apparatus.trim() ? apparatus.split('\n').map(s => s.trim()).filter(Boolean) : undefined,
       reagents: reagents.trim() ? reagents.split('\n').map(s => s.trim()).filter(Boolean) : undefined,
-      procedure: procedure.split('\n').map(s => s.trim()).filter(Boolean),
+      procedure: allProcedure,
       calculations: calculations.trim() || undefined,
     });
   };
@@ -490,6 +493,33 @@ function AddSOPForm({ onAdd, onCancel, categories, onAddSection }: { onAdd: (sop
       </div>
       <FieldTextarea label="Procedure Steps * (one per line)" value={procedure} onChange={setProcedure} placeholder="Step 1...&#10;Step 2...&#10;Step 3..." rows={5} />
       <FieldTextarea label="Calculations" value={calculations} onChange={setCalculations} placeholder="Formula or calculation..." rows={2} />
+
+      {/* Extra detail boxes */}
+      {extraBoxes.length > 0 && (
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Extra Detail Boxes</label>
+          {extraBoxes.map((box, idx) => (
+            <div key={box.id} className="border border-border rounded-md p-3 bg-secondary/20 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <input value={box.title} onChange={e => setExtraBoxes(prev => prev.map(b => b.id === box.id ? { ...b, title: e.target.value } : b))}
+                  placeholder={`Box ${idx + 1} Title`}
+                  className="flex-1 bg-input border border-border rounded px-2 py-1 text-xs font-medium text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
+                <button onClick={() => setExtraBoxes(prev => prev.filter(b => b.id !== box.id))}
+                  className="p-1 text-destructive/60 hover:text-destructive rounded"><Trash2 className="w-3 h-3" /></button>
+              </div>
+              <textarea value={box.content} onChange={e => setExtraBoxes(prev => prev.map(b => b.id === box.id ? { ...b, content: e.target.value } : b))}
+                placeholder="Enter details..."
+                rows={2}
+                className="w-full bg-input border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary resize-y" />
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={() => setExtraBoxes(prev => [...prev, { id: `eb-${Date.now()}`, title: '', content: '' }])}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors w-full justify-center">
+        <Plus className="w-3.5 h-3.5" /> Add Extra Detail Box
+      </button>
+
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="px-4 py-2 text-xs rounded-md border border-border text-muted-foreground hover:bg-accent transition-colors">Cancel</button>
         <button onClick={handleSubmit} disabled={!name.trim() || !procedure.trim()} className="px-4 py-2 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors flex items-center gap-1.5">
