@@ -460,8 +460,8 @@ export function StandardsSection() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm" style={{ minWidth: '800px' }}>
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="w-full text-sm" style={{ minWidth: '650px' }}>
             <thead>
               <tr className="border-b border-border bg-secondary/30">
                 <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Analysis</th>
@@ -581,14 +581,14 @@ export function StandardsSection() {
                   {openDropdown === param.id && (
                     <tr>
                       <td colSpan={13 + customColumns.length}>
-                        <div className="mx-2 sm:mx-4 my-2 rounded-lg border border-primary/20 bg-card shadow-lg overflow-hidden max-w-full">
+                        <div className="mx-2 sm:mx-4 my-2 rounded-lg border border-primary/20 bg-card shadow-lg overflow-hidden max-w-full max-h-[70vh]">
                           <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-primary/5 border-b border-primary/10">
                             <span className="text-xs font-semibold text-foreground truncate">Sub-Entries for "{param.analysis || 'Untitled'}" — Standard</span>
                             <button onClick={() => setOpenDropdown(null)} className="p-1 text-muted-foreground hover:text-foreground rounded shrink-0">
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                          <div className="p-3 sm:p-4 space-y-4 max-h-80 overflow-y-auto">
+                          <div className="p-3 sm:p-4 space-y-4 max-h-[60vh] overflow-y-auto overflow-x-auto">
                             {(param.subGroups || []).map(group => (
                               <div key={group.id} className="rounded-md border border-border bg-secondary/20 overflow-hidden">
                                 <div className="flex items-center gap-2 px-3 py-2 bg-secondary/30 border-b border-border/50">
