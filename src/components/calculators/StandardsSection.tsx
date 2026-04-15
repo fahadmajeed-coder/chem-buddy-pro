@@ -489,7 +489,7 @@ export function StandardsSection() {
                       <input type="text" value={param.analysis} onChange={e => updateParam(param.id, 'analysis', e.target.value)}
                         data-param-idx={paramIdx} data-field="analysis"
                         onKeyDown={e => handleParamKeyDown(e, paramIdx, 'analysis')}
-                        placeholder="e.g. Moisture" className="w-24 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                        placeholder="e.g. Moisture" className="w-20 sm:w-24 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-1.5 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                     </td>
                     <td className="py-1.5 px-1">
                       <select value={param.operator || 'range'} onChange={e => updateParam(param.id, 'operator', e.target.value)}
