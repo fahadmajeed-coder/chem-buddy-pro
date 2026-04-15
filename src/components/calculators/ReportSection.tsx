@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield, Settings2, FlaskConical, Save, FolderOpen, AlertTriangle, X } from 'lucide-react';
+import { useState, useRef, useMemo } from 'react';
+import { FileText, Download, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Upload, Building2, Shield, Settings2, FlaskConical, Save, FolderOpen, AlertTriangle, X, RotateCcw, Search, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AnalyticalResult } from './AnalyticalTestSection';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -63,6 +63,24 @@ interface ReportEntry {
   included: boolean;
   deduction: string;
   customValues: Record<string, string>;
+}
+
+// Mini calculator types
+interface FormulaVariable {
+  id: string;
+  name: string;
+  description: string;
+  defaultValue: string;
+  testValue: string;
+}
+
+interface SavedFormula {
+  id: string;
+  name: string;
+  description: string;
+  expression: string;
+  variables: FormulaVariable[];
+  createdAt: number;
 }
 
 const AVAILABLE_TOKENS = [
@@ -164,6 +182,52 @@ const evalColumnFormula = (formula: string, entry: ReportEntry, allEntries?: Rep
   return '';
 };
 
+// Mini toJavaScript for inline calc
+function toJavaScript(expr: string): string {
+  let js = expr;
+  js = js.replace(/\bPI\b/g, 'Math.PI').replace(/\bEULER\b/g, 'Math.E');
+  js = js.replace(/√\(/g, 'Math.sqrt(');
+  js = js.replace(/∛\(/g, 'Math.cbrt(');
+  js = js.replace(/xⁿ/g, '**');
+  js = js.replace(/\|([^|]+)\|/g, 'Math.abs($1)');
+  js = js.replace(/\bln\(/g, 'Math.log(');
+  js = js.replace(/\blog10\(/g, 'Math.log10(');
+  js = js.replace(/\bexp\(/g, 'Math.exp(');
+  js = js.replace(/\bfloor\(/g, 'Math.floor(');
+  js = js.replace(/\bceil\(/g, 'Math.ceil(');
+  js = js.replace(/\bround\(/g, 'Math.round(');
+  js = js.replace(/\bmin\(/g, 'Math.min(');
+  js = js.replace(/\bmax\(/g, 'Math.max(');
+  js = js.replace(/\bsin\(/g, 'Math.sin(');
+  js = js.replace(/\bcos\(/g, 'Math.cos(');
+  js = js.replace(/\btan\(/g, 'Math.tan(');
+  const arrayFns: Record<string, string> = {
+    'sum': '((...a)=>a.reduce((s,v)=>s+v,0))',
+    'average': '((...a)=>a.reduce((s,v)=>s+v,0)/a.length)',
+    'stdDev': '((...a)=>{const m=a.reduce((s,v)=>s+v,0)/a.length;return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1))})',
+  };
+  for (const [fn, impl] of Object.entries(arrayFns)) {
+    const re = new RegExp(`\\b${fn}\\(`, 'g');
+    js = js.replace(re, `${impl}(`);
+  }
+  return js;
+}
+
+function evaluateMiniFormula(expression: string, variables: FormulaVariable[], values: Record<string, string>): number | null {
+  try {
+    let jsExpr = toJavaScript(expression);
+    for (const v of variables) {
+      const val = parseFloat(values[v.name] || v.defaultValue || '0');
+      if (isNaN(val)) return null;
+      jsExpr = jsExpr.replace(new RegExp(`\\b${v.name}\\b`, 'g'), val.toString());
+    }
+    const result = new Function(`"use strict"; return (${jsExpr});`)();
+    return typeof result === 'number' && isFinite(result) ? result : null;
+  } catch {
+    return null;
+  }
+}
+
 // Formula builder helper component
 function FormulaBuilderInline({ formula, onChange, label, availableColumns }: {
   formula: string; onChange: (f: string) => void; label: string;
@@ -228,6 +292,91 @@ function FormulaBuilderInline({ formula, onChange, label, availableColumns }: {
   );
 }
 
+// Inline Mini Calculator for a parameter row
+function InlineCalculator({ paramName, onResult, onClose }: {
+  paramName: string;
+  onResult: (result: string) => void;
+  onClose: () => void;
+}) {
+  const [savedFormulas] = useLocalStorage<SavedFormula[]>('chem-formulas-v2', []);
+  const [selectedFormulaId, setSelectedFormulaId] = useState<string | null>(null);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [searchQ, setSearchQ] = useState('');
+
+  const matchingFormulas = useMemo(() => {
+    const q = (searchQ || paramName).toLowerCase();
+    return savedFormulas.filter(f => f.name.toLowerCase().includes(q) || f.description.toLowerCase().includes(q));
+  }, [savedFormulas, searchQ, paramName]);
+
+  const selectedFormula = savedFormulas.find(f => f.id === selectedFormulaId);
+  const result = selectedFormula ? evaluateMiniFormula(selectedFormula.expression, selectedFormula.variables, values) : null;
+
+  return (
+    <div className="border border-primary/30 rounded-lg bg-card p-3 space-y-2 animate-fade-in shadow-lg">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-primary flex items-center gap-1.5">
+          <Calculator className="w-3.5 h-3.5" /> Quick Calculator — {paramName}
+        </span>
+        <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground rounded">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      {!selectedFormula ? (
+        <div className="space-y-1.5">
+          <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search formula..."
+            className="w-full bg-input border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" autoFocus />
+          <div className="max-h-32 overflow-y-auto space-y-0.5">
+            {matchingFormulas.length === 0 ? (
+              <p className="text-[10px] text-muted-foreground text-center py-2">No formulas found</p>
+            ) : matchingFormulas.map(f => (
+              <button key={f.id} onClick={() => {
+                setSelectedFormulaId(f.id);
+                const vals: Record<string, string> = {};
+                f.variables.forEach(v => { if (v.defaultValue) vals[v.name] = v.defaultValue; });
+                setValues(vals);
+              }}
+                className="w-full text-left px-2 py-1.5 rounded hover:bg-muted/50 text-xs text-foreground transition-colors">
+                <span className="font-medium">{f.name}</span>
+                {f.description && <span className="text-muted-foreground ml-1.5">— {f.description}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <button onClick={() => { setSelectedFormulaId(null); setValues({}); }}
+              className="text-[10px] text-primary hover:underline">← Back</button>
+            <span className="text-xs font-medium text-foreground">{selectedFormula.name}</span>
+          </div>
+          <div className="p-1.5 rounded bg-muted/50 border border-border">
+            <code className="text-[10px] font-mono text-primary">{selectedFormula.expression}</code>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {selectedFormula.variables.map(v => (
+              <div key={v.id} className="space-y-0.5">
+                <label className="text-[9px] text-muted-foreground font-medium uppercase">{v.name}{v.description && ` (${v.description})`}</label>
+                <input type="number" value={values[v.name] || ''} onChange={e => setValues(prev => ({ ...prev, [v.name]: e.target.value }))}
+                  placeholder={v.defaultValue || '0'}
+                  onKeyDown={e => { if (e.key === 'Enter' && result !== null) { onResult(result.toFixed(4)); onClose(); } }}
+                  className="w-full bg-input border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-1 focus:ring-primary focus:outline-none" />
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold font-mono text-primary">{result !== null ? result.toFixed(4) : '—'}</span>
+            <button onClick={() => { if (result !== null) { onResult(result.toFixed(4)); onClose(); } }}
+              disabled={result === null}
+              className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-40 transition-colors">
+              Apply Result
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
   const [selectedStandardId, setSelectedStandardId] = useState<string | null>(null);
@@ -249,9 +398,10 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [entries, setEntries] = useState<ReportEntry[]>([makeEntry()]);
   const [confirmAction, setConfirmAction] = useState<{ type: string; fn: () => void; msg: string } | null>(null);
-  // Per-row formula overrides
   const [rowFormulas, setRowFormulas] = useState<Record<string, Record<string, string>>>({});
   const [editingRowFormula, setEditingRowFormula] = useState<{ entryId: string; colId: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [calcForEntry, setCalcForEntry] = useState<string | null>(null);
 
   const normalizeParam = (name: string) => name.replace(/\s*\(.*\)\s*$/, '').trim().toLowerCase();
 
@@ -353,6 +503,16 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
     });
   };
 
+  const resetAnalyticalInReport = () => {
+    showConfirm('Reset analytical test results in report? This clears result values only.', () => {
+      setEntries(prev => prev.map(e => ({
+        ...e, result: '', status: 'pending' as EntryStatus, deduction: '',
+      })));
+      toast.success('Analytical results reset');
+      setConfirmAction(null);
+    });
+  };
+
   const applyDeductionFormula = () => {
     setEntries(prev => prev.map(e => ({
       ...e,
@@ -412,12 +572,38 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
   };
 
   const getColValue = (entry: ReportEntry, cc: CustomColumn): string => {
-    // Check for per-row formula override
     const rowFormula = rowFormulas[entry.id]?.[cc.id];
     const effectiveFormula = rowFormula !== undefined ? rowFormula : cc.formula;
     if (effectiveFormula) return evalColumnFormula(effectiveFormula, entry);
     return entry.customValues[cc.id] || '';
   };
+
+  // Enter key handler for report table
+  const handleEntryKeyDown = (e: React.KeyboardEvent, entryIdx: number, field: string) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (entryIdx === entries.length - 1) addEntry();
+      setTimeout(() => {
+        const next = document.querySelector(`[data-entry-idx="${entryIdx + 1}"][data-field="${field}"]`) as HTMLInputElement;
+        next?.focus();
+      }, 50);
+    }
+  };
+
+  // Auto-unselect entries with no data
+  const autoUnselect = () => {
+    setEntries(prev => prev.map(e => ({
+      ...e, included: !!(e.parameter.trim() && e.result.trim()),
+    })));
+    toast.success('Auto-unselected empty parameters');
+  };
+
+  // Search filter for standards
+  const filteredStandards = useMemo(() => {
+    if (!searchQuery.trim()) return savedStandards;
+    const q = searchQuery.toLowerCase();
+    return savedStandards.filter(s => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q));
+  }, [savedStandards, searchQuery]);
 
   const exportPDF = () => {
     const exportEntries = entries.filter(e => e.included);
@@ -540,17 +726,23 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
 
       {/* Data Sources */}
       {(savedStandards.length > 0 || hasAnalyticalResults) && (
-        <div className="glass-panel rounded-lg p-5 animate-fade-in">
+        <div className="glass-panel rounded-lg p-4 sm:p-5 animate-fade-in">
           <div className="flex items-center gap-2 mb-4">
             <Shield className="w-5 h-5 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Data Sources</h3>
-            <span className="text-[10px] text-muted-foreground ml-auto">Load from Standards and/or Analytical Tests</span>
+            <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">Load from Standards and/or Analytical Tests</span>
           </div>
           {savedStandards.length > 0 && (
             <div className="mb-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">① Standard Template</p>
+              {/* Search */}
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search standards..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-input border border-border rounded-md text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
+              </div>
               <div className="flex flex-wrap gap-2">
-                {savedStandards.map(s => (
+                {filteredStandards.map(s => (
                   <button key={s.id} onClick={() => loadStandard(s.id)}
                     className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${selectedStandardId === s.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-secondary/50 text-foreground border-border hover:border-primary/50 hover:bg-secondary'}`}>
                     {s.name}<span className="ml-1.5 text-[10px] opacity-70">({s.parameters.length})</span>
@@ -566,16 +758,21 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
           {hasAnalyticalResults && (
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">② Analytical Test Results</p>
-              <button onClick={loadFromAnalyticalTests} className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 border border-primary/20 transition-colors">
-                <FlaskConical className="w-3.5 h-3.5" /> Load Analytical Results
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={loadFromAnalyticalTests} className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 border border-primary/20 transition-colors">
+                  <FlaskConical className="w-3.5 h-3.5" /> Load Analytical Results
+                </button>
+                <button onClick={resetAnalyticalInReport} className="flex items-center gap-2 px-4 py-2 rounded-md bg-warning/10 text-warning text-xs font-medium hover:bg-warning/20 border border-warning/20 transition-colors">
+                  <RotateCcw className="w-3.5 h-3.5" /> Reset Test Results
+                </button>
+              </div>
             </div>
           )}
         </div>
       )}
 
       {/* Branding */}
-      <div className="glass-panel rounded-lg p-5 animate-fade-in">
+      <div className="glass-panel rounded-lg p-4 sm:p-5 animate-fade-in">
         <div className="flex items-center gap-2 mb-4">
           <Building2 className="w-5 h-5 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Company Branding</h3>
@@ -604,8 +801,8 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
       </div>
 
       {/* Report Header */}
-      <div className="glass-panel rounded-lg p-5 animate-fade-in">
-        <div className="flex items-center justify-between mb-4">
+      <div className="glass-panel rounded-lg p-4 sm:p-5 animate-fade-in">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Certificate of Analysis</h3>
@@ -635,10 +832,13 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
               const a = document.createElement('a'); a.href = url; a.download = `COA_${batchNo || 'report'}_${date}.csv`; a.click(); URL.revokeObjectURL(url);
               toast.success('CSV exported');
             }} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-secondary/80 border border-border transition-colors">
-              <Download className="w-3.5 h-3.5" /> Export CSV
+              <Download className="w-3.5 h-3.5" /> CSV
             </button>
             <button onClick={exportPDF} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
-              <Download className="w-3.5 h-3.5" /> Export PDF
+              <Download className="w-3.5 h-3.5" /> PDF
+            </button>
+            <button onClick={autoUnselect} className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border transition-colors" title="Auto-unselect empty parameters">
+              Auto ✓
             </button>
           </div>
         </div>
@@ -657,7 +857,7 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
       </div>
 
       {/* Column Settings */}
-      <div className="glass-panel rounded-lg p-5 animate-fade-in">
+      <div className="glass-panel rounded-lg p-4 sm:p-5 animate-fade-in">
         <div className="flex items-center gap-2 mb-3">
           <Settings2 className="w-5 h-5 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Column Settings</h3>
@@ -755,132 +955,186 @@ export function ReportSection({ isAdmin = false }: { isAdmin?: boolean }) {
       {/* Entries Table */}
       <div className="glass-panel rounded-lg overflow-hidden animate-fade-in">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={{ minWidth: '700px' }}>
             <thead>
               <tr className="border-b border-border bg-secondary/30">
                 <th className="py-2.5 px-2 text-center">
                   <input type="checkbox" checked={entries.every(e => e.included)} onChange={e => setEntries(prev => prev.map(en => ({ ...en, included: e.target.checked })))}
                     className="rounded border-border text-primary focus:ring-primary w-3.5 h-3.5" />
                 </th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Parameter</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Method</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Result</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Unit</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success inline-block"></span> Good Range</span>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Parameter</th>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Method</th>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Result</th>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Unit</th>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success inline-block"></span> Good</span>
                 </th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning inline-block"></span> Fair Range</span>
+                <th className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning inline-block"></span> Fair</span>
                 </th>
-                <th className="text-center py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                {showDeduction && <th className="text-left py-2.5 px-3 text-xs font-medium text-warning uppercase tracking-wider">Deduction</th>}
+                <th className="text-center py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                {showDeduction && <th className="text-left py-2.5 px-2 text-xs font-medium text-warning uppercase tracking-wider">Ded.</th>}
                 {customColumns.map(cc => (
-                  <th key={cc.id} className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th key={cc.id} className="text-left py-2.5 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {cc.header}
                     {cc.formula && <span className="ml-1 text-[8px] text-primary">ƒx</span>}
                   </th>
                 ))}
-                <th className="py-2.5 px-3"></th>
+                <th className="py-2.5 px-2"></th>
               </tr>
             </thead>
             <tbody>
-              {entries.map(entry => (
-                <tr key={entry.id} className={`border-b border-border/50 transition-colors ${entry.included ? 'hover:bg-secondary/20' : 'opacity-40'}`}>
-                  <td className="py-2 px-2 text-center">
-                    <input type="checkbox" checked={entry.included} onChange={e => setEntries(prev => prev.map(en => en.id === entry.id ? { ...en, included: e.target.checked } : en))}
-                      className="rounded border-border text-primary focus:ring-primary w-3.5 h-3.5" />
-                  </td>
-                  {(['parameter', 'method', 'result', 'unit'] as const).map(field => (
-                    <td key={field} className="py-2 px-2">
-                      <input type="text" value={entry[field]} onChange={e => updateEntry(entry.id, field, e.target.value)}
-                        placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+              {entries.map((entry, entryIdx) => (
+                <>
+                  <tr key={entry.id} className={`border-b border-border/50 transition-colors ${entry.included ? 'hover:bg-secondary/20' : 'opacity-40'}`}>
+                    <td className="py-2 px-2 text-center">
+                      <input type="checkbox" checked={entry.included} onChange={e => setEntries(prev => prev.map(en => en.id === entry.id ? { ...en, included: e.target.checked } : en))}
+                        className="rounded border-border text-primary focus:ring-primary w-3.5 h-3.5" />
+                    </td>
+                    <td className="py-2 px-2">
+                      <input type="text" value={entry.parameter} onChange={e => updateEntry(entry.id, 'parameter', e.target.value)}
+                        data-entry-idx={entryIdx} data-field="parameter"
+                        onKeyDown={e => handleEntryKeyDown(e, entryIdx, 'parameter')}
+                        placeholder="Parameter"
                         className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                     </td>
-                  ))}
-                  <td className="py-2 px-2">
-                    <input type="text" value={entry.greenRange} onChange={e => updateEntry(entry.id, 'greenRange', e.target.value)} placeholder="e.g. 90-95"
-                      className="w-full bg-transparent border border-transparent hover:border-border focus:border-success/60 rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
-                  </td>
-                  <td className="py-2 px-2">
-                    <input type="text" value={entry.yellowRange} onChange={e => updateEntry(entry.id, 'yellowRange', e.target.value)} placeholder="e.g. 95-100"
-                      className="w-full bg-transparent border border-transparent hover:border-border focus:border-warning/60 rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
-                  </td>
-                  <td className="py-2 px-2 text-center">
-                    <div className="flex items-center gap-1 justify-center">
-                      {statusIcon(entry.status)}
-                      <select value={entry.status} onChange={e => setStatus(entry.id, e.target.value as EntryStatus)}
-                        className="bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-1 py-0.5 text-[10px] font-medium text-foreground focus:ring-0 focus:outline-none transition-colors cursor-pointer appearance-none">
-                        <option value="pending">Pending</option>
-                        <option value="good">Good</option>
-                        <option value="fair">Fair</option>
-                        <option value="reject">Reject</option>
-                      </select>
-                    </div>
-                  </td>
-                  {showDeduction && (
                     <td className="py-2 px-2">
-                      <input type="text" value={entry.deduction} onChange={e => setEntries(prev => prev.map(en => en.id === entry.id ? { ...en, deduction: e.target.value } : en))}
-                        placeholder="Auto" className="w-20 bg-transparent border border-transparent hover:border-border focus:border-warning/60 rounded px-2 py-1 text-xs font-mono text-warning focus:ring-0 focus:outline-none transition-colors" />
+                      <input type="text" value={entry.method} onChange={e => updateEntry(entry.id, 'method', e.target.value)}
+                        data-entry-idx={entryIdx} data-field="method"
+                        onKeyDown={e => handleEntryKeyDown(e, entryIdx, 'method')}
+                        placeholder="Method"
+                        className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
                     </td>
-                  )}
-                  {customColumns.map(cc => {
-                    const effectiveFormula = rowFormulas[entry.id]?.[cc.id] !== undefined ? rowFormulas[entry.id][cc.id] : cc.formula;
-                    const formulaVal = effectiveFormula ? evalColumnFormula(effectiveFormula, entry) : '';
-                    const isEditingThis = editingRowFormula?.entryId === entry.id && editingRowFormula?.colId === cc.id;
-                    return (
-                      <td key={cc.id} className="py-2 px-2">
-                        {effectiveFormula ? (
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs font-mono text-foreground px-1">{formulaVal || '—'}</span>
-                            {isAdmin && (
-                              <button onClick={() => setEditingRowFormula(isEditingThis ? null : { entryId: entry.id, colId: cc.id })}
-                                className={`text-[8px] px-1 py-0.5 rounded ${isEditingThis ? 'bg-primary/10 text-primary' : 'text-muted-foreground/40 hover:text-primary'}`}>
-                                ƒ
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            <input type="text" value={entry.customValues[cc.id] || ''} onChange={e => updateCustomValue(entry.id, cc.id, e.target.value)}
-                              placeholder="—" className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
-                            {isAdmin && (
-                              <button onClick={() => setEditingRowFormula(isEditingThis ? null : { entryId: entry.id, colId: cc.id })}
-                                className={`text-[8px] px-1 py-0.5 rounded shrink-0 ${isEditingThis ? 'bg-primary/10 text-primary' : 'text-muted-foreground/40 hover:text-primary'}`}>
-                                ƒ
-                              </button>
-                            )}
-                          </div>
+                    <td className="py-2 px-2">
+                      <div className="flex items-center gap-0.5">
+                        <input type="text" value={entry.result} onChange={e => updateEntry(entry.id, 'result', e.target.value)}
+                          data-entry-idx={entryIdx} data-field="result"
+                          onKeyDown={e => handleEntryKeyDown(e, entryIdx, 'result')}
+                          placeholder="Result"
+                          className="flex-1 bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors min-w-0" />
+                        {entry.parameter.trim() && (
+                          <button onClick={() => setCalcForEntry(calcForEntry === entry.id ? null : entry.id)}
+                            className={`p-0.5 rounded shrink-0 transition-colors ${calcForEntry === entry.id ? 'text-primary bg-primary/10' : 'text-primary/30 hover:text-primary'}`}
+                            title="Quick calculator">
+                            <Calculator className="w-3.5 h-3.5" />
+                          </button>
                         )}
-                        {isEditingThis && isAdmin && (
-                          <div className="mt-1">
-                            <FormulaBuilderInline
-                              formula={rowFormulas[entry.id]?.[cc.id] || cc.formula}
-                              onChange={f => setRowFormulas(prev => ({ ...prev, [entry.id]: { ...(prev[entry.id] || {}), [cc.id]: f } }))}
-                              label="Row formula"
-                              availableColumns={customColumns.filter(c => c.id !== cc.id)}
-                            />
-                            <div className="flex gap-1 mt-1">
-                              <button onClick={() => {
-                                setRowFormulas(prev => {
-                                  const n = { ...prev };
-                                  if (n[entry.id]) { delete n[entry.id][cc.id]; if (!Object.keys(n[entry.id]).length) delete n[entry.id]; }
-                                  return n;
-                                });
-                                setEditingRowFormula(null);
-                              }} className="text-[8px] px-1 py-0.5 rounded bg-secondary text-muted-foreground">Use column default</button>
-                              <button onClick={() => setEditingRowFormula(null)} className="text-[8px] px-1 py-0.5 rounded bg-primary/10 text-primary">Done</button>
-                            </div>
-                          </div>
-                        )}
+                      </div>
+                    </td>
+                    <td className="py-2 px-2">
+                      <input type="text" value={entry.unit} onChange={e => updateEntry(entry.id, 'unit', e.target.value)}
+                        data-entry-idx={entryIdx} data-field="unit"
+                        onKeyDown={e => handleEntryKeyDown(e, entryIdx, 'unit')}
+                        placeholder="%"
+                        className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                    </td>
+                    <td className="py-2 px-2">
+                      <input type="text" value={entry.greenRange} onChange={e => updateEntry(entry.id, 'greenRange', e.target.value)}
+                        data-entry-idx={entryIdx} data-field="greenRange"
+                        onKeyDown={e => handleEntryKeyDown(e, entryIdx, 'greenRange')}
+                        placeholder="e.g. 90-95"
+                        className="w-full bg-transparent border border-transparent hover:border-border focus:border-success/60 rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                    </td>
+                    <td className="py-2 px-2">
+                      <input type="text" value={entry.yellowRange} onChange={e => updateEntry(entry.id, 'yellowRange', e.target.value)}
+                        data-entry-idx={entryIdx} data-field="yellowRange"
+                        onKeyDown={e => handleEntryKeyDown(e, entryIdx, 'yellowRange')}
+                        placeholder="e.g. 95-100"
+                        className="w-full bg-transparent border border-transparent hover:border-border focus:border-warning/60 rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                    </td>
+                    <td className="py-2 px-2 text-center">
+                      <div className="flex items-center gap-1 justify-center">
+                        {statusIcon(entry.status)}
+                        <select value={entry.status} onChange={e => setStatus(entry.id, e.target.value as EntryStatus)}
+                          className="bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-1 py-0.5 text-[10px] font-medium text-foreground focus:ring-0 focus:outline-none transition-colors cursor-pointer appearance-none">
+                          <option value="pending">Pending</option>
+                          <option value="good">Good</option>
+                          <option value="fair">Fair</option>
+                          <option value="reject">Reject</option>
+                        </select>
+                      </div>
+                    </td>
+                    {showDeduction && (
+                      <td className="py-2 px-2">
+                        <input type="text" value={entry.deduction} onChange={e => setEntries(prev => prev.map(en => en.id === entry.id ? { ...en, deduction: e.target.value } : en))}
+                          placeholder="Auto" className="w-16 bg-transparent border border-transparent hover:border-border focus:border-warning/60 rounded px-2 py-1 text-xs font-mono text-warning focus:ring-0 focus:outline-none transition-colors" />
                       </td>
-                    );
-                  })}
-                  <td className="py-2 px-2">
-                    {entries.length > 1 && (
-                      <button onClick={() => removeEntry(entry.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                     )}
-                  </td>
-                </tr>
+                    {customColumns.map(cc => {
+                      const effectiveFormula = rowFormulas[entry.id]?.[cc.id] !== undefined ? rowFormulas[entry.id][cc.id] : cc.formula;
+                      const formulaVal = effectiveFormula ? evalColumnFormula(effectiveFormula, entry) : '';
+                      const isEditingThis = editingRowFormula?.entryId === entry.id && editingRowFormula?.colId === cc.id;
+                      return (
+                        <td key={cc.id} className="py-2 px-2">
+                          {effectiveFormula ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs font-mono text-foreground px-1">{formulaVal || '—'}</span>
+                              {isAdmin && (
+                                <button onClick={() => setEditingRowFormula(isEditingThis ? null : { entryId: entry.id, colId: cc.id })}
+                                  className={`text-[8px] px-1 py-0.5 rounded ${isEditingThis ? 'bg-primary/10 text-primary' : 'text-muted-foreground/40 hover:text-primary'}`}>
+                                  ƒ
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <input type="text" value={entry.customValues[cc.id] || ''} onChange={e => updateCustomValue(entry.id, cc.id, e.target.value)}
+                                placeholder="—" className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-xs font-mono text-foreground focus:ring-0 focus:outline-none transition-colors" />
+                              {isAdmin && (
+                                <button onClick={() => setEditingRowFormula(isEditingThis ? null : { entryId: entry.id, colId: cc.id })}
+                                  className={`text-[8px] px-1 py-0.5 rounded shrink-0 ${isEditingThis ? 'bg-primary/10 text-primary' : 'text-muted-foreground/40 hover:text-primary'}`}>
+                                  ƒ
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {isEditingThis && isAdmin && (
+                            <div className="mt-1">
+                              <FormulaBuilderInline
+                                formula={rowFormulas[entry.id]?.[cc.id] || cc.formula}
+                                onChange={f => setRowFormulas(prev => ({ ...prev, [entry.id]: { ...(prev[entry.id] || {}), [cc.id]: f } }))}
+                                label="Row formula"
+                                availableColumns={customColumns.filter(c => c.id !== cc.id)}
+                              />
+                              <div className="flex gap-1 mt-1">
+                                <button onClick={() => {
+                                  setRowFormulas(prev => {
+                                    const n = { ...prev };
+                                    if (n[entry.id]) { delete n[entry.id][cc.id]; if (!Object.keys(n[entry.id]).length) delete n[entry.id]; }
+                                    return n;
+                                  });
+                                  setEditingRowFormula(null);
+                                }} className="text-[8px] px-1 py-0.5 rounded bg-secondary text-muted-foreground">Use column default</button>
+                                <button onClick={() => setEditingRowFormula(null)} className="text-[8px] px-1 py-0.5 rounded bg-primary/10 text-primary">Done</button>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td className="py-2 px-2">
+                      {entries.length > 1 && (
+                        <button onClick={() => removeEntry(entry.id)} className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                      )}
+                    </td>
+                  </tr>
+                  {/* Inline calculator */}
+                  {calcForEntry === entry.id && (
+                    <tr key={`calc-${entry.id}`}>
+                      <td colSpan={9 + (showDeduction ? 1 : 0) + customColumns.length + 1} className="p-0">
+                        <div className="px-3 py-2">
+                          <InlineCalculator
+                            paramName={entry.parameter}
+                            onResult={(result) => {
+                              updateEntry(entry.id, 'result', result);
+                            }}
+                            onClose={() => setCalcForEntry(null)}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))}
             </tbody>
           </table>
