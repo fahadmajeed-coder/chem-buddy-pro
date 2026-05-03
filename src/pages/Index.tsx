@@ -116,6 +116,7 @@ const Index = () => {
     'cv-percent': <CVPercentCalculator isAdmin={isAdmin} />,
     'data-sync': <DataSyncManager isAdmin={isAdmin} />,
     'feed-formulation': <FeedFormulation isAdmin={isAdmin} />,
+    'calc-suite': <CalculationSuite />,
   };
 
   const renderSections = () => {
