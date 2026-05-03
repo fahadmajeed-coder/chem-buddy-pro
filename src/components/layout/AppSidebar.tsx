@@ -30,6 +30,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { id: 'cv-percent', label: 'CV%', icon: <Percent className="w-4 h-4" /> },
   { id: 'data-sync', label: 'Data Transfer', icon: <RefreshCw className="w-4 h-4" /> },
   { id: 'feed-formulation', label: 'Formulation', icon: <Wheat className="w-4 h-4" /> },
+  { id: 'calc-suite', label: 'Calc. Suite ⚗', icon: <Sigma className="w-4 h-4" /> },
 ];
 
 const ICON_MAP: Record<string, React.ReactNode> = {};
