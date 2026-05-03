@@ -92,7 +92,7 @@ const Index = () => {
     'cv-percent': 'CV% Calculator',
     'data-sync': 'Data Transfer',
     'feed-formulation': 'Feed Formulation',
-  };
+    'calc-suite': 'Calculation Suite',
 
   const sections: Record<string, React.ReactNode> = {
     molarity: <MolarityCalculator initialMw={elementMw} isAdmin={isAdmin} />,
