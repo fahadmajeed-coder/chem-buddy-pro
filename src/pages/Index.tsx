@@ -25,6 +25,7 @@ import { IndicatorsInventory } from '@/components/calculators/IndicatorsInventor
 import { CVPercentCalculator } from '@/components/calculators/CVPercentCalculator';
 import { DataSyncManager } from '@/components/calculators/DataSyncManager';
 import { FeedFormulation } from '@/components/calculators/FeedFormulation';
+import { CalculationSuite } from '@/components/calculators/CalculationSuite';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
@@ -91,6 +92,7 @@ const Index = () => {
     'cv-percent': 'CV% Calculator',
     'data-sync': 'Data Transfer',
     'feed-formulation': 'Feed Formulation',
+    'calc-suite': 'Calculation Suite',
   };
 
   const sections: Record<string, React.ReactNode> = {
@@ -114,6 +116,7 @@ const Index = () => {
     'cv-percent': <CVPercentCalculator isAdmin={isAdmin} />,
     'data-sync': <DataSyncManager isAdmin={isAdmin} />,
     'feed-formulation': <FeedFormulation isAdmin={isAdmin} />,
+    'calc-suite': <CalculationSuite />,
   };
 
   const renderSections = () => {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette, Percent, ChevronUp, ChevronDown, RefreshCw, Trash2, Wheat } from 'lucide-react';
+import { Beaker, FlaskConical, ArrowRightLeft, TestTubes, FileText, Shield, Plus, Menu, X, Atom, Sparkles, Package, Grid3X3, Droplets, FunctionSquare, TrendingUp, ClipboardList, GripVertical, BookOpen, Palette, Percent, ChevronUp, ChevronDown, RefreshCw, Trash2, Wheat, Sigma } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -30,6 +30,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { id: 'cv-percent', label: 'CV%', icon: <Percent className="w-4 h-4" /> },
   { id: 'data-sync', label: 'Data Transfer', icon: <RefreshCw className="w-4 h-4" /> },
   { id: 'feed-formulation', label: 'Formulation', icon: <Wheat className="w-4 h-4" /> },
+  { id: 'calc-suite', label: 'Calc. Suite ⚗', icon: <Sigma className="w-4 h-4" /> },
 ];
 
 const ICON_MAP: Record<string, React.ReactNode> = {};
@@ -49,9 +50,9 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [order, setOrder] = useLocalStorage<string[]>('chemanalyst-sidebar-order', DEFAULT_NAV_ITEMS.map(i => i.id));
-  const DEFAULT_HIDDEN_SECTIONS = DEFAULT_NAV_ITEMS.map(i => i.id).filter(id => !['solution', 'conversion'].includes(id));
-  const [hiddenSections, setHiddenSections] = useLocalStorage<string[]>('chemanalyst-hidden-sections', DEFAULT_HIDDEN_SECTIONS);
+  const [order, setOrder] = useLocalStorage<string[]>('chemanalyst-sidebar-order-v2', DEFAULT_NAV_ITEMS.map(i => i.id));
+  const DEFAULT_HIDDEN_SECTIONS = DEFAULT_NAV_ITEMS.map(i => i.id).filter(id => !['solution', 'conversion', 'calc-suite'].includes(id));
+  const [hiddenSections, setHiddenSections] = useLocalStorage<string[]>('chemanalyst-hidden-sections-v2', DEFAULT_HIDDEN_SECTIONS);
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
