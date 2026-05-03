@@ -50,9 +50,9 @@ export function AppSidebar({ activeSection, onSectionChange, customSections, onA
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [order, setOrder] = useLocalStorage<string[]>('chemanalyst-sidebar-order', DEFAULT_NAV_ITEMS.map(i => i.id));
+  const [order, setOrder] = useLocalStorage<string[]>('chemanalyst-sidebar-order-v2', DEFAULT_NAV_ITEMS.map(i => i.id));
   const DEFAULT_HIDDEN_SECTIONS = DEFAULT_NAV_ITEMS.map(i => i.id).filter(id => !['solution', 'conversion', 'calc-suite'].includes(id));
-  const [hiddenSections, setHiddenSections] = useLocalStorage<string[]>('chemanalyst-hidden-sections', DEFAULT_HIDDEN_SECTIONS);
+  const [hiddenSections, setHiddenSections] = useLocalStorage<string[]>('chemanalyst-hidden-sections-v2', DEFAULT_HIDDEN_SECTIONS);
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
