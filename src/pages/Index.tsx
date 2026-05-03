@@ -25,6 +25,7 @@ import { IndicatorsInventory } from '@/components/calculators/IndicatorsInventor
 import { CVPercentCalculator } from '@/components/calculators/CVPercentCalculator';
 import { DataSyncManager } from '@/components/calculators/DataSyncManager';
 import { FeedFormulation } from '@/components/calculators/FeedFormulation';
+import { CalculationSuite } from '@/components/calculators/CalculationSuite';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
