@@ -79,6 +79,10 @@ export function CalculationSuite() {
         {active === 'empirical' && <EmpiricalFormula />}
         {active === 'limiting-reagent' && <LimitingReagent />}
         {active === 'ph-buffer' && <PHBuffer />}
+        {active === 'fertilizer-solver' && <FertilizerSolver />}
+        {active === 'buffer-inventory' && <BufferInventory />}
+        {active === 'elemental-analysis' && <ElementalAnalysis />}
+        {active === 'hydrate' && <HydrateConverter />}
       </div>
     </div>
   );
