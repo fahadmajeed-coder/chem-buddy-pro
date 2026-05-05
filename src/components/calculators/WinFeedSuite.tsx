@@ -146,7 +146,6 @@ function normInv(p: number): number {
 // ============= Main Component =============
 export function WinFeedSuite({ isAdmin = false }: { isAdmin?: boolean }) {
   const [templates, setTemplates] = useLocalStorage<WFTemplate[]>('winfeed-templates', DEFAULT_TEMPLATES);
-  const [savedStandards] = useLocalStorage<SavedStandard[]>('chemanalyst-standards', []);
   const [activeTplId, setActiveTplId] = useState<string>(DEFAULT_TEMPLATES[0].id);
   const [tab, setTab] = useState<'design' | 'matrix' | 'optimize' | 'stochastic' | 'sensitivity' | 'backward' | 'batch' | 'reports'>('design');
   const [batchKg, setBatchKg] = useState<number>(1000);
