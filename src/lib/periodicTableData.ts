@@ -195,16 +195,68 @@ export const elements: Element[] = [
   { atomicNumber: 118, symbol: 'Og', name: 'Oganesson', atomicMass: 294, category: 'noble-gas', group: 18, period: 7, block: 'p', electronConfiguration: '[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶', electronegativity: null, density: null, meltingPoint: null, boilingPoint: null, oxidationStates: '0', state: 'solid', yearDiscovered: '2002', row: 7, col: 18 },
 ];
 
-// Parse a chemical formula into element counts, e.g. "H2SO4" → {H:2, S:1, O:4}
+// Parse a chemical formula into element counts. Supports parentheses and hydrates.
+// Examples: "H2SO4" → {H:2,S:1,O:4}; "Ca(OH)2" → {Ca:1,O:2,H:2};
+// "CuSO4·5H2O" / "CuSO4.5H2O" / "CuSO4*5H2O" → adds 5×H2O.
 export function parseFormula(formula: string): Record<string, number> {
+  if (!formula) return {};
+  // Normalize hydrate separators (·, •, ⋅, ., *) to a "+" addition between segments.
+  // Pattern: <sep><optional integer><Formula...>
+  const normalized = formula
+    .replace(/\s+/g, '')
+    .replace(/[·•⋅∙]|\*|(?<=[A-Za-z0-9)])\.(?=\d)/g, '+');
+
+  const segments = normalized.split('+').filter(Boolean);
   const result: Record<string, number> = {};
-  const regex = /([A-Z][a-z]?)(\d*)/g;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(formula)) !== null) {
-    if (!match[1]) continue;
-    const symbol = match[1];
-    const count = match[2] ? parseInt(match[2]) : 1;
-    result[symbol] = (result[symbol] || 0) + count;
+
+  const parseSeg = (seg: string): Record<string, number> => {
+    // Leading multiplier: e.g. "5H2O"
+    let i = 0;
+    let lead = '';
+    while (i < seg.length && /\d/.test(seg[i])) { lead += seg[i]; i++; }
+    const multiplier = lead ? parseInt(lead) : 1;
+    const body = seg.slice(i);
+
+    const stack: Record<string, number>[] = [{}];
+    let j = 0;
+    while (j < body.length) {
+      const ch = body[j];
+      if (ch === '(' || ch === '[' || ch === '{') {
+        stack.push({});
+        j++;
+      } else if (ch === ')' || ch === ']' || ch === '}') {
+        j++;
+        let num = '';
+        while (j < body.length && /\d/.test(body[j])) { num += body[j]; j++; }
+        const mult = num ? parseInt(num) : 1;
+        const top = stack.pop()!;
+        const parent = stack[stack.length - 1];
+        for (const [k, v] of Object.entries(top)) {
+          parent[k] = (parent[k] || 0) + v * mult;
+        }
+      } else if (/[A-Z]/.test(ch)) {
+        let sym = ch;
+        j++;
+        if (j < body.length && /[a-z]/.test(body[j])) { sym += body[j]; j++; }
+        let num = '';
+        while (j < body.length && /\d/.test(body[j])) { num += body[j]; j++; }
+        const cnt = num ? parseInt(num) : 1;
+        const top = stack[stack.length - 1];
+        top[sym] = (top[sym] || 0) + cnt;
+      } else {
+        j++; // skip unknown
+      }
+    }
+    const out = stack[0];
+    for (const k of Object.keys(out)) out[k] *= multiplier;
+    return out;
+  };
+
+  for (const seg of segments) {
+    const parsed = parseSeg(seg);
+    for (const [k, v] of Object.entries(parsed)) {
+      result[k] = (result[k] || 0) + v;
+    }
   }
   return result;
 }

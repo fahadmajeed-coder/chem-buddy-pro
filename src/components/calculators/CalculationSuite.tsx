@@ -13,7 +13,11 @@ type ToolId =
   | 'multistep'
   | 'empirical'
   | 'limiting-reagent'
-  | 'ph-buffer';
+  | 'ph-buffer'
+  | 'fertilizer-solver'
+  | 'buffer-inventory'
+  | 'elemental-analysis'
+  | 'hydrate';
 
 interface ToolDef {
   id: ToolId;
@@ -23,20 +27,24 @@ interface ToolDef {
 }
 
 const TOOLS: ToolDef[] = [
-  { id: 'percent-composition', name: '% Composition', icon: <Percent className="w-4 h-4" />, desc: 'Element % in any compound (e.g. K in K₂SO₄)' },
+  { id: 'fertilizer-solver', name: 'Fertilizer Solver', icon: <Target className="w-4 h-4" />, desc: 'NPK formulation solver: target N/P₂O₅/K₂O → optimal blend & cost' },
+  { id: 'percent-composition', name: '% Composition', icon: <Percent className="w-4 h-4" />, desc: 'Element % in any compound (supports ·5H₂O hydrates)' },
   { id: 'mixture-designer', name: 'Mixture Designer', icon: <Layers className="w-4 h-4" />, desc: 'Solve mass fractions for target element % from multiple salts' },
+  { id: 'hydrate', name: 'Hydrate / Anhydrous', icon: <Beaker className="w-4 h-4" />, desc: 'Convert between hydrated & anhydrous mass (e.g. CuSO₄·5H₂O ↔ CuSO₄)' },
   { id: 'concentration-correction', name: 'Conc. Correction', icon: <Target className="w-4 h-4" />, desc: 'Standardization error correction with stock adjustment' },
   { id: 'back-titration', name: 'Back-Titration', icon: <FlaskConical className="w-4 h-4" />, desc: 'Excess reagent + back-titrant analyte calculation' },
   { id: 'combustion', name: 'Combustion / LOI', icon: <Flame className="w-4 h-4" />, desc: 'Loss-on-ignition, ash, moisture, volatile matter' },
+  { id: 'elemental-analysis', name: 'Elemental Analysis', icon: <Atom className="w-4 h-4" />, desc: 'CHNS / ash → element % (mg/kg, ppm, %, g/100g)' },
   { id: 'gravimetric', name: 'Gravimetric', icon: <Beaker className="w-4 h-4" />, desc: 'Analyte from precipitate weight using gravimetric factor' },
   { id: 'multistep', name: 'Multi-Step Chain', icon: <Sigma className="w-4 h-4" />, desc: 'Chain calculations: prep → dilute → titrate → result' },
   { id: 'empirical', name: 'Empirical Formula', icon: <Atom className="w-4 h-4" />, desc: 'Empirical & molecular formula from % composition' },
   { id: 'limiting-reagent', name: 'Limiting Reagent', icon: <Calculator className="w-4 h-4" />, desc: 'Stoichiometry, theoretical yield, % yield' },
   { id: 'ph-buffer', name: 'pH / Buffer', icon: <FlaskConical className="w-4 h-4" />, desc: 'pH, pOH, Henderson-Hasselbalch buffer calc' },
+  { id: 'buffer-inventory', name: 'Buffer Inventory', icon: <FlaskConical className="w-4 h-4" />, desc: 'Standard pH 0–14 buffer recipes (citrate, phosphate, borate …)' },
 ];
 
 export function CalculationSuite() {
-  const [active, setActive] = useState<ToolId>('percent-composition');
+  const [active, setActive] = useState<ToolId>('fertilizer-solver');
 
   return (
     <div className="space-y-4">
@@ -71,6 +79,10 @@ export function CalculationSuite() {
         {active === 'empirical' && <EmpiricalFormula />}
         {active === 'limiting-reagent' && <LimitingReagent />}
         {active === 'ph-buffer' && <PHBuffer />}
+        {active === 'fertilizer-solver' && <FertilizerSolver />}
+        {active === 'buffer-inventory' && <BufferInventory />}
+        {active === 'elemental-analysis' && <ElementalAnalysis />}
+        {active === 'hydrate' && <HydrateConverter />}
       </div>
     </div>
   );
@@ -748,6 +760,466 @@ function PHBuffer() {
             </div>
           )}
           <p className="text-[11px] text-muted-foreground">pH = pKa + log([A⁻]/[HA])</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ============ TOOL 11: Hydrate Converter ============ */
+function HydrateConverter() {
+  const [anhydrous, setAnhydrous] = useState('CuSO4');
+  const [waters, setWaters] = useState('5');
+  const [mass, setMass] = useState('10');
+  const [direction, setDirection] = useState<'hydrated-from-anhy' | 'anhy-from-hydrated'>('hydrated-from-anhy');
+
+  const r = useMemo(() => {
+    const a = calcMolarMass(anhydrous);
+    const w = calcMolarMass('H2O');
+    if (!a || !w) return null;
+    const n = num(waters);
+    const mmHydrated = a.total + n * w.total;
+    const fracAnhy = a.total / mmHydrated;
+    const fracWater = (n * w.total) / mmHydrated;
+    const m = num(mass);
+    let outAnhy = 0, outHyd = 0, outWater = 0;
+    if (direction === 'hydrated-from-anhy') {
+      outAnhy = m;
+      outHyd = m * mmHydrated / a.total;
+      outWater = outHyd - outAnhy;
+    } else {
+      outHyd = m;
+      outAnhy = m * fracAnhy;
+      outWater = m * fracWater;
+    }
+    return { mmA: a.total, mmW: w.total, mmHydrated, fracAnhy, fracWater, outAnhy, outHyd, outWater };
+  }, [anhydrous, waters, mass, direction]);
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Beaker className="w-4 h-4 text-primary" /> Hydrate ↔ Anhydrous Converter</h3>
+      <p className="text-xs text-muted-foreground">Convert between hydrated salt (e.g. CuSO₄·5H₂O) and anhydrous mass. Specify number of water molecules.</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <TextInput label="Anhydrous Formula" value={anhydrous} onChange={setAnhydrous} placeholder="CuSO4" />
+        <NumInput label="Water Molecules (n)" value={waters} onChange={setWaters} unit="H₂O" />
+        <NumInput label="Mass Available" value={mass} onChange={setMass} unit="g" />
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Direction</label>
+          <select value={direction} onChange={e => setDirection(e.target.value as any)} className="w-full bg-input border border-border rounded-md px-2 py-2 text-xs">
+            <option value="hydrated-from-anhy">Have anhydrous → need hydrated</option>
+            <option value="anhy-from-hydrated">Have hydrated → need anhydrous</option>
+          </select>
+        </div>
+      </div>
+      {r && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <ResultBox label="MW Anhydrous" value={r.mmA.toFixed(3)} unit="g/mol" />
+            <ResultBox label="MW Hydrated" value={r.mmHydrated.toFixed(3)} unit="g/mol" />
+            <ResultBox label="% Anhydrous" value={(r.fracAnhy * 100).toFixed(2)} unit="%" />
+            <ResultBox label="% Water" value={(r.fracWater * 100).toFixed(2)} unit="%" />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <ResultBox label="Anhydrous mass" value={r.outAnhy.toFixed(4)} unit="g" accent />
+            <ResultBox label="Hydrated mass" value={r.outHyd.toFixed(4)} unit="g" accent />
+            <ResultBox label="Water released/needed" value={r.outWater.toFixed(4)} unit="g" />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ============ TOOL 12: Elemental Analysis ============ */
+interface ElEntry { id: string; sym: string; raw: string; }
+function ElementalAnalysis() {
+  const [sampleMass, setSampleMass] = useState('1.000');
+  const [unit, setUnit] = useState<'g' | 'mg' | 'percent' | 'mg_per_kg' | 'ppm'>('g');
+  const [items, setItems] = useState<ElEntry[]>([
+    { id: '1', sym: 'C', raw: '0.452' },
+    { id: '2', sym: 'H', raw: '0.067' },
+    { id: '3', sym: 'N', raw: '0.121' },
+    { id: '4', sym: 'S', raw: '0.024' },
+  ]);
+
+  const r = useMemo(() => {
+    const sm = num(sampleMass);
+    const rows = items.map(it => {
+      const v = num(it.raw);
+      let massG = 0;
+      if (unit === 'g') massG = v;
+      else if (unit === 'mg') massG = v / 1000;
+      else if (unit === 'percent') massG = sm * v / 100;
+      else if (unit === 'mg_per_kg' || unit === 'ppm') massG = sm * v / 1e6;
+      const pct = sm ? (massG / sm) * 100 : 0;
+      const ppm = pct * 10000;
+      const mgkg = ppm;
+      const el = elements.find(e => e.symbol === it.sym);
+      const moles = el ? massG / el.atomicMass : 0;
+      return { ...it, massG, pct, ppm, mgkg, moles, mw: el?.atomicMass || 0 };
+    });
+    const totalPct = rows.reduce((s, r) => s + r.pct, 0);
+    return { rows, totalPct, otherPct: Math.max(0, 100 - totalPct) };
+  }, [items, sampleMass, unit]);
+
+  const update = (id: string, k: keyof ElEntry, v: string) => setItems(p => p.map(i => i.id === id ? { ...i, [k]: v } : i));
+  const add = () => setItems(p => [...p, { id: Date.now().toString(), sym: '', raw: '0' }]);
+  const remove = (id: string) => setItems(p => p.filter(i => i.id !== id));
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Atom className="w-4 h-4 text-primary" /> Elemental Analysis (CHNS / Trace)</h3>
+      <p className="text-xs text-muted-foreground">Convert raw element readings (CHNS analyzer, AAS, ICP) into %, ppm, mg/kg and moles. Switch the input unit to match your instrument.</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <NumInput label="Sample Mass" value={sampleMass} onChange={setSampleMass} unit="g" />
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Reading Unit</label>
+          <select value={unit} onChange={e => setUnit(e.target.value as any)} className="w-full bg-input border border-border rounded-md px-2 py-2 text-xs">
+            <option value="g">grams of element</option>
+            <option value="mg">mg of element</option>
+            <option value="percent">% w/w</option>
+            <option value="mg_per_kg">mg/kg of sample</option>
+            <option value="ppm">ppm of sample</option>
+          </select>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {items.map(it => (
+          <div key={it.id} className="grid grid-cols-12 gap-2 items-end">
+            <div className="col-span-4"><TextInput label="Element" value={it.sym} onChange={v => update(it.id, 'sym', v)} placeholder="C" /></div>
+            <div className="col-span-6"><NumInput label="Reading" value={it.raw} onChange={v => update(it.id, 'raw', v)} unit={unit} /></div>
+            <button onClick={() => remove(it.id)} className="col-span-2 p-2 text-destructive hover:bg-destructive/10 rounded mb-0.5"><Trash2 className="w-4 h-4 mx-auto" /></button>
+          </div>
+        ))}
+        <button onClick={add} className="w-full py-2 rounded border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-xs"><Plus className="w-3 h-3" /> Add Element</button>
+      </div>
+      <div className="border border-border rounded-md overflow-x-auto">
+        <table className="w-full text-xs min-w-[500px]">
+          <thead className="bg-secondary/50">
+            <tr>
+              <th className="text-left p-2">Element</th>
+              <th className="text-right p-2">Mass (g)</th>
+              <th className="text-right p-2">%</th>
+              <th className="text-right p-2">mg/kg (ppm)</th>
+              <th className="text-right p-2">moles</th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.rows.map(row => (
+              <tr key={row.id} className="border-t border-border">
+                <td className="p-2 font-mono">{row.sym}</td>
+                <td className="p-2 text-right font-mono">{row.massG.toExponential(3)}</td>
+                <td className="p-2 text-right font-mono">{row.pct.toFixed(4)}</td>
+                <td className="p-2 text-right font-mono">{row.ppm.toFixed(2)}</td>
+                <td className="p-2 text-right font-mono">{row.moles.toExponential(3)}</td>
+              </tr>
+            ))}
+            <tr className="border-t border-border bg-secondary/30 font-semibold">
+              <td className="p-2">Total identified</td>
+              <td></td>
+              <td className="p-2 text-right font-mono">{r.totalPct.toFixed(3)}%</td>
+              <td colSpan={2} className="p-2 text-right text-muted-foreground">Balance / O / ash: {r.otherPct.toFixed(3)}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ============ TOOL 13: Buffer Inventory (pH 0–14) ============ */
+interface BufferRecipe {
+  pH: number;
+  name: string;
+  components: string;
+  recipe: string;
+  notes?: string;
+}
+const BUFFER_RECIPES: BufferRecipe[] = [
+  { pH: 1.0, name: 'HCl / KCl (Clark–Lubs)', components: 'KCl 0.2 M + HCl 0.2 M', recipe: '50 mL 0.2 M KCl + 67.0 mL 0.2 M HCl, dilute to 200 mL' },
+  { pH: 1.68, name: 'Potassium Tetraoxalate', components: 'KH3(C2O4)2·2H2O', recipe: 'Saturated solution at 25 °C (≈0.05 m)' },
+  { pH: 2.0, name: 'HCl / KCl', components: 'KCl 0.2 M + HCl 0.2 M', recipe: '50 mL 0.2 M KCl + 13.0 mL 0.2 M HCl → 200 mL' },
+  { pH: 3.0, name: 'Citrate', components: 'Citric acid + Na-citrate', recipe: '20.5 mL 0.1 M citric acid + 4.5 mL 0.1 M tri-Na citrate → 100 mL' },
+  { pH: 3.56, name: 'Potassium Hydrogen Tartrate', components: 'KHC4H4O6', recipe: 'Saturated solution at 25 °C' },
+  { pH: 4.0, name: 'Phthalate (NIST)', components: 'KHC8H4O4 0.05 m', recipe: '10.21 g KHP in 1 L CO₂-free water' },
+  { pH: 4.5, name: 'Acetate', components: 'Acetic acid + NaOAc', recipe: '14.8 mL 0.2 M AcOH + 5.2 mL 0.2 M NaOAc → 100 mL' },
+  { pH: 5.0, name: 'Acetate', components: 'Acetic acid + NaOAc', recipe: '14.8 mL 0.2 M AcOH + 35.2 mL 0.2 M NaOAc → 100 mL' },
+  { pH: 6.0, name: 'Phosphate', components: 'KH2PO4 + Na2HPO4', recipe: '87.7 mL 0.1 M KH2PO4 + 12.3 mL 0.1 M Na2HPO4' },
+  { pH: 6.86, name: 'Phosphate (NIST 1:1)', components: 'KH2PO4 + Na2HPO4', recipe: '3.39 g KH2PO4 + 3.53 g Na2HPO4 → 1 L' },
+  { pH: 7.0, name: 'Phosphate', components: 'KH2PO4 + Na2HPO4', recipe: '39.0 mL 0.1 M KH2PO4 + 61.0 mL 0.1 M Na2HPO4' },
+  { pH: 7.4, name: 'Phosphate (PBS)', components: 'NaCl + KCl + Na2HPO4 + KH2PO4', recipe: '8.0 g NaCl + 0.2 g KCl + 1.44 g Na2HPO4 + 0.24 g KH2PO4 → 1 L' },
+  { pH: 8.0, name: 'Tris-HCl', components: 'Tris + HCl', recipe: '50 mL 0.1 M Tris + 26.8 mL 0.1 M HCl → 100 mL' },
+  { pH: 9.0, name: 'Borate', components: 'Boric acid + Borax', recipe: '50 mL 0.1 M H3BO3/KCl + 4.6 mL 0.1 M NaOH → 100 mL' },
+  { pH: 9.18, name: 'Borax (NIST)', components: 'Na2B4O7·10H2O 0.01 m', recipe: '3.80 g Borax → 1 L' },
+  { pH: 10.0, name: 'Carbonate', components: 'NaHCO3 + Na2CO3', recipe: '50 mL 0.1 M NaHCO3 + 10.7 mL 0.1 M NaOH → 100 mL' },
+  { pH: 10.01, name: 'NIST Carbonate', components: 'NaHCO3 + Na2CO3 0.025 m each', recipe: '2.092 g NaHCO3 + 2.640 g Na2CO3 → 1 L' },
+  { pH: 11.0, name: 'Phosphate / NaOH', components: 'Na2HPO4 + NaOH', recipe: '50 mL 0.05 M Na2HPO4 + 4.1 mL 0.1 M NaOH → 100 mL' },
+  { pH: 12.0, name: 'KCl / NaOH', components: 'KCl 0.2 M + NaOH 0.2 M', recipe: '50 mL 0.2 M KCl + 6.0 mL 0.2 M NaOH → 200 mL' },
+  { pH: 12.45, name: 'Calcium Hydroxide', components: 'Ca(OH)2 saturated', recipe: 'Saturated Ca(OH)2 at 25 °C' },
+  { pH: 13.0, name: 'KCl / NaOH', components: 'KCl 0.2 M + NaOH 0.2 M', recipe: '25 mL 0.2 M KCl + 66.0 mL 0.2 M NaOH → 200 mL' },
+  { pH: 14.0, name: 'NaOH 1 M', components: 'NaOH', recipe: '40.0 g NaOH → 1 L (handle with care)' },
+];
+
+function BufferInventory() {
+  const [search, setSearch] = useState('');
+  const [target, setTarget] = useState('7.4');
+  const [volume, setVolume] = useState('500');
+
+  const filtered = BUFFER_RECIPES.filter(b =>
+    !search ||
+    b.name.toLowerCase().includes(search.toLowerCase()) ||
+    b.components.toLowerCase().includes(search.toLowerCase()) ||
+    b.pH.toString().includes(search)
+  );
+
+  const closest = useMemo(() => {
+    const t = num(target);
+    return [...BUFFER_RECIPES].sort((a, b) => Math.abs(a.pH - t) - Math.abs(b.pH - t)).slice(0, 3);
+  }, [target]);
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><FlaskConical className="w-4 h-4 text-primary" /> pH Buffer Inventory (0–14)</h3>
+      <p className="text-xs text-muted-foreground">Standard buffer recipes from NIST, Clark–Lubs and Sörensen tables. Enter your target pH to get the closest matches.</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <NumInput label="Target pH" value={target} onChange={setTarget} />
+        <NumInput label="Volume needed" value={volume} onChange={setVolume} unit="mL" />
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Search</label>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="phosphate, citrate, 7.4 …"
+            className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground" />
+        </div>
+      </div>
+
+      <div className="bg-primary/5 border border-primary/30 rounded-md p-3 space-y-2">
+        <div className="text-xs font-semibold text-primary">Closest matches for pH {target}</div>
+        {closest.map(b => (
+          <div key={b.pH + b.name} className="text-xs">
+            <span className="font-mono font-semibold text-primary">pH {b.pH.toFixed(2)}</span> — <span className="font-medium">{b.name}</span> · <span className="text-muted-foreground">{b.recipe} (scale × {(num(volume) / (b.recipe.includes('1 L') ? 1000 : b.recipe.match(/(\d+)\s*mL/) ? num(b.recipe.match(/(\d+)\s*mL/)![1]) : 100)).toFixed(2)})</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="border border-border rounded-md overflow-x-auto">
+        <table className="w-full text-xs min-w-[700px]">
+          <thead className="bg-secondary/50">
+            <tr>
+              <th className="text-left p-2 w-16">pH</th>
+              <th className="text-left p-2">Buffer System</th>
+              <th className="text-left p-2">Components</th>
+              <th className="text-left p-2">Recipe (per batch)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(b => (
+              <tr key={b.pH + b.name} className="border-t border-border hover:bg-secondary/20">
+                <td className="p-2 font-mono font-semibold text-primary">{b.pH.toFixed(2)}</td>
+                <td className="p-2">{b.name}</td>
+                <td className="p-2 font-mono text-muted-foreground">{b.components}</td>
+                <td className="p-2 text-muted-foreground">{b.recipe}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ============ TOOL 14: Fertilizer / NPK Solver ============ */
+interface FertRM {
+  id: string;
+  name: string;
+  N: string;
+  P2O5: string;
+  K2O: string;
+  cost: string;
+  density: string;
+  maxPct: string;
+  enabled: boolean;
+}
+function FertilizerSolver() {
+  const [tgtN, setTgtN] = useState('12');
+  const [tgtP, setTgtP] = useState('15');
+  const [tgtK, setTgtK] = useState('0');
+  const [batch, setBatch] = useState('1000');
+  const [phase, setPhase] = useState<'liquid' | 'solid'>('liquid');
+  const [maxSolids, setMaxSolids] = useState('50');
+  const [rms, setRms] = useState<FertRM[]>([
+    { id: '1', name: 'Phosphoric Acid (75%)', N: '0', P2O5: '54', K2O: '0', cost: '120', density: '1.579', maxPct: '80', enabled: true },
+    { id: '2', name: 'MAP', N: '12', P2O5: '61', K2O: '0', cost: '150', density: '1.0', maxPct: '100', enabled: true },
+    { id: '3', name: 'DAP', N: '18', P2O5: '46', K2O: '0', cost: '140', density: '1.0', maxPct: '100', enabled: true },
+    { id: '4', name: 'Urea', N: '46', P2O5: '0', K2O: '0', cost: '100', density: '1.0', maxPct: '100', enabled: true },
+    { id: '5', name: 'KCl (MOP)', N: '0', P2O5: '0', K2O: '60', cost: '90', density: '1.0', maxPct: '100', enabled: true },
+    { id: '6', name: 'K2SO4 (SOP)', N: '0', P2O5: '0', K2O: '50', cost: '160', density: '1.0', maxPct: '100', enabled: true },
+    { id: '7', name: 'Water', N: '0', P2O5: '0', K2O: '0', cost: '1', density: '1.0', maxPct: '100', enabled: true },
+  ]);
+
+  const update = (id: string, k: keyof FertRM, v: any) => setRms(p => p.map(r => r.id === id ? { ...r, [k]: v } : r));
+  const add = () => setRms(p => [...p, { id: Date.now().toString(), name: 'New RM', N: '0', P2O5: '0', K2O: '0', cost: '0', density: '1.0', maxPct: '100', enabled: true }]);
+  const remove = (id: string) => setRms(p => p.filter(r => r.id !== id));
+
+  // Linear-programming-ish heuristic: greedy by cost-per-nutrient; iteratively allocate to meet targets,
+  // then balance with water (fill).
+  const result = useMemo(() => {
+    const T = { N: num(tgtN), P2O5: num(tgtP), K2O: num(tgtK) };
+    const B = num(batch);
+    if (!B) return null;
+    const massNeeded = { N: T.N * B / 100, P2O5: T.P2O5 * B / 100, K2O: T.K2O * B / 100 };
+    const active = rms.filter(r => r.enabled).map(r => ({ ...r, used: 0 }));
+    const water = active.find(r => r.name.toLowerCase().includes('water'));
+    const sources = active.filter(r => r !== water);
+
+    const remaining = { ...massNeeded };
+    const warnings: string[] = [];
+
+    // Strategy: for each nutrient, pick cheapest pure source first, then partial sources.
+    const nutrients: (keyof typeof remaining)[] = ['P2O5', 'K2O', 'N']; // tackle hard ones first
+    for (const nutr of nutrients) {
+      if (remaining[nutr] <= 0) continue;
+      // sort candidates by cost / (% of nutr) ascending, skip those that contribute to already-overshooting nutrients
+      const cands = sources
+        .filter(s => num(s[nutr]) > 0)
+        .map(s => ({ s, costPerKg: num(s.cost) / (num(s[nutr]) / 100) }))
+        .sort((a, b) => a.costPerKg - b.costPerKg);
+      for (const { s } of cands) {
+        if (remaining[nutr] <= 1e-6) break;
+        const pct = num(s[nutr]) / 100;
+        const maxByPct = (num(s.maxPct) / 100) * B - s.used;
+        const needMass = remaining[nutr] / pct;
+        const add = Math.max(0, Math.min(needMass, maxByPct));
+        if (add <= 0) continue;
+        s.used += add;
+        // subtract contributions to all nutrients
+        remaining.N -= add * num(s.N) / 100;
+        remaining.P2O5 -= add * num(s.P2O5) / 100;
+        remaining.K2O -= add * num(s.K2O) / 100;
+      }
+    }
+
+    // Check feasibility
+    (['N', 'P2O5', 'K2O'] as const).forEach(n => {
+      if (remaining[n] > 0.01) warnings.push(`Could not meet ${n}: short by ${remaining[n].toFixed(2)} g`);
+    });
+
+    const usedMass = active.reduce((s, a) => s + a.used, 0);
+    const solidsMass = active.filter(a => a !== water).reduce((s, a) => s + a.used, 0);
+    let waterAdd = 0;
+    if (water) {
+      waterAdd = Math.max(0, B - usedMass);
+      water.used = waterAdd;
+    }
+    const finalMass = active.reduce((s, a) => s + a.used, 0);
+
+    const solidsPct = (solidsMass / (finalMass || 1)) * 100;
+    if (phase === 'liquid' && solidsPct > num(maxSolids)) {
+      warnings.push(`Solids ${solidsPct.toFixed(1)}% exceeds max solids loading ${maxSolids}%`);
+    }
+
+    const final = {
+      N: active.reduce((s, a) => s + a.used * num(a.N) / 100, 0) / finalMass * 100,
+      P2O5: active.reduce((s, a) => s + a.used * num(a.P2O5) / 100, 0) / finalMass * 100,
+      K2O: active.reduce((s, a) => s + a.used * num(a.K2O) / 100, 0) / finalMass * 100,
+    };
+    const cost = active.reduce((s, a) => s + a.used / 1000 * num(a.cost), 0);
+    const wAvg = active.reduce((s, a) => s + a.used * num(a.density), 0);
+    const density = wAvg / (finalMass || 1);
+
+    return { active, finalMass, solidsPct, waterAdd, final, cost, density, warnings, target: T };
+  }, [rms, tgtN, tgtP, tgtK, batch, phase, maxSolids]);
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Target className="w-4 h-4 text-primary" /> Fertilizer / NPK Formulation Solver</h3>
+      <p className="text-xs text-muted-foreground">
+        Enter target N–P₂O₅–K₂O grade. The solver greedily selects the cheapest combination of raw materials, balances with water, and reports density, solids loading, cost and warnings.
+      </p>
+
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+        <NumInput label="Target N" value={tgtN} onChange={setTgtN} unit="%" />
+        <NumInput label="Target P₂O₅" value={tgtP} onChange={setTgtP} unit="%" />
+        <NumInput label="Target K₂O" value={tgtK} onChange={setTgtK} unit="%" />
+        <NumInput label="Batch Size" value={batch} onChange={setBatch} unit="g" />
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Phase</label>
+          <select value={phase} onChange={e => setPhase(e.target.value as any)} className="w-full bg-input border border-border rounded-md px-2 py-2 text-xs">
+            <option value="liquid">Liquid</option>
+            <option value="solid">Solid blend</option>
+          </select>
+        </div>
+        <NumInput label="Max Solids" value={maxSolids} onChange={setMaxSolids} unit="%" />
+      </div>
+
+      <div className="border border-border rounded-md overflow-x-auto">
+        <table className="w-full text-xs min-w-[800px]">
+          <thead className="bg-secondary/50">
+            <tr>
+              <th className="p-2 w-8"></th>
+              <th className="text-left p-2">Raw Material</th>
+              <th className="text-right p-2">N %</th>
+              <th className="text-right p-2">P₂O₅ %</th>
+              <th className="text-right p-2">K₂O %</th>
+              <th className="text-right p-2">Cost /kg</th>
+              <th className="text-right p-2">Density</th>
+              <th className="text-right p-2">Max %</th>
+              <th className="text-right p-2 bg-primary/10">Use (g)</th>
+              <th className="p-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rms.map(r => {
+              const used = result?.active.find(a => a.id === r.id)?.used || 0;
+              return (
+                <tr key={r.id} className="border-t border-border">
+                  <td className="p-2 text-center"><input type="checkbox" checked={r.enabled} onChange={e => update(r.id, 'enabled', e.target.checked)} /></td>
+                  <td className="p-1"><input value={r.name} onChange={e => update(r.id, 'name', e.target.value)} className="w-32 bg-input border border-border rounded px-1.5 py-1 text-xs" /></td>
+                  <td className="p-1"><input type="number" value={r.N} onChange={e => update(r.id, 'N', e.target.value)} className="w-16 bg-input border border-border rounded px-1.5 py-1 text-xs text-right font-mono" /></td>
+                  <td className="p-1"><input type="number" value={r.P2O5} onChange={e => update(r.id, 'P2O5', e.target.value)} className="w-16 bg-input border border-border rounded px-1.5 py-1 text-xs text-right font-mono" /></td>
+                  <td className="p-1"><input type="number" value={r.K2O} onChange={e => update(r.id, 'K2O', e.target.value)} className="w-16 bg-input border border-border rounded px-1.5 py-1 text-xs text-right font-mono" /></td>
+                  <td className="p-1"><input type="number" value={r.cost} onChange={e => update(r.id, 'cost', e.target.value)} className="w-16 bg-input border border-border rounded px-1.5 py-1 text-xs text-right font-mono" /></td>
+                  <td className="p-1"><input type="number" value={r.density} onChange={e => update(r.id, 'density', e.target.value)} className="w-16 bg-input border border-border rounded px-1.5 py-1 text-xs text-right font-mono" /></td>
+                  <td className="p-1"><input type="number" value={r.maxPct} onChange={e => update(r.id, 'maxPct', e.target.value)} className="w-16 bg-input border border-border rounded px-1.5 py-1 text-xs text-right font-mono" /></td>
+                  <td className="p-2 text-right font-mono font-semibold text-primary bg-primary/5">{used.toFixed(2)}</td>
+                  <td className="p-2"><button onClick={() => remove(r.id)} className="text-destructive hover:bg-destructive/10 rounded p-1"><Trash2 className="w-3 h-3" /></button></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <button onClick={add} className="w-full py-2 rounded border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-xs">
+        <Plus className="w-3 h-3" /> Add Raw Material
+      </button>
+
+      {result && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+            <ResultBox label="Final N" value={result.final.N.toFixed(2)} unit="%" accent />
+            <ResultBox label="Final P₂O₅" value={result.final.P2O5.toFixed(2)} unit="%" accent />
+            <ResultBox label="Final K₂O" value={result.final.K2O.toFixed(2)} unit="%" accent />
+            <ResultBox label="Density" value={result.density.toFixed(3)} unit="g/mL" />
+            <ResultBox label="Solids" value={result.solidsPct.toFixed(1)} unit="%" />
+            <ResultBox label="Total Cost" value={result.cost.toFixed(2)} unit="/batch" accent />
+          </div>
+
+          <div className="bg-secondary/30 border border-border rounded-md p-3">
+            <div className="text-xs font-semibold mb-2 text-foreground">Step-by-step Preparation</div>
+            <ol className="text-xs space-y-1 list-decimal list-inside text-muted-foreground">
+              {result.waterAdd > 0 && <li>Charge mixing vessel with <span className="font-mono text-foreground">{result.waterAdd.toFixed(2)} g</span> water (about ½ of total).</li>}
+              {result.active.filter(a => a.used > 0 && !a.name.toLowerCase().includes('water')).map(a => (
+                <li key={a.id}>Add <span className="font-mono text-foreground">{a.used.toFixed(2)} g</span> of <span className="text-foreground">{a.name}</span> with stirring; ensure complete dissolution before next addition.</li>
+              ))}
+              <li>Adjust to final mass <span className="font-mono text-foreground">{result.finalMass.toFixed(2)} g</span>; verify pH and density.</li>
+            </ol>
+          </div>
+
+          {result.warnings.length > 0 && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 space-y-1">
+              <div className="text-xs font-semibold text-destructive">⚠ Warnings</div>
+              {result.warnings.map((w, i) => <div key={i} className="text-xs text-destructive">{w}</div>)}
+            </div>
+          )}
         </>
       )}
     </div>
