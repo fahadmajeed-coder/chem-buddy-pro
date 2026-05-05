@@ -116,7 +116,7 @@ const Index = () => {
     indicators: <IndicatorsInventory isAdmin={isAdmin} />,
     'cv-percent': <CVPercentCalculator isAdmin={isAdmin} />,
     'data-sync': <DataSyncManager isAdmin={isAdmin} />,
-    'feed-formulation': <FeedFormulation isAdmin={isAdmin} />,
+    'feed-formulation': <FeedFormulationTabs isAdmin={isAdmin} />,
     'calc-suite': <CalculationSuite />,
   };
 
