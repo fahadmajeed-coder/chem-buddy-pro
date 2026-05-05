@@ -13,7 +13,11 @@ type ToolId =
   | 'multistep'
   | 'empirical'
   | 'limiting-reagent'
-  | 'ph-buffer';
+  | 'ph-buffer'
+  | 'fertilizer-solver'
+  | 'buffer-inventory'
+  | 'elemental-analysis'
+  | 'hydrate';
 
 interface ToolDef {
   id: ToolId;
@@ -23,16 +27,20 @@ interface ToolDef {
 }
 
 const TOOLS: ToolDef[] = [
-  { id: 'percent-composition', name: '% Composition', icon: <Percent className="w-4 h-4" />, desc: 'Element % in any compound (e.g. K in K₂SO₄)' },
+  { id: 'fertilizer-solver', name: 'Fertilizer Solver', icon: <Target className="w-4 h-4" />, desc: 'NPK formulation solver: target N/P₂O₅/K₂O → optimal blend & cost' },
+  { id: 'percent-composition', name: '% Composition', icon: <Percent className="w-4 h-4" />, desc: 'Element % in any compound (supports ·5H₂O hydrates)' },
   { id: 'mixture-designer', name: 'Mixture Designer', icon: <Layers className="w-4 h-4" />, desc: 'Solve mass fractions for target element % from multiple salts' },
+  { id: 'hydrate', name: 'Hydrate / Anhydrous', icon: <Beaker className="w-4 h-4" />, desc: 'Convert between hydrated & anhydrous mass (e.g. CuSO₄·5H₂O ↔ CuSO₄)' },
   { id: 'concentration-correction', name: 'Conc. Correction', icon: <Target className="w-4 h-4" />, desc: 'Standardization error correction with stock adjustment' },
   { id: 'back-titration', name: 'Back-Titration', icon: <FlaskConical className="w-4 h-4" />, desc: 'Excess reagent + back-titrant analyte calculation' },
   { id: 'combustion', name: 'Combustion / LOI', icon: <Flame className="w-4 h-4" />, desc: 'Loss-on-ignition, ash, moisture, volatile matter' },
+  { id: 'elemental-analysis', name: 'Elemental Analysis', icon: <Atom className="w-4 h-4" />, desc: 'CHNS / ash → element % (mg/kg, ppm, %, g/100g)' },
   { id: 'gravimetric', name: 'Gravimetric', icon: <Beaker className="w-4 h-4" />, desc: 'Analyte from precipitate weight using gravimetric factor' },
   { id: 'multistep', name: 'Multi-Step Chain', icon: <Sigma className="w-4 h-4" />, desc: 'Chain calculations: prep → dilute → titrate → result' },
   { id: 'empirical', name: 'Empirical Formula', icon: <Atom className="w-4 h-4" />, desc: 'Empirical & molecular formula from % composition' },
   { id: 'limiting-reagent', name: 'Limiting Reagent', icon: <Calculator className="w-4 h-4" />, desc: 'Stoichiometry, theoretical yield, % yield' },
   { id: 'ph-buffer', name: 'pH / Buffer', icon: <FlaskConical className="w-4 h-4" />, desc: 'pH, pOH, Henderson-Hasselbalch buffer calc' },
+  { id: 'buffer-inventory', name: 'Buffer Inventory', icon: <FlaskConical className="w-4 h-4" />, desc: 'Standard pH 0–14 buffer recipes (citrate, phosphate, borate …)' },
 ];
 
 export function CalculationSuite() {
