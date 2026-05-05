@@ -3,8 +3,8 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { toast } from 'sonner';
 import { solveLP, type LPConstraint } from '@/lib/lpSolver';
 import {
-  Beaker, Calculator, Target, BarChart3, AlertTriangle, Save, Trash2, Plus,
-  Wand2, TrendingUp, Sigma, Layers, FileSpreadsheet, Upload, Download,
+  Calculator, Target, BarChart3, AlertTriangle, Trash2, Plus,
+  Wand2, TrendingUp, Sigma, FileSpreadsheet, Upload, Download,
   Sparkles, Activity, Database, RefreshCw,
 } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts';
