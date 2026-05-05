@@ -44,7 +44,7 @@ const TOOLS: ToolDef[] = [
 ];
 
 export function CalculationSuite() {
-  const [active, setActive] = useState<ToolId>('percent-composition');
+  const [active, setActive] = useState<ToolId>('fertilizer-solver');
 
   return (
     <div className="space-y-4">
