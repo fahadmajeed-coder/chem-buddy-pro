@@ -33,10 +33,16 @@ interface ToolDef {
 }
 
 const TOOLS: ToolDef[] = [
+  { id: 'ratio-proportion', name: 'Ratio & Batch', icon: <Sigma className="w-4 h-4" />, desc: 'N-variable ratio → scale to any total batch size (e.g. 90:7:3 → 5 g)' },
   { id: 'fertilizer-solver', name: 'Fertilizer Solver', icon: <Target className="w-4 h-4" />, desc: 'NPK formulation solver: target N/P₂O₅/K₂O → optimal blend & cost' },
   { id: 'percent-composition', name: '% Composition', icon: <Percent className="w-4 h-4" />, desc: 'Element % in any compound (supports ·5H₂O hydrates)' },
   { id: 'mixture-designer', name: 'Mixture Designer', icon: <Layers className="w-4 h-4" />, desc: 'Solve mass fractions for target element % from multiple salts' },
   { id: 'hydrate', name: 'Hydrate / Anhydrous', icon: <Beaker className="w-4 h-4" />, desc: 'Convert between hydrated & anhydrous mass (e.g. CuSO₄·5H₂O ↔ CuSO₄)' },
+  { id: 'serial-dilution', name: 'Serial Dilution', icon: <Layers className="w-4 h-4" />, desc: 'Multi-step serial / log dilution scheme (1:10, 1:2, custom)' },
+  { id: 'percent-solution', name: '% Solution (w/w, w/v, v/v)', icon: <Percent className="w-4 h-4" />, desc: 'Make any % solution; solute, solvent & density-aware' },
+  { id: 'ppm-converter', name: 'PPM / PPB / mg-L', icon: <Calculator className="w-4 h-4" />, desc: 'Convert between ppm, ppb, mg/L, µg/mL, mg/kg, %' },
+  { id: 'molarity-mass', name: 'Molarity ⇄ Mass', icon: <Calculator className="w-4 h-4" />, desc: 'Quick g ⇄ mol ⇄ Molarity for any formula (auto MW)' },
+  { id: 'reagent-scaleup', name: 'Reagent Scale-Up', icon: <Sigma className="w-4 h-4" />, desc: 'Scale a recipe up/down by factor or by one reference ingredient' },
   { id: 'concentration-correction', name: 'Conc. Correction', icon: <Target className="w-4 h-4" />, desc: 'Standardization error correction with stock adjustment' },
   { id: 'back-titration', name: 'Back-Titration', icon: <FlaskConical className="w-4 h-4" />, desc: 'Excess reagent + back-titrant analyte calculation' },
   { id: 'combustion', name: 'Combustion / LOI', icon: <Flame className="w-4 h-4" />, desc: 'Loss-on-ignition, ash, moisture, volatile matter' },
