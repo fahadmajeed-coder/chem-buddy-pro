@@ -721,64 +721,369 @@ function LimitingReagent() {
   );
 }
 
-/* ============ TOOL 10: pH / Buffer ============ */
+/* ============ TOOL 10: pH / Buffer Lab ============ */
+interface BufferSystem {
+  id: string;
+  name: string;
+  acid: { formula: string; mw: number; nFactor?: number };
+  base: { formula: string; mw: number; nFactor?: number };
+  pKa: number;
+  range: [number, number];
+}
+
+const BUFFER_SYSTEMS: BufferSystem[] = [
+  { id: 'phosphoric-1',  name: 'Phosphoric / Phosphate (pKa₁)',     acid:{formula:'H3PO4', mw:97.99},     base:{formula:'NaH2PO4', mw:119.98},  pKa:2.15,  range:[1.15,3.15] },
+  { id: 'glycine-1',     name: 'Glycine / Glycinium (pKa₁)',         acid:{formula:'Glycine·HCl', mw:111.53}, base:{formula:'Glycine', mw:75.07}, pKa:2.34, range:[1.34,3.34] },
+  { id: 'citrate-1',     name: 'Citric acid / Na-Citrate (pKa₁)',    acid:{formula:'C6H8O7·H2O', mw:210.14}, base:{formula:'Na3C6H5O7·2H2O', mw:294.10}, pKa:3.13, range:[2.13,4.13] },
+  { id: 'formate',       name: 'Formate (HCOOH / HCOONa)',           acid:{formula:'HCOOH', mw:46.03},     base:{formula:'HCOONa', mw:68.01},     pKa:3.75, range:[2.75,4.75] },
+  { id: 'acetate',       name: 'Acetate (AcOH / NaOAc)',             acid:{formula:'CH3COOH', mw:60.05},   base:{formula:'CH3COONa·3H2O', mw:136.08}, pKa:4.76, range:[3.76,5.76] },
+  { id: 'citrate-2',     name: 'Citrate (pKa₂)',                     acid:{formula:'NaH2C6H5O7', mw:214.10}, base:{formula:'Na2HC6H5O7', mw:236.08}, pKa:4.76, range:[3.76,5.76] },
+  { id: 'mes',           name: 'MES (Good buffer)',                  acid:{formula:'MES·H', mw:217.22},     base:{formula:'MES-Na', mw:239.20},     pKa:6.15, range:[5.15,7.15] },
+  { id: 'bicarbonate-1', name: 'Carbonic / Bicarbonate (pKa₁)',      acid:{formula:'H2CO3', mw:62.03},     base:{formula:'NaHCO3', mw:84.01},     pKa:6.35, range:[5.35,7.35] },
+  { id: 'citrate-3',     name: 'Citrate (pKa₃)',                     acid:{formula:'Na2HC6H5O7', mw:236.08}, base:{formula:'Na3C6H5O7·2H2O', mw:294.10}, pKa:6.40, range:[5.40,7.40] },
+  { id: 'mops',          name: 'MOPS (Good buffer)',                 acid:{formula:'MOPS·H', mw:209.26},   base:{formula:'MOPS-Na', mw:231.24},   pKa:7.20, range:[6.20,8.20] },
+  { id: 'phosphate-2',   name: 'Phosphate (pKa₂)  H₂PO₄⁻/HPO₄²⁻',   acid:{formula:'NaH2PO4', mw:119.98},  base:{formula:'Na2HPO4', mw:141.96},   pKa:7.21, range:[6.21,8.21] },
+  { id: 'hepes',         name: 'HEPES (Good buffer)',                acid:{formula:'HEPES·H', mw:238.30},  base:{formula:'HEPES-Na', mw:260.28},  pKa:7.55, range:[6.55,8.55] },
+  { id: 'tris',          name: 'Tris-HCl / Tris',                    acid:{formula:'Tris·HCl', mw:157.60}, base:{formula:'Tris', mw:121.14},      pKa:8.06, range:[7.06,9.06] },
+  { id: 'borate',        name: 'Borate (Boric / Borax)',             acid:{formula:'H3BO3', mw:61.83},     base:{formula:'Na2B4O7·10H2O', mw:381.37}, pKa:9.24, range:[8.24,10.24] },
+  { id: 'ammonia',       name: 'Ammonium / Ammonia',                 acid:{formula:'NH4Cl', mw:53.49},     base:{formula:'NH3', mw:17.03},        pKa:9.25, range:[8.25,10.25] },
+  { id: 'glycine-2',     name: 'Glycine / Glycinate (pKa₂)',         acid:{formula:'Glycine', mw:75.07},   base:{formula:'Na-Glycinate', mw:97.05}, pKa:9.60, range:[8.60,10.60] },
+  { id: 'carbonate',     name: 'Carbonate (pKa₂)  HCO₃⁻/CO₃²⁻',      acid:{formula:'NaHCO3', mw:84.01},    base:{formula:'Na2CO3', mw:105.99},    pKa:10.33, range:[9.33,11.33] },
+  { id: 'phosphate-3',   name: 'Phosphate (pKa₃) HPO₄²⁻/PO₄³⁻',     acid:{formula:'Na2HPO4', mw:141.96},  base:{formula:'Na3PO4', mw:163.94},    pKa:12.32, range:[11.32,13.32] },
+];
+
 function PHBuffer() {
-  const [mode, setMode] = useState<'ph' | 'buffer'>('ph');
-  const [hConc, setHConc] = useState('0.001');
-  const [pKa, setPKa] = useState('4.75');
+  const [mode, setMode] = useState<'designer' | 'reverse' | 'buffer' | 'mix' | 'ph'>('designer');
+
+  // --- pH / pOH ---
+  const [phMode, setPhMode] = useState<'h' | 'oh' | 'ph' | 'poh'>('h');
+  const [phInput, setPhInput] = useState('0.001');
+  const phRes = useMemo(() => {
+    const v = num(phInput); if (!v) return null;
+    let pH = 0;
+    if (phMode === 'h')   pH = -Math.log10(v);
+    if (phMode === 'oh')  pH = 14 - (-Math.log10(v));
+    if (phMode === 'ph')  pH = v;
+    if (phMode === 'poh') pH = 14 - v;
+    const pOH = 14 - pH;
+    return { pH, pOH, h: Math.pow(10,-pH), oh: Math.pow(10,-pOH) };
+  }, [phInput, phMode]);
+
+  // --- Henderson-Hasselbalch (manual) ---
+  const [pKa, setPKa] = useState('4.76');
   const [acid, setAcid] = useState('0.1');
   const [base, setBase] = useState('0.1');
-
-  const phRes = useMemo(() => {
-    const c = num(hConc);
-    if (!c || c <= 0) return null;
-    const pH = -Math.log10(c);
-    const pOH = 14 - pH;
-    const oh = Math.pow(10, -pOH);
-    return { pH, pOH, oh };
-  }, [hConc]);
-
   const bufRes = useMemo(() => {
     const a = num(acid), b = num(base), pk = num(pKa);
-    if (!a || !b) return null;
+    if (!a || !b || a<=0 || b<=0) return null;
     const pH = pk + Math.log10(b / a);
-    return { pH, pOH: 14 - pH };
+    const totalConc = a + b;
+    const beta = 2.303 * totalConc * ((a*b)/Math.pow(a+b,2));
+    return { pH, pOH: 14 - pH, ratio: b/a, beta };
   }, [acid, base, pKa]);
+
+  // --- Buffer Designer (pick system → grams/mL) ---
+  const [sysId, setSysId] = useState('phosphate-2');
+  const [targetPH, setTargetPH] = useState('7.40');
+  const [targetConc, setTargetConc] = useState('0.1');
+  const [concUnit, setConcUnit] = useState<'M'|'N'>('M');
+  const [bufVol, setBufVol] = useState('500');
+  const [acidPurity, setAcidPurity] = useState('100');
+  const [basePurity, setBasePurity] = useState('100');
+  const [acidDensity, setAcidDensity] = useState('');
+  const [baseDensity, setBaseDensity] = useState('');
+
+  const designer = useMemo(() => {
+    const sys = BUFFER_SYSTEMS.find(s=>s.id===sysId); if (!sys) return null;
+    const pH = num(targetPH), C = num(targetConc), V = num(bufVol)/1000;
+    if (!pH || !C || !V) return null;
+    const ratio = Math.pow(10, pH - sys.pKa);
+    const nA = sys.acid.nFactor || 1, nB = sys.base.nFactor || 1;
+    const C_M_acid = concUnit==='N' ? C / nA : C;
+    const C_M_base = concUnit==='N' ? C / nB : C;
+    const fracA = 1/(1+ratio);
+    const fracB = ratio/(1+ratio);
+    const molAcid = C_M_acid * V * fracA;
+    const molBase = C_M_base * V * fracB;
+    const pA = num(acidPurity)/100 || 1;
+    const pB = num(basePurity)/100 || 1;
+    const massAcid = (molAcid * sys.acid.mw) / pA;
+    const massBase = (molBase * sys.base.mw) / pB;
+    const dA = num(acidDensity), dB = num(baseDensity);
+    const volAcid = dA>0 ? massAcid/dA : null;
+    const volBase = dB>0 ? massBase/dB : null;
+    const inRange = pH >= sys.range[0] && pH <= sys.range[1];
+    const beta = 2.303 * (C_M_acid*fracA + C_M_base*fracB) * (fracA*fracB);
+    return { sys, ratio, fracA, fracB, molAcid, molBase, massAcid, massBase, volAcid, volBase, inRange, beta };
+  }, [sysId, targetPH, targetConc, concUnit, bufVol, acidPurity, basePurity, acidDensity, baseDensity]);
+
+  const bestSystems = useMemo(() => {
+    const pH = num(targetPH); if (!pH) return [];
+    return [...BUFFER_SYSTEMS].sort((a,b) => Math.abs(a.pKa-pH) - Math.abs(b.pKa-pH)).slice(0,4);
+  }, [targetPH]);
+
+  // --- Reverse: mass/vol of A + B → resulting pH, M, N ---
+  const [rSysId, setRSysId] = useState('phosphate-2');
+  const [rMassA, setRMassA] = useState('3.39');
+  const [rMassB, setRMassB] = useState('3.53');
+  const [rPurA, setRPurA] = useState('100');
+  const [rPurB, setRPurB] = useState('100');
+  const [rVol, setRVol]   = useState('1000');
+
+  const reverse = useMemo(() => {
+    const sys = BUFFER_SYSTEMS.find(s=>s.id===rSysId); if (!sys) return null;
+    const mA = num(rMassA), mB = num(rMassB), V = num(rVol)/1000;
+    if (!V || (mA<=0 && mB<=0)) return null;
+    const pA = num(rPurA)/100||1, pB = num(rPurB)/100||1;
+    const molA = (mA * pA) / sys.acid.mw;
+    const molB = (mB * pB) / sys.base.mw;
+    const cA = molA/V, cB = molB/V;
+    let pH: number;
+    if (molA>0 && molB>0)      pH = sys.pKa + Math.log10(molB/molA);
+    else if (molA>0)           pH = 0.5*(sys.pKa - Math.log10(cA));
+    else                       pH = 14 - 0.5*((14-sys.pKa) - Math.log10(cB));
+    const totalM = cA + cB;
+    const nA = sys.acid.nFactor||1, nB = sys.base.nFactor||1;
+    const totalN = cA*nA + cB*nB;
+    const denom = Math.pow((cA+cB)||1, 2);
+    const beta = 2.303 * totalM * ((cA*cB)/denom);
+    return { sys, molA, molB, cA, cB, pH, totalM, totalN, beta };
+  }, [rSysId, rMassA, rMassB, rPurA, rPurB, rVol]);
+
+  // --- Strong acid + Strong base mix ---
+  const [saConc, setSaConc] = useState('0.1');
+  const [saVol, setSaVol] = useState('25');
+  const [sbConc, setSbConc] = useState('0.1');
+  const [sbVol, setSbVol] = useState('20');
+  const mixRes = useMemo(() => {
+    const nA = num(saConc)*num(saVol)/1000;
+    const nB = num(sbConc)*num(sbVol)/1000;
+    const Vtot = (num(saVol)+num(sbVol))/1000;
+    if (!Vtot) return null;
+    const excess = nA - nB;
+    let pH = 7;
+    if (Math.abs(excess) < 1e-12) pH = 7;
+    else if (excess > 0) pH = -Math.log10(excess/Vtot);
+    else pH = 14 - (-Math.log10(-excess/Vtot));
+    return { nA, nB, excess, pH, Vtot };
+  }, [saConc, saVol, sbConc, sbVol]);
+
+  const tabBtn = (k: typeof mode, label: string) => (
+    <button onClick={()=>setMode(k)} className={`px-3 py-1.5 rounded text-xs font-medium ${mode===k?'bg-primary text-primary-foreground':'bg-secondary text-foreground hover:bg-secondary/80'}`}>{label}</button>
+  );
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><FlaskConical className="w-4 h-4 text-primary" /> pH / Buffer</h3>
-      <div className="flex gap-2">
-        <button onClick={() => setMode('ph')} className={`px-3 py-1.5 rounded text-xs ${mode === 'ph' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'}`}>Strong acid/base pH</button>
-        <button onClick={() => setMode('buffer')} className={`px-3 py-1.5 rounded text-xs ${mode === 'buffer' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'}`}>Buffer (H-H)</button>
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><FlaskConical className="w-4 h-4 text-primary" /> pH / Buffer Lab</h3>
+      <div className="flex flex-wrap gap-2">
+        {tabBtn('designer','① Buffer Designer (g / mL needed)')}
+        {tabBtn('reverse','② Reverse: have g of A & B → pH/M/N')}
+        {tabBtn('buffer','③ Henderson–Hasselbalch')}
+        {tabBtn('mix','④ Strong acid + base mix')}
+        {tabBtn('ph','⑤ pH / pOH / [H⁺] / [OH⁻]')}
       </div>
+
+      {mode === 'designer' && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Buffer System</label>
+              <select value={sysId} onChange={e=>setSysId(e.target.value)} className="w-full bg-input border border-border rounded-md px-2 py-2 text-xs">
+                {BUFFER_SYSTEMS.map(s => <option key={s.id} value={s.id}>{s.name} · pKa {s.pKa}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Concentration Unit</label>
+              <div className="flex rounded-md border border-border overflow-hidden">
+                <button onClick={()=>setConcUnit('M')} className={`flex-1 py-2 text-xs ${concUnit==='M'?'bg-primary text-primary-foreground':'bg-secondary'}`}>Molarity (M)</button>
+                <button onClick={()=>setConcUnit('N')} className={`flex-1 py-2 text-xs ${concUnit==='N'?'bg-primary text-primary-foreground':'bg-secondary'}`}>Normality (N)</button>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <NumInput label="Target pH" value={targetPH} onChange={setTargetPH} />
+            <NumInput label={`Target Conc (${concUnit})`} value={targetConc} onChange={setTargetConc} unit={concUnit} />
+            <NumInput label="Final Volume" value={bufVol} onChange={setBufVol} unit="mL" />
+            <NumInput label="Acid purity" value={acidPurity} onChange={setAcidPurity} unit="%" />
+            <NumInput label="Base purity" value={basePurity} onChange={setBasePurity} unit="%" />
+            <div />
+            <NumInput label="Acid density (liquid)" value={acidDensity} onChange={setAcidDensity} unit="g/mL" />
+            <NumInput label="Base density (liquid)" value={baseDensity} onChange={setBaseDensity} unit="g/mL" />
+          </div>
+
+          {designer && (
+            <>
+              <div className={`p-3 rounded-md border ${designer.inRange?'bg-primary/5 border-primary/30':'bg-destructive/10 border-destructive/30'}`}>
+                <div className="text-xs">
+                  <span className="font-semibold">{designer.sys.name}</span> · pKa {designer.sys.pKa} · useful range pH {designer.sys.range[0].toFixed(2)}–{designer.sys.range[1].toFixed(2)}
+                  {!designer.inRange && <span className="text-destructive font-semibold"> · ⚠ target pH outside ±1 of pKa (poor buffering)</span>}
+                </div>
+                <div className="text-[11px] text-muted-foreground font-mono mt-1">
+                  [A⁻]/[HA] = 10^(pH−pKa) = 10^({(num(targetPH)-designer.sys.pKa).toFixed(3)}) = {designer.ratio.toFixed(4)}
+                </div>
+              </div>
+
+              <div className="border border-border rounded-md overflow-x-auto">
+                <table className="w-full text-xs min-w-[640px]">
+                  <thead className="bg-secondary/50">
+                    <tr>
+                      <th className="text-left p-2">Component</th>
+                      <th className="text-left p-2">Formula</th>
+                      <th className="text-right p-2">MW</th>
+                      <th className="text-right p-2">Fraction</th>
+                      <th className="text-right p-2">Moles</th>
+                      <th className="text-right p-2">Mass (g)</th>
+                      <th className="text-right p-2">Volume (mL)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-border">
+                      <td className="p-2 font-semibold">Weak Acid (HA)</td>
+                      <td className="p-2 font-mono">{designer.sys.acid.formula}</td>
+                      <td className="p-2 text-right font-mono">{designer.sys.acid.mw.toFixed(2)}</td>
+                      <td className="p-2 text-right font-mono">{(designer.fracA*100).toFixed(2)}%</td>
+                      <td className="p-2 text-right font-mono">{designer.molAcid.toFixed(5)}</td>
+                      <td className="p-2 text-right font-mono text-primary font-bold">{designer.massAcid.toFixed(4)}</td>
+                      <td className="p-2 text-right font-mono">{designer.volAcid!==null ? designer.volAcid.toFixed(3) : '—'}</td>
+                    </tr>
+                    <tr className="border-t border-border">
+                      <td className="p-2 font-semibold">Conj. Base (A⁻)</td>
+                      <td className="p-2 font-mono">{designer.sys.base.formula}</td>
+                      <td className="p-2 text-right font-mono">{designer.sys.base.mw.toFixed(2)}</td>
+                      <td className="p-2 text-right font-mono">{(designer.fracB*100).toFixed(2)}%</td>
+                      <td className="p-2 text-right font-mono">{designer.molBase.toFixed(5)}</td>
+                      <td className="p-2 text-right font-mono text-primary font-bold">{designer.massBase.toFixed(4)}</td>
+                      <td className="p-2 text-right font-mono">{designer.volBase!==null ? designer.volBase.toFixed(3) : '—'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <ResultBox label="Target pH" value={num(targetPH).toFixed(3)} accent />
+                <ResultBox label="Total Conc" value={num(targetConc).toFixed(4)} unit={concUnit} />
+                <ResultBox label="Volume" value={num(bufVol).toFixed(1)} unit="mL" />
+                <ResultBox label="β (capacity)" value={designer.beta.toFixed(4)} unit="M/pH" />
+              </div>
+
+              <div className="bg-secondary/30 border border-border rounded-md p-2">
+                <div className="text-[11px] font-semibold text-muted-foreground mb-1">Top 4 buffer systems for pH {targetPH}</div>
+                <div className="flex flex-wrap gap-1">
+                  {bestSystems.map(s => (
+                    <button key={s.id} onClick={()=>setSysId(s.id)} className={`text-[10px] px-2 py-1 rounded border ${s.id===sysId?'border-primary bg-primary/10 text-primary':'border-border bg-card'}`}>
+                      {s.name.split(' ')[0]} · pKa {s.pKa} · Δ{Math.abs(s.pKa - num(targetPH)).toFixed(2)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">After mixing, verify pH with a calibrated meter and fine-tune with ~0.1 M HCl/NaOH. Adjust to final volume <strong>after</strong> pH correction.</p>
+            </>
+          )}
+        </div>
+      )}
+
+      {mode === 'reverse' && (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Buffer System</label>
+            <select value={rSysId} onChange={e=>setRSysId(e.target.value)} className="w-full bg-input border border-border rounded-md px-2 py-2 text-xs">
+              {BUFFER_SYSTEMS.map(s => <option key={s.id} value={s.id}>{s.name} · pKa {s.pKa}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <NumInput label="Mass of weak acid (A)" value={rMassA} onChange={setRMassA} unit="g" />
+            <NumInput label="Acid purity" value={rPurA} onChange={setRPurA} unit="%" />
+            <div />
+            <NumInput label="Mass of conj. base (B)" value={rMassB} onChange={setRMassB} unit="g" />
+            <NumInput label="Base purity" value={rPurB} onChange={setRPurB} unit="%" />
+            <NumInput label="Final volume" value={rVol} onChange={setRVol} unit="mL" />
+          </div>
+          {reverse && (
+            <>
+              <div className="border border-border rounded-md overflow-x-auto">
+                <table className="w-full text-xs min-w-[520px]">
+                  <thead className="bg-secondary/50"><tr>
+                    <th className="text-left p-2">Component</th><th className="text-right p-2">MW</th><th className="text-right p-2">Moles</th><th className="text-right p-2">[ ] (M)</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr className="border-t border-border"><td className="p-2 font-mono">{reverse.sys.acid.formula} (HA)</td><td className="p-2 text-right font-mono">{reverse.sys.acid.mw.toFixed(2)}</td><td className="p-2 text-right font-mono">{reverse.molA.toFixed(5)}</td><td className="p-2 text-right font-mono">{reverse.cA.toFixed(5)}</td></tr>
+                    <tr className="border-t border-border"><td className="p-2 font-mono">{reverse.sys.base.formula} (A⁻)</td><td className="p-2 text-right font-mono">{reverse.sys.base.mw.toFixed(2)}</td><td className="p-2 text-right font-mono">{reverse.molB.toFixed(5)}</td><td className="p-2 text-right font-mono">{reverse.cB.toFixed(5)}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <ResultBox label="Resulting pH" value={reverse.pH.toFixed(3)} accent />
+                <ResultBox label="Total Molarity" value={reverse.totalM.toFixed(4)} unit="M" accent />
+                <ResultBox label="Total Normality" value={reverse.totalN.toFixed(4)} unit="N" />
+                <ResultBox label="β capacity" value={reverse.beta.toFixed(4)} unit="M/pH" />
+              </div>
+              <p className="text-[10px] text-muted-foreground font-mono">pH = pKa + log([A⁻]/[HA]) = {reverse.sys.pKa} + log({reverse.cB.toFixed(4)}/{reverse.cA.toFixed(4)})</p>
+            </>
+          )}
+        </div>
+      )}
+
+      {mode === 'buffer' && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <NumInput label="pKa" value={pKa} onChange={setPKa} />
+            <NumInput label="[Acid] HA" value={acid} onChange={setAcid} unit="M" />
+            <NumInput label="[Conj. Base] A⁻" value={base} onChange={setBase} unit="M" />
+          </div>
+          {bufRes && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <ResultBox label="Buffer pH" value={bufRes.pH.toFixed(3)} accent />
+              <ResultBox label="Buffer pOH" value={bufRes.pOH.toFixed(3)} />
+              <ResultBox label="[A⁻]/[HA]" value={bufRes.ratio.toFixed(4)} />
+              <ResultBox label="β capacity" value={bufRes.beta.toFixed(4)} unit="M/pH" />
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground font-mono">pH = pKa + log([A⁻]/[HA]) · β = 2.303·C·([HA][A⁻]/([HA]+[A⁻])²)</p>
+        </div>
+      )}
+
+      {mode === 'mix' && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">Mix a strong monoprotic acid with a strong monoprotic base — get the resulting pH from excess H⁺ or OH⁻.</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <NumInput label="Acid Concentration" value={saConc} onChange={setSaConc} unit="M" />
+            <NumInput label="Acid Volume" value={saVol} onChange={setSaVol} unit="mL" />
+            <NumInput label="Base Concentration" value={sbConc} onChange={setSbConc} unit="M" />
+            <NumInput label="Base Volume" value={sbVol} onChange={setSbVol} unit="mL" />
+          </div>
+          {mixRes && (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <ResultBox label="mol Acid" value={mixRes.nA.toFixed(5)} unit="mol" />
+                <ResultBox label="mol Base" value={mixRes.nB.toFixed(5)} unit="mol" />
+                <ResultBox label="Excess" value={Math.abs(mixRes.excess).toExponential(3)} unit={mixRes.excess>=0?'mol H⁺':'mol OH⁻'} />
+                <ResultBox label="Final pH" value={mixRes.pH.toFixed(3)} accent />
+              </div>
+              <p className="text-[10px] text-muted-foreground font-mono">Final V = {(mixRes.Vtot*1000).toFixed(2)} mL · assumes complete neutralisation (no buffering)</p>
+            </>
+          )}
+        </div>
+      )}
+
       {mode === 'ph' && (
-        <>
-          <NumInput label="[H⁺]" value={hConc} onChange={setHConc} unit="M" />
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {(['h','oh','ph','poh'] as const).map(k => (
+              <button key={k} onClick={()=>setPhMode(k)} className={`px-2.5 py-1 rounded text-[11px] ${phMode===k?'bg-primary text-primary-foreground':'bg-secondary'}`}>
+                from {k === 'h' ? '[H⁺]' : k === 'oh' ? '[OH⁻]' : k === 'ph' ? 'pH' : 'pOH'}
+              </button>
+            ))}
+          </div>
+          <NumInput label={phMode==='h'?'[H⁺]':phMode==='oh'?'[OH⁻]':phMode==='ph'?'pH':'pOH'} value={phInput} onChange={setPhInput} unit={phMode==='h'||phMode==='oh'?'M':''} />
           {phRes && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <ResultBox label="pH" value={phRes.pH.toFixed(3)} accent />
               <ResultBox label="pOH" value={phRes.pOH.toFixed(3)} />
+              <ResultBox label="[H⁺]" value={phRes.h.toExponential(3)} unit="M" />
               <ResultBox label="[OH⁻]" value={phRes.oh.toExponential(3)} unit="M" />
             </div>
           )}
-        </>
-      )}
-      {mode === 'buffer' && (
-        <>
-          <div className="grid grid-cols-3 gap-3">
-            <NumInput label="pKa" value={pKa} onChange={setPKa} />
-            <NumInput label="[Acid]" value={acid} onChange={setAcid} unit="M" />
-            <NumInput label="[Conjugate Base]" value={base} onChange={setBase} unit="M" />
-          </div>
-          {bufRes && (
-            <div className="grid grid-cols-2 gap-2">
-              <ResultBox label="Buffer pH" value={bufRes.pH.toFixed(3)} accent />
-              <ResultBox label="Buffer pOH" value={bufRes.pOH.toFixed(3)} />
-            </div>
-          )}
-          <p className="text-[11px] text-muted-foreground">pH = pKa + log([A⁻]/[HA])</p>
-        </>
+        </div>
       )}
     </div>
   );
