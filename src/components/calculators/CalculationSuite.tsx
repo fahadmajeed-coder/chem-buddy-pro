@@ -1243,3 +1243,336 @@ function FertilizerSolver() {
     </div>
   );
 }
+
+/* ============ Ratio & Batch Preparation ============ */
+function RatioProportion() {
+  const [rows, setRows] = useState<{ name: string; ratio: string }[]>([
+    { name: 'Component A', ratio: '90' },
+    { name: 'Component B', ratio: '7' },
+    { name: 'Component C', ratio: '3' },
+  ]);
+  const [batch, setBatch] = useState('5');
+  const [unit, setUnit] = useState('g');
+
+  const sumRatio = rows.reduce((s, r) => s + num(r.ratio), 0);
+  const total = num(batch);
+
+  const update = (i: number, k: 'name' | 'ratio', v: string) => {
+    setRows(rs => rs.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
+  };
+  const add = () => setRows(rs => [...rs, { name: `Component ${String.fromCharCode(65 + rs.length)}`, ratio: '1' }]);
+  const remove = (i: number) => setRows(rs => rs.length > 1 ? rs.filter((_, idx) => idx !== i) : rs);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-semibold text-foreground mb-1">Ratio & Batch Preparation</h3>
+        <p className="text-xs text-muted-foreground">Enter any number of components with their ratio parts. Set the total batch size; each component's mass/volume is computed proportionally. Ratios need not sum to 100.</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <NumInput label="Total Batch Size" value={batch} onChange={setBatch} unit={unit} />
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Unit</label>
+          <select value={unit} onChange={e => setUnit(e.target.value)} className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none">
+            {['g', 'kg', 'mg', 'mL', 'L', 'µL', 'tonne', 'lb', 'oz', 'pcs'].map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+        <ResultBox label="Ratio Sum" value={sumRatio.toFixed(4)} accent />
+      </div>
+
+      <div className="space-y-2">
+        {rows.map((r, i) => {
+          const part = sumRatio > 0 ? (num(r.ratio) / sumRatio) * total : 0;
+          const pct = sumRatio > 0 ? (num(r.ratio) / sumRatio) * 100 : 0;
+          return (
+            <div key={i} className="grid grid-cols-12 gap-2 items-end p-2 rounded border border-border bg-secondary/20">
+              <div className="col-span-12 sm:col-span-4">
+                <TextInput label={`Component ${i + 1}`} value={r.name} onChange={v => update(i, 'name', v)} />
+              </div>
+              <div className="col-span-4 sm:col-span-2">
+                <NumInput label="Ratio" value={r.ratio} onChange={v => update(i, 'ratio', v)} />
+              </div>
+              <div className="col-span-4 sm:col-span-2">
+                <ResultBox label="%" value={pct.toFixed(3)} unit="%" />
+              </div>
+              <div className="col-span-3 sm:col-span-3">
+                <ResultBox label="Amount" value={part.toFixed(4)} unit={unit} accent />
+              </div>
+              <div className="col-span-1">
+                <button onClick={() => remove(i)} className="p-2 text-destructive hover:bg-destructive/10 rounded"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            </div>
+          );
+        })}
+        <button onClick={add} className="w-full py-2 rounded border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-xs">
+          <Plus className="w-3 h-3" /> Add Component
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============ Serial Dilution ============ */
+function SerialDilution() {
+  const [c0, setC0] = useState('1');
+  const [unit, setUnit] = useState('M');
+  const [factor, setFactor] = useState('10');
+  const [steps, setSteps] = useState('6');
+  const [vTransfer, setVTransfer] = useState('1');
+  const [vDiluent, setVDiluent] = useState('9');
+  const [vUnit, setVUnit] = useState('mL');
+
+  const f = num(factor);
+  const n = Math.max(1, Math.min(50, Math.floor(num(steps))));
+  const tubes = Array.from({ length: n }, (_, i) => ({
+    tube: i + 1,
+    conc: num(c0) / Math.pow(f, i + 1),
+  }));
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-foreground">Serial Dilution Scheme</h3>
+      <p className="text-xs text-muted-foreground">Each step transfers a fixed volume into a new tube containing diluent. Final concentration = C₀ / (factor)<sup>n</sup>.</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <NumInput label="Stock Conc. C₀" value={c0} onChange={setC0} unit={unit} />
+        <NumInput label="Dilution Factor" value={factor} onChange={setFactor} unit="×" />
+        <NumInput label="Number of Steps" value={steps} onChange={setSteps} />
+        <NumInput label="Transfer Vol" value={vTransfer} onChange={setVTransfer} unit={vUnit} />
+        <NumInput label="Diluent Vol" value={vDiluent} onChange={setVDiluent} unit={vUnit} />
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Conc. Unit</label>
+          <select value={unit} onChange={e => setUnit(e.target.value)} className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm">
+            {['M', 'mM', 'µM', 'nM', 'g/L', 'mg/mL', 'mg/L', 'ppm', 'ppb', '%'].map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Vol. Unit</label>
+          <select value={vUnit} onChange={e => setVUnit(e.target.value)} className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm">
+            {['µL', 'mL', 'L'].map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-secondary/50">
+            <tr><th className="px-2 py-1 text-left">Tube</th><th className="px-2 py-1 text-left">Transfer</th><th className="px-2 py-1 text-left">Diluent</th><th className="px-2 py-1 text-left">Conc.</th><th className="px-2 py-1 text-left">Dilution</th></tr>
+          </thead>
+          <tbody>
+            {tubes.map(t => (
+              <tr key={t.tube} className="border-b border-border">
+                <td className="px-2 py-1 font-mono">#{t.tube}</td>
+                <td className="px-2 py-1 font-mono">{vTransfer} {vUnit} from {t.tube === 1 ? 'stock' : `tube ${t.tube - 1}`}</td>
+                <td className="px-2 py-1 font-mono">{vDiluent} {vUnit}</td>
+                <td className="px-2 py-1 font-mono text-primary">{t.conc.toPrecision(4)} {unit}</td>
+                <td className="px-2 py-1 font-mono">1 : {Math.pow(f, t.tube).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ============ Percent Solution (w/w, w/v, v/v) ============ */
+function PercentSolution() {
+  const [mode, setMode] = useState<'w/v' | 'w/w' | 'v/v'>('w/v');
+  const [pct, setPct] = useState('10');
+  const [finalAmt, setFinalAmt] = useState('100');
+  const [density, setDensity] = useState('1.0');
+
+  const p = num(pct) / 100;
+  const total = num(finalAmt);
+  const d = num(density) || 1;
+
+  let solute = 0, solvent = 0, sUnit = 'g', vUnit = 'mL';
+  if (mode === 'w/v') { solute = p * total; solvent = total - solute / d; sUnit = 'g'; vUnit = 'mL'; }
+  else if (mode === 'w/w') { solute = p * total; solvent = total - solute; sUnit = 'g'; vUnit = 'g'; }
+  else { solute = p * total; solvent = total - solute; sUnit = 'mL'; vUnit = 'mL'; }
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-foreground">Percent Solution Maker</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Mode</label>
+          <select value={mode} onChange={e => setMode(e.target.value as any)} className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm">
+            <option value="w/v">% w/v (g per 100 mL)</option>
+            <option value="w/w">% w/w (g per 100 g)</option>
+            <option value="v/v">% v/v (mL per 100 mL)</option>
+          </select>
+        </div>
+        <NumInput label="Target %" value={pct} onChange={setPct} unit="%" />
+        <NumInput label="Final Amount" value={finalAmt} onChange={setFinalAmt} unit={mode === 'w/w' ? 'g' : 'mL'} />
+        {mode === 'w/v' && <NumInput label="Solute Density" value={density} onChange={setDensity} unit="g/mL" />}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <ResultBox label="Solute Needed" value={solute.toFixed(4)} unit={sUnit} accent />
+        <ResultBox label={mode === 'w/v' ? 'Solvent (approx)' : 'Solvent'} value={solvent.toFixed(4)} unit={vUnit} />
+      </div>
+      <p className="text-[11px] text-muted-foreground">w/v assumes final volume = total. For exact w/v, dissolve solute then top up to mark. w/w uses mass-mass. v/v uses volume-volume (assumes additive volumes).</p>
+    </div>
+  );
+}
+
+/* ============ PPM / PPB / mg-L Converter ============ */
+function PpmConverter() {
+  const [value, setValue] = useState('1000');
+  const [from, setFrom] = useState('ppm');
+  const [solnDensity, setSolnDensity] = useState('1.0');
+  const UNITS = ['ppm', 'ppb', 'mg/L', 'µg/mL', 'mg/kg', 'µg/g', 'g/L', '%', 'g/100g'];
+
+  const v = num(value);
+  const d = num(solnDensity) || 1;
+  // base in mg/kg (≈ ppm by mass)
+  const toMgPerKg = (val: number, u: string): number => {
+    switch (u) {
+      case 'ppm': case 'mg/kg': case 'µg/g': return val;
+      case 'ppb': return val / 1000;
+      case 'mg/L': case 'µg/mL': return val / d;
+      case 'g/L': return (val * 1000) / d;
+      case '%': case 'g/100g': return val * 10000;
+      default: return val;
+    }
+  };
+  const fromMgPerKg = (mgkg: number, u: string): number => {
+    switch (u) {
+      case 'ppm': case 'mg/kg': case 'µg/g': return mgkg;
+      case 'ppb': return mgkg * 1000;
+      case 'mg/L': case 'µg/mL': return mgkg * d;
+      case 'g/L': return (mgkg * d) / 1000;
+      case '%': case 'g/100g': return mgkg / 10000;
+      default: return mgkg;
+    }
+  };
+  const base = toMgPerKg(v, from);
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-foreground">Concentration Unit Converter</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <NumInput label="Value" value={value} onChange={setValue} />
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">From Unit</label>
+          <select value={from} onChange={e => setFrom(e.target.value)} className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm">
+            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+        <NumInput label="Solution Density" value={solnDensity} onChange={setSolnDensity} unit="g/mL" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {UNITS.map(u => (
+          <ResultBox key={u} label={u} value={fromMgPerKg(base, u).toPrecision(5)} accent={u === from} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ============ Reagent Scale-Up ============ */
+function ReagentScaleUp() {
+  const [rows, setRows] = useState<{ name: string; amount: string; unit: string }[]>([
+    { name: 'NaOH', amount: '4.0', unit: 'g' },
+    { name: 'Water', amount: '100', unit: 'mL' },
+  ]);
+  const [refIdx, setRefIdx] = useState(0);
+  const [targetAmt, setTargetAmt] = useState('250');
+
+  const factor = num(rows[refIdx]?.amount) > 0 ? num(targetAmt) / num(rows[refIdx].amount) : 0;
+
+  const update = (i: number, k: 'name' | 'amount' | 'unit', v: string) => {
+    setRows(rs => rs.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-foreground">Recipe / Reagent Scale-Up</h3>
+      <p className="text-xs text-muted-foreground">Enter the original recipe, choose a reference ingredient, and specify its new amount. Every other ingredient is scaled by the same factor.</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Reference Ingredient</label>
+          <select value={refIdx} onChange={e => setRefIdx(parseInt(e.target.value))} className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm">
+            {rows.map((r, i) => <option key={i} value={i}>{r.name || `#${i + 1}`}</option>)}
+          </select>
+        </div>
+        <NumInput label="New Amount of Reference" value={targetAmt} onChange={setTargetAmt} unit={rows[refIdx]?.unit || ''} />
+      </div>
+      <ResultBox label="Scale Factor" value={factor.toFixed(4)} unit="×" accent />
+      <div className="space-y-2">
+        {rows.map((r, i) => (
+          <div key={i} className="grid grid-cols-12 gap-2 items-end p-2 rounded border border-border bg-secondary/20">
+            <div className="col-span-12 sm:col-span-4"><TextInput label="Ingredient" value={r.name} onChange={v => update(i, 'name', v)} /></div>
+            <div className="col-span-4 sm:col-span-2"><NumInput label="Original" value={r.amount} onChange={v => update(i, 'amount', v)} /></div>
+            <div className="col-span-3 sm:col-span-2">
+              <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Unit</label>
+              <select value={r.unit} onChange={e => update(i, 'unit', e.target.value)} className="w-full bg-input border border-border rounded-md px-2 py-2 text-xs">
+                {['g', 'kg', 'mg', 'mL', 'L', 'µL', 'mol', 'mmol'].map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+            <div className="col-span-4 sm:col-span-3"><ResultBox label="Scaled" value={(num(r.amount) * factor).toFixed(4)} unit={r.unit} accent /></div>
+            <div className="col-span-1"><button onClick={() => setRows(rs => rs.length > 1 ? rs.filter((_, idx) => idx !== i) : rs)} className="p-2 text-destructive hover:bg-destructive/10 rounded"><Trash2 className="w-4 h-4" /></button></div>
+          </div>
+        ))}
+        <button onClick={() => setRows(rs => [...rs, { name: '', amount: '0', unit: 'g' }])} className="w-full py-2 rounded border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary flex items-center justify-center gap-2 text-xs">
+          <Plus className="w-3 h-3" /> Add Ingredient
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============ Molarity ⇄ Mass quick tool ============ */
+function MolarityMass() {
+  const [formula, setFormula] = useState('NaCl');
+  const [mass, setMass] = useState('5.844');
+  const [vol, setVol] = useState('100');
+  const [molarity, setMolarity] = useState('');
+  const [solveFor, setSolveFor] = useState<'mass' | 'molarity' | 'volume'>('molarity');
+
+  const mw = calcMolarMass(formula)?.total || 0;
+  const m = num(mass);
+  const v = num(vol) / 1000; // L
+  const M = num(molarity);
+
+  let out: { mass?: number; molarity?: number; vol?: number; mol?: number } = {};
+  if (mw > 0) {
+    if (solveFor === 'molarity') {
+      const mol = m / mw;
+      out = { mol, molarity: v > 0 ? mol / v : 0 };
+    } else if (solveFor === 'mass') {
+      const mol = M * v;
+      out = { mol, mass: mol * mw };
+    } else {
+      const mol = m / mw;
+      out = { mol, vol: M > 0 ? (mol / M) * 1000 : 0 };
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-foreground">Molarity ⇄ Mass ⇄ Volume</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <TextInput label="Formula" value={formula} onChange={setFormula} placeholder="NaCl" />
+        <ResultBox label="MW" value={mw.toFixed(4)} unit="g/mol" />
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Solve For</label>
+          <select value={solveFor} onChange={e => setSolveFor(e.target.value as any)} className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm">
+            <option value="molarity">Molarity</option>
+            <option value="mass">Mass needed</option>
+            <option value="volume">Volume</option>
+          </select>
+        </div>
+        {(solveFor !== 'mass') && <NumInput label="Mass" value={mass} onChange={setMass} unit="g" />}
+        {(solveFor !== 'volume') && <NumInput label="Volume" value={vol} onChange={setVol} unit="mL" />}
+        {(solveFor !== 'molarity') && <NumInput label="Molarity" value={molarity} onChange={setMolarity} unit="M" />}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {out.molarity !== undefined && <ResultBox label="Molarity" value={out.molarity.toPrecision(5)} unit="M" accent />}
+        {out.mass !== undefined && <ResultBox label="Mass" value={out.mass.toFixed(4)} unit="g" accent />}
+        {out.vol !== undefined && <ResultBox label="Volume" value={out.vol.toFixed(2)} unit="mL" accent />}
+        {out.mol !== undefined && <ResultBox label="Moles" value={out.mol.toPrecision(5)} unit="mol" />}
+      </div>
+    </div>
+  );
+}
