@@ -17,7 +17,13 @@ type ToolId =
   | 'fertilizer-solver'
   | 'buffer-inventory'
   | 'elemental-analysis'
-  | 'hydrate';
+  | 'hydrate'
+  | 'ratio-proportion'
+  | 'serial-dilution'
+  | 'percent-solution'
+  | 'ppm-converter'
+  | 'reagent-scaleup'
+  | 'molarity-mass';
 
 interface ToolDef {
   id: ToolId;
