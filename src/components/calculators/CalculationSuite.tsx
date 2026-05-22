@@ -95,6 +95,12 @@ export function CalculationSuite() {
         {active === 'buffer-inventory' && <BufferInventory />}
         {active === 'elemental-analysis' && <ElementalAnalysis />}
         {active === 'hydrate' && <HydrateConverter />}
+        {active === 'ratio-proportion' && <RatioProportion />}
+        {active === 'serial-dilution' && <SerialDilution />}
+        {active === 'percent-solution' && <PercentSolution />}
+        {active === 'ppm-converter' && <PpmConverter />}
+        {active === 'reagent-scaleup' && <ReagentScaleUp />}
+        {active === 'molarity-mass' && <MolarityMass />}
       </div>
     </div>
   );
