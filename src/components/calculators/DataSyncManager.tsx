@@ -64,7 +64,7 @@ function CloudSyncSection({ allKeys }: { allKeys: { key: string; label: string }
       }
       const res = await supabase.functions.invoke('sync-data', {
         method: 'POST',
-        body: { password: 'ChemAdmin2024', sections },
+        body: { password: ADMIN_PASSWORD, sections },
       });
       if (res.error) throw res.error;
       toast.success(`Uploaded ${Object.keys(sections).length} section(s) to cloud as defaults.`);
@@ -80,7 +80,7 @@ function CloudSyncSection({ allKeys }: { allKeys: { key: string; label: string }
     try {
       const res = await supabase.functions.invoke('sync-data', {
         method: 'POST',
-        body: { password: 'ChemAdmin2024', action: 'delete', keys: [sectionKey] },
+        body: { password: ADMIN_PASSWORD, action: 'delete', keys: [sectionKey] },
       });
       if (res.error) throw res.error;
       toast.success('Removed from cloud defaults');

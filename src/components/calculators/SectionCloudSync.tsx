@@ -56,7 +56,7 @@ export function SectionCloudSync({ sectionKey, label, isAdmin }: SectionCloudSyn
       sections[sectionKey] = JSON.parse(raw);
       const res = await supabase.functions.invoke('sync-data', {
         method: 'POST',
-        body: { password: 'ChemAdmin2024', sections },
+        body: { password: ADMIN_PASSWORD, sections },
       });
       if (res.error) throw res.error;
       toast.success(`${label} uploaded to cloud`);
@@ -72,7 +72,7 @@ export function SectionCloudSync({ sectionKey, label, isAdmin }: SectionCloudSyn
     try {
       const res = await supabase.functions.invoke('sync-data', {
         method: 'POST',
-        body: { password: 'ChemAdmin2024', action: 'delete', keys: [sectionKey] },
+        body: { password: ADMIN_PASSWORD, action: 'delete', keys: [sectionKey] },
       });
       if (res.error) throw res.error;
       toast.success(`${label} removed from cloud`);
@@ -102,7 +102,7 @@ export function SectionCloudSync({ sectionKey, label, isAdmin }: SectionCloudSyn
       sections[sectionKey] = parsed;
       const res = await supabase.functions.invoke('sync-data', {
         method: 'POST',
-        body: { password: 'ChemAdmin2024', sections },
+        body: { password: ADMIN_PASSWORD, sections },
       });
       if (res.error) throw res.error;
       toast.success(`${label} cloud data updated`);
