@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Download, Upload, Check, AlertTriangle, HardDrive, Smartphone, FileJson, X, Trash2, ChevronDown, ChevronRight, Cloud, CloudOff, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { ADMIN_PASSWORD } from '@/lib/adminAuth';
 
 // All localStorage keys that hold app data
 const DATA_KEYS = [

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Cloud, CloudUpload, Trash2, RefreshCw, Loader2, ChevronDown, ChevronRight, Edit2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { ADMIN_PASSWORD } from '@/lib/adminAuth';
 
 interface SectionCloudSyncProps {
   sectionKey: string;
