@@ -1,133 +1,35 @@
 import { searchPdfSources as searchPdfSourcesSync } from '@/lib/pdfSourceStore';
+import {
+  elements as periodicElements,
+  parseFormula as canonicalParseFormula,
+  calcMolarMass as canonicalCalcMolarMass,
+} from '@/lib/periodicTableData';
 
-// Periodic table data (atomic masses)
-export const elements: Record<string, { name: string; symbol: string; mass: number; number: number }> = {
-  H: { name: 'Hydrogen', symbol: 'H', mass: 1.008, number: 1 },
-  He: { name: 'Helium', symbol: 'He', mass: 4.003, number: 2 },
-  Li: { name: 'Lithium', symbol: 'Li', mass: 6.941, number: 3 },
-  Be: { name: 'Beryllium', symbol: 'Be', mass: 9.012, number: 4 },
-  B: { name: 'Boron', symbol: 'B', mass: 10.81, number: 5 },
-  C: { name: 'Carbon', symbol: 'C', mass: 12.011, number: 6 },
-  N: { name: 'Nitrogen', symbol: 'N', mass: 14.007, number: 7 },
-  O: { name: 'Oxygen', symbol: 'O', mass: 15.999, number: 8 },
-  F: { name: 'Fluorine', symbol: 'F', mass: 18.998, number: 9 },
-  Ne: { name: 'Neon', symbol: 'Ne', mass: 20.180, number: 10 },
-  Na: { name: 'Sodium', symbol: 'Na', mass: 22.990, number: 11 },
-  Mg: { name: 'Magnesium', symbol: 'Mg', mass: 24.305, number: 12 },
-  Al: { name: 'Aluminium', symbol: 'Al', mass: 26.982, number: 13 },
-  Si: { name: 'Silicon', symbol: 'Si', mass: 28.086, number: 14 },
-  P: { name: 'Phosphorus', symbol: 'P', mass: 30.974, number: 15 },
-  S: { name: 'Sulfur', symbol: 'S', mass: 32.065, number: 16 },
-  Cl: { name: 'Chlorine', symbol: 'Cl', mass: 35.453, number: 17 },
-  Ar: { name: 'Argon', symbol: 'Ar', mass: 39.948, number: 18 },
-  K: { name: 'Potassium', symbol: 'K', mass: 39.098, number: 19 },
-  Ca: { name: 'Calcium', symbol: 'Ca', mass: 40.078, number: 20 },
-  Sc: { name: 'Scandium', symbol: 'Sc', mass: 44.956, number: 21 },
-  Ti: { name: 'Titanium', symbol: 'Ti', mass: 47.867, number: 22 },
-  V: { name: 'Vanadium', symbol: 'V', mass: 50.942, number: 23 },
-  Cr: { name: 'Chromium', symbol: 'Cr', mass: 51.996, number: 24 },
-  Mn: { name: 'Manganese', symbol: 'Mn', mass: 54.938, number: 25 },
-  Fe: { name: 'Iron', symbol: 'Fe', mass: 55.845, number: 26 },
-  Co: { name: 'Cobalt', symbol: 'Co', mass: 58.933, number: 27 },
-  Ni: { name: 'Nickel', symbol: 'Ni', mass: 58.693, number: 28 },
-  Cu: { name: 'Copper', symbol: 'Cu', mass: 63.546, number: 29 },
-  Zn: { name: 'Zinc', symbol: 'Zn', mass: 65.38, number: 30 },
-  Ga: { name: 'Gallium', symbol: 'Ga', mass: 69.723, number: 31 },
-  Ge: { name: 'Germanium', symbol: 'Ge', mass: 72.630, number: 32 },
-  As: { name: 'Arsenic', symbol: 'As', mass: 74.922, number: 33 },
-  Se: { name: 'Selenium', symbol: 'Se', mass: 78.971, number: 34 },
-  Br: { name: 'Bromine', symbol: 'Br', mass: 79.904, number: 35 },
-  Kr: { name: 'Krypton', symbol: 'Kr', mass: 83.798, number: 36 },
-  Rb: { name: 'Rubidium', symbol: 'Rb', mass: 85.468, number: 37 },
-  Sr: { name: 'Strontium', symbol: 'Sr', mass: 87.62, number: 38 },
-  Y: { name: 'Yttrium', symbol: 'Y', mass: 88.906, number: 39 },
-  Zr: { name: 'Zirconium', symbol: 'Zr', mass: 91.224, number: 40 },
-  Mo: { name: 'Molybdenum', symbol: 'Mo', mass: 95.95, number: 42 },
-  Pd: { name: 'Palladium', symbol: 'Pd', mass: 106.42, number: 46 },
-  Ag: { name: 'Silver', symbol: 'Ag', mass: 107.868, number: 47 },
-  Cd: { name: 'Cadmium', symbol: 'Cd', mass: 112.414, number: 48 },
-  In: { name: 'Indium', symbol: 'In', mass: 114.818, number: 49 },
-  Sn: { name: 'Tin', symbol: 'Sn', mass: 118.710, number: 50 },
-  Sb: { name: 'Antimony', symbol: 'Sb', mass: 121.760, number: 51 },
-  Te: { name: 'Tellurium', symbol: 'Te', mass: 127.60, number: 52 },
-  I: { name: 'Iodine', symbol: 'I', mass: 126.904, number: 53 },
-  Xe: { name: 'Xenon', symbol: 'Xe', mass: 131.293, number: 54 },
-  Cs: { name: 'Cesium', symbol: 'Cs', mass: 132.905, number: 55 },
-  Ba: { name: 'Barium', symbol: 'Ba', mass: 137.327, number: 56 },
-  La: { name: 'Lanthanum', symbol: 'La', mass: 138.905, number: 57 },
-  Ce: { name: 'Cerium', symbol: 'Ce', mass: 140.116, number: 58 },
-  W: { name: 'Tungsten', symbol: 'W', mass: 183.84, number: 74 },
-  Pt: { name: 'Platinum', symbol: 'Pt', mass: 195.084, number: 78 },
-  Au: { name: 'Gold', symbol: 'Au', mass: 196.967, number: 79 },
-  Hg: { name: 'Mercury', symbol: 'Hg', mass: 200.592, number: 80 },
-  Tl: { name: 'Thallium', symbol: 'Tl', mass: 204.38, number: 81 },
-  Pb: { name: 'Lead', symbol: 'Pb', mass: 207.2, number: 82 },
-  Bi: { name: 'Bismuth', symbol: 'Bi', mass: 208.980, number: 83 },
-  U: { name: 'Uranium', symbol: 'U', mass: 238.029, number: 92 },
-};
+// Adapter: expose the canonical 118-element table as a Record keyed by symbol.
+// Single source of truth lives in periodicTableData.ts; this preserves the
+// `elements[symbol]` access pattern used elsewhere in this file.
+export const elements: Record<string, { name: string; symbol: string; mass: number; number: number }> =
+  Object.fromEntries(
+    periodicElements.map((e) => [
+      e.symbol,
+      { name: e.name, symbol: e.symbol, mass: e.atomicMass, number: e.atomicNumber },
+    ])
+  );
 
-// Parse chemical formula like "H2O", "NaCl", "Ca(OH)2", "H2SO4"
-export function parseFormula(formula: string): Record<string, number> {
-  const result: Record<string, number> = {};
-  const stack: Record<string, number>[] = [{}];
+// Re-export the canonical formula parser (handles hydrates, brackets, etc.).
+export const parseFormula = canonicalParseFormula;
 
-  let i = 0;
-  while (i < formula.length) {
-    if (formula[i] === '(') {
-      stack.push({});
-      i++;
-    } else if (formula[i] === ')') {
-      i++;
-      let numStr = '';
-      while (i < formula.length && /\d/.test(formula[i])) {
-        numStr += formula[i++];
-      }
-      const multiplier = numStr ? parseInt(numStr) : 1;
-      const top = stack.pop()!;
-      const current = stack[stack.length - 1];
-      for (const [el, count] of Object.entries(top)) {
-        current[el] = (current[el] || 0) + count * multiplier;
-      }
-    } else if (/[A-Z]/.test(formula[i])) {
-      let symbol = formula[i++];
-      while (i < formula.length && /[a-z]/.test(formula[i])) {
-        symbol += formula[i++];
-      }
-      let numStr = '';
-      while (i < formula.length && /\d/.test(formula[i])) {
-        numStr += formula[i++];
-      }
-      const count = numStr ? parseInt(numStr) : 1;
-      const current = stack[stack.length - 1];
-      current[symbol] = (current[symbol] || 0) + count;
-    } else {
-      i++;
-    }
-  }
-
-  Object.assign(result, stack[0]);
-  return result;
-}
-
-// Calculate molar mass from formula
-export function calculateMolarMass(formula: string): { mass: number; breakdown: { element: string; count: number; mass: number }[] } | null {
-  try {
-    const parsed = parseFormula(formula);
-    const breakdown: { element: string; count: number; mass: number }[] = [];
-    let total = 0;
-
-    for (const [symbol, count] of Object.entries(parsed)) {
-      const el = elements[symbol];
-      if (!el) return null;
-      const contribution = el.mass * count;
-      breakdown.push({ element: symbol, count, mass: contribution });
-      total += contribution;
-    }
-
-    return { mass: total, breakdown };
-  } catch {
-    return null;
-  }
+// Adapter to the canonical molar-mass function. Preserves the legacy
+// { mass, breakdown: [{ element, count, mass }] } shape used in this module.
+export function calculateMolarMass(
+  formula: string
+): { mass: number; breakdown: { element: string; count: number; mass: number }[] } | null {
+  const r = canonicalCalcMolarMass(formula);
+  if (!r) return null;
+  return {
+    mass: r.total,
+    breakdown: r.breakdown.map((b) => ({ element: b.symbol, count: b.count, mass: b.mass * b.count })),
+  };
 }
 
 // Common compounds database

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Download, Upload, Check, AlertTriangle, HardDrive, Smartphone, FileJson, X, Trash2, ChevronDown, ChevronRight, Cloud, CloudOff, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { ADMIN_PASSWORD } from '@/lib/adminAuth';
 
 // All localStorage keys that hold app data
 const DATA_KEYS = [
@@ -64,7 +65,7 @@ function CloudSyncSection({ allKeys }: { allKeys: { key: string; label: string }
       }
       const res = await supabase.functions.invoke('sync-data', {
         method: 'POST',
-        body: { password: 'ChemAdmin2024', sections },
+        body: { password: ADMIN_PASSWORD, sections },
       });
       if (res.error) throw res.error;
       toast.success(`Uploaded ${Object.keys(sections).length} section(s) to cloud as defaults.`);
@@ -80,7 +81,7 @@ function CloudSyncSection({ allKeys }: { allKeys: { key: string; label: string }
     try {
       const res = await supabase.functions.invoke('sync-data', {
         method: 'POST',
-        body: { password: 'ChemAdmin2024', action: 'delete', keys: [sectionKey] },
+        body: { password: ADMIN_PASSWORD, action: 'delete', keys: [sectionKey] },
       });
       if (res.error) throw res.error;
       toast.success('Removed from cloud defaults');

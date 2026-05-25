@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Cloud, CloudUpload, Trash2, RefreshCw, Loader2, ChevronDown, ChevronRight, Edit2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { ADMIN_PASSWORD } from '@/lib/adminAuth';
 
 interface SectionCloudSyncProps {
   sectionKey: string;
@@ -56,7 +57,7 @@ export function SectionCloudSync({ sectionKey, label, isAdmin }: SectionCloudSyn
       sections[sectionKey] = JSON.parse(raw);
       const res = await supabase.functions.invoke('sync-data', {
         method: 'POST',
-        body: { password: 'ChemAdmin2024', sections },
+        body: { password: ADMIN_PASSWORD, sections },
       });
       if (res.error) throw res.error;
       toast.success(`${label} uploaded to cloud`);
@@ -72,7 +73,7 @@ export function SectionCloudSync({ sectionKey, label, isAdmin }: SectionCloudSyn
     try {
       const res = await supabase.functions.invoke('sync-data', {
         method: 'POST',
-        body: { password: 'ChemAdmin2024', action: 'delete', keys: [sectionKey] },
+        body: { password: ADMIN_PASSWORD, action: 'delete', keys: [sectionKey] },
       });
       if (res.error) throw res.error;
       toast.success(`${label} removed from cloud`);
@@ -102,7 +103,7 @@ export function SectionCloudSync({ sectionKey, label, isAdmin }: SectionCloudSyn
       sections[sectionKey] = parsed;
       const res = await supabase.functions.invoke('sync-data', {
         method: 'POST',
-        body: { password: 'ChemAdmin2024', sections },
+        body: { password: ADMIN_PASSWORD, sections },
       });
       if (res.error) throw res.error;
       toast.success(`${label} cloud data updated`);

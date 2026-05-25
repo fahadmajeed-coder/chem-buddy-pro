@@ -1,6 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
+import { ADMIN_PASSWORD } from '@/lib/adminAuth';
 
-const ADMIN_PASSWORD = 'ChemAdmin2024';
 const ADMIN_KEY = 'chemanalyst-admin-mode';
 
 export function useAdminMode() {

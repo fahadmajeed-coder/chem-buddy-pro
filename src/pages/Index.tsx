@@ -1,33 +1,45 @@
-import { useState } from 'react';
-import { Sun, Moon, Shield, LogOut, Wifi, WifiOff, Cloud, CloudOff } from 'lucide-react';
+import { useState, lazy, Suspense, useEffect, useMemo } from 'react';
+import { Sun, Moon, Shield, LogOut, Wifi, WifiOff, Cloud, CloudOff, Command } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAdminMode } from '@/hooks/useAdminMode';
 import { AppSidebar } from '@/components/layout/AppSidebar';
-import { MolarityCalculator } from '@/components/calculators/MolarityCalculator';
-import { NormalityCalculator } from '@/components/calculators/NormalityCalculator';
-import { FormalityCalculator } from '@/components/calculators/FormalityCalculator';
-import { ConversionCalculator } from '@/components/calculators/ConversionCalculator';
-import { SolutionPrepCalculator } from '@/components/calculators/SolutionPrepCalculator';
-import { DilutionCalculator } from '@/components/calculators/DilutionCalculator';
-import { AnalyticalTestSection } from '@/components/calculators/AnalyticalTestSection';
-import { ReportSection } from '@/components/calculators/ReportSection';
-import { StandardsSection } from '@/components/calculators/StandardsSection';
-import { CustomCalculatorSection } from '@/components/calculators/CustomCalculatorSection';
 import { AddSectionDialog } from '@/components/AddSectionDialog';
-import { ChemistryAssistant } from '@/components/calculators/ChemistryAssistant';
-import { InventoryManager } from '@/components/calculators/InventoryManager';
-import { PeriodicTable } from '@/components/calculators/PeriodicTable';
-import { FormulaBuilder } from '@/components/calculators/FormulaBuilder';
-import { CalibrationCurveSection } from '@/components/calculators/CalibrationCurveSection';
-import { StandardsInventory } from '@/components/calculators/StandardsInventory';
-import { SOPSection } from '@/components/calculators/SOPSection';
-import { IndicatorsInventory } from '@/components/calculators/IndicatorsInventory';
-import { CVPercentCalculator } from '@/components/calculators/CVPercentCalculator';
-import { DataSyncManager } from '@/components/calculators/DataSyncManager';
-import { FeedFormulationTabs } from '@/components/calculators/FeedFormulationTabs';
-import { CalculationSuite } from '@/components/calculators/CalculationSuite';
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
+import { CommandPalette, type PaletteCommand } from '@/components/CommandPalette';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+
+// Lazy-load every calculator section so the initial bundle stays small
+// and the PWA installs fast. Each chunk loads on first navigation.
+const MolarityCalculator = lazy(() => import('@/components/calculators/MolarityCalculator').then(m => ({ default: m.MolarityCalculator })));
+const NormalityCalculator = lazy(() => import('@/components/calculators/NormalityCalculator').then(m => ({ default: m.NormalityCalculator })));
+const FormalityCalculator = lazy(() => import('@/components/calculators/FormalityCalculator').then(m => ({ default: m.FormalityCalculator })));
+const ConversionCalculator = lazy(() => import('@/components/calculators/ConversionCalculator').then(m => ({ default: m.ConversionCalculator })));
+const SolutionPrepCalculator = lazy(() => import('@/components/calculators/SolutionPrepCalculator').then(m => ({ default: m.SolutionPrepCalculator })));
+const DilutionCalculator = lazy(() => import('@/components/calculators/DilutionCalculator').then(m => ({ default: m.DilutionCalculator })));
+const AnalyticalTestSection = lazy(() => import('@/components/calculators/AnalyticalTestSection').then(m => ({ default: m.AnalyticalTestSection })));
+const ReportSection = lazy(() => import('@/components/calculators/ReportSection').then(m => ({ default: m.ReportSection })));
+const StandardsSection = lazy(() => import('@/components/calculators/StandardsSection').then(m => ({ default: m.StandardsSection })));
+const CustomCalculatorSection = lazy(() => import('@/components/calculators/CustomCalculatorSection').then(m => ({ default: m.CustomCalculatorSection })));
+const ChemistryAssistant = lazy(() => import('@/components/calculators/ChemistryAssistant').then(m => ({ default: m.ChemistryAssistant })));
+const InventoryManager = lazy(() => import('@/components/calculators/InventoryManager').then(m => ({ default: m.InventoryManager })));
+const PeriodicTable = lazy(() => import('@/components/calculators/PeriodicTable').then(m => ({ default: m.PeriodicTable })));
+const FormulaBuilder = lazy(() => import('@/components/calculators/FormulaBuilder').then(m => ({ default: m.FormulaBuilder })));
+const CalibrationCurveSection = lazy(() => import('@/components/calculators/CalibrationCurveSection').then(m => ({ default: m.CalibrationCurveSection })));
+const StandardsInventory = lazy(() => import('@/components/calculators/StandardsInventory').then(m => ({ default: m.StandardsInventory })));
+const SOPSection = lazy(() => import('@/components/calculators/SOPSection').then(m => ({ default: m.SOPSection })));
+const IndicatorsInventory = lazy(() => import('@/components/calculators/IndicatorsInventory').then(m => ({ default: m.IndicatorsInventory })));
+const CVPercentCalculator = lazy(() => import('@/components/calculators/CVPercentCalculator').then(m => ({ default: m.CVPercentCalculator })));
+const DataSyncManager = lazy(() => import('@/components/calculators/DataSyncManager').then(m => ({ default: m.DataSyncManager })));
+const FeedFormulationTabs = lazy(() => import('@/components/calculators/FeedFormulationTabs').then(m => ({ default: m.FeedFormulationTabs })));
+const CalculationSuite = lazy(() => import('@/components/calculators/CalculationSuite').then(m => ({ default: m.CalculationSuite })));
+
+const SectionFallback = () => (
+  <div className="flex items-center justify-center py-16 text-xs text-muted-foreground">
+    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+    Loading…
+  </div>
+);
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('solution');
@@ -38,9 +50,34 @@ const Index = () => {
   const [adminPassword, setAdminPassword] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [cloudMode, setCloudMode] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
   const { isAdmin, login, logout } = useAdminMode();
+
+  // Online/offline indicator
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+
+  // Global Ctrl/Cmd-K to open command palette
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const handleUseInCalculator = (target: 'molarity' | 'normality' | 'formality' | 'solution', mw: number, _name: string) => {
     setElementMw(mw);
@@ -61,7 +98,6 @@ const Index = () => {
     }
   };
 
-  // Regular users cannot access AI Assistant
   const handleSectionChange = (id: string) => {
     if (id === 'assistant' && !isAdmin) {
       toast.error('AI Assistant is only available in Admin mode');
@@ -119,17 +155,36 @@ const Index = () => {
     'calc-suite': <CalculationSuite />,
   };
 
-  const renderSections = () => {
-    const allSections = [
-      ...Object.entries(sections),
-      ...customSections.map(s => [s.id, <CustomCalculatorSection key={s.id} name={s.name} />] as const),
+  // Only mount the active section's component — lazy chunks load on demand
+  // and inactive sections never run, cutting memory and CPU.
+  const activeNode = sections[activeSection] ?? (
+    customSections.find(s => s.id === activeSection)
+      ? <CustomCalculatorSection name={customSections.find(s => s.id === activeSection)!.name} />
+      : null
+  );
+
+  // Build command palette entries from the section titles.
+  const paletteCommands: PaletteCommand[] = useMemo(() => {
+    const base: PaletteCommand[] = Object.entries(sectionTitles).map(([id, label]) => ({
+      id,
+      label,
+      hint: 'Section',
+      action: () => handleSectionChange(id),
+    }));
+    const custom = customSections.map(s => ({
+      id: s.id,
+      label: s.name,
+      hint: 'Custom section',
+      action: () => handleSectionChange(s.id),
+    }));
+    const actions: PaletteCommand[] = [
+      { id: 'toggle-theme', label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', hint: 'Action', action: toggleTheme },
+      { id: 'admin', label: isAdmin ? 'Logout admin' : 'Login as admin', hint: 'Action', action: () => isAdmin ? logout() : setShowAdminLogin(true) },
+      { id: 'add-section', label: 'Add custom section', hint: 'Action', action: () => setShowAddDialog(true) },
     ];
-    return allSections.map(([id, component]) => (
-      <div key={id} style={{ display: activeSection === id ? 'block' : 'none' }}>
-        {component}
-      </div>
-    ));
-  };
+    return [...base, ...custom, ...actions];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customSections, theme, isAdmin]);
 
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-background">
@@ -142,7 +197,6 @@ const Index = () => {
       />
 
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Top bar */}
         <header className={`flex items-center justify-between border-b border-border bg-card/50 shrink-0 ${
           isMobile ? 'px-14 py-2' : 'px-6 py-3'
         }`}>
@@ -153,7 +207,14 @@ const Index = () => {
             {!isMobile && <p className="text-xs text-muted-foreground">Analytical Chemistry Toolkit</p>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {/* Admin mode toggle */}
+            <button
+              onClick={() => setPaletteOpen(true)}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              title="Command palette (Ctrl/Cmd-K)"
+            >
+              <Command className="w-3.5 h-3.5" />
+              {!isMobile && <kbd className="text-[10px] font-mono">⌘K</kbd>}
+            </button>
             {isAdmin ? (
               <button
                 onClick={logout}
@@ -199,12 +260,13 @@ const Index = () => {
           </div>
         </header>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
           <div className={`mx-auto ${
             activeSection === 'periodic-table' ? 'max-w-6xl' : 'max-w-4xl'
           } ${isMobile ? 'p-3' : 'p-6'}`}>
-            {renderSections()}
+            <SectionErrorBoundary sectionName={sectionTitles[activeSection]}>
+              <Suspense fallback={<SectionFallback />}>{activeNode}</Suspense>
+            </SectionErrorBoundary>
           </div>
         </div>
       </main>
@@ -215,7 +277,12 @@ const Index = () => {
         onAdd={addCustomSection}
       />
 
-      {/* Admin Login Dialog */}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        commands={paletteCommands}
+      />
+
       {showAdminLogin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setShowAdminLogin(false)}>
           <div className="bg-card border border-border rounded-lg p-6 w-80 shadow-xl" onClick={e => e.stopPropagation()}>
