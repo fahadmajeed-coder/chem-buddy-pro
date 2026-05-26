@@ -44,6 +44,37 @@ const FUNCS: Record<string, (...a: number[]) => number> = {
   dilution: (c1, v1, v2) => (c1 * v1) / v2,
   pH: (h) => -Math.log10(h),
   pOH: (oh) => -Math.log10(oh),
+  // Statistics / extra helpers
+  range: (...a) => a.length ? Math.max(...a) - Math.min(...a) : NaN,
+  variance: (...a) => {
+    if (a.length < 2) return NaN;
+    const m = a.reduce((s, v) => s + v, 0) / a.length;
+    return a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1);
+  },
+  popStdDev: (...a) => {
+    if (!a.length) return NaN;
+    const m = a.reduce((s, v) => s + v, 0) / a.length;
+    return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length);
+  },
+  cv: (...a) => {
+    if (a.length < 2) return NaN;
+    const m = a.reduce((s, v) => s + v, 0) / a.length;
+    const sd = Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1));
+    return (sd / m) * 100;
+  },
+  stdError: (...a) => {
+    if (a.length < 2) return NaN;
+    const m = a.reduce((s, v) => s + v, 0) / a.length;
+    const sd = Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1));
+    return sd / Math.sqrt(a.length);
+  },
+  sumSq: (...a) => a.reduce((s, v) => s + v * v, 0),
+  rss: (...a) => a.reduce((s, v) => s + v * v, 0),
+  roundTo: (v, p) => {
+    const f = Math.pow(10, p);
+    return Math.round(v * f) / f;
+  },
+  clamp: (v, lo, hi) => Math.min(Math.max(v, lo), hi),
 };
 
 const CONSTS: Record<string, number> = {
