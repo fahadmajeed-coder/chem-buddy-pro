@@ -28,6 +28,15 @@ const FUNCS: Record<string, (...a: number[]) => number> = {
   sum: (...a) => a.reduce((s, v) => s + v, 0),
   average: (...a) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN,
   mean: (...a) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN,
+  count: (...a) => a.length,
+  median: (...a) => {
+    if (!a.length) return NaN;
+    const s = [...a].sort((x, y) => x - y);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  },
+  geoMean: (...a) => a.length ? Math.pow(a.reduce((p, v) => p * v, 1), 1 / a.length) : NaN,
+  harmMean: (...a) => a.length ? a.length / a.reduce((s, v) => s + 1 / v, 0) : NaN,
   stdDev: (...a) => {
     if (a.length < 2) return NaN;
     const m = a.reduce((s, v) => s + v, 0) / a.length;
