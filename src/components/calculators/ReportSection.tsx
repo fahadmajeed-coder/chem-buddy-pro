@@ -202,15 +202,7 @@ function toJavaScript(expr: string): string {
   js = js.replace(/\bsin\(/g, 'Math.sin(');
   js = js.replace(/\bcos\(/g, 'Math.cos(');
   js = js.replace(/\btan\(/g, 'Math.tan(');
-  const arrayFns: Record<string, string> = {
-    'sum': '((...a)=>a.reduce((s,v)=>s+v,0))',
-    'average': '((...a)=>a.reduce((s,v)=>s+v,0)/a.length)',
-    'stdDev': '((...a)=>{const m=a.reduce((s,v)=>s+v,0)/a.length;return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1))})',
-  };
-  for (const [fn, impl] of Object.entries(arrayFns)) {
-    const re = new RegExp(`\\b${fn}\\(`, 'g');
-    js = js.replace(re, `${impl}(`);
-  }
+  // sum/average/stdDev are provided natively by safeEval — no rewriting needed
   return js;
 }
 
