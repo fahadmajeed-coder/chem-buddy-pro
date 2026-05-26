@@ -186,7 +186,9 @@ const Index = () => {
       action: () => handleSectionChange(s.id),
     }));
     const actions: PaletteCommand[] = [
-      { id: 'toggle-theme', label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', hint: 'Action', action: toggleTheme },
+      { id: 'history', label: 'Open calculation history', hint: 'Ctrl/⌘+H', action: () => setHistoryOpen(true) },
+      { id: 'shortcuts', label: 'Show keyboard shortcuts', hint: 'Ctrl/⌘+/', action: () => setShortcutsOpen(true) },
+      { id: 'toggle-theme', label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', hint: 'Ctrl/⌘+L', action: toggleTheme },
       { id: 'admin', label: isAdmin ? 'Logout admin' : 'Login as admin', hint: 'Action', action: () => isAdmin ? logout() : setShowAdminLogin(true) },
       { id: 'add-section', label: 'Add custom section', hint: 'Action', action: () => setShowAddDialog(true) },
     ];
@@ -223,6 +225,22 @@ const Index = () => {
               <Command className="w-3.5 h-3.5" />
               {!isMobile && <kbd className="text-[10px] font-mono">⌘K</kbd>}
             </button>
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              title="Calculation history (Ctrl/Cmd-H)"
+            >
+              <Clock className="w-4 h-4" />
+            </button>
+            {!isMobile && (
+              <button
+                onClick={() => setShortcutsOpen(true)}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                title="Keyboard shortcuts (Ctrl/Cmd-/)"
+              >
+                <Keyboard className="w-4 h-4" />
+              </button>
+            )}
             {isAdmin ? (
               <button
                 onClick={logout}
