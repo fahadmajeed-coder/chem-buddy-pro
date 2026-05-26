@@ -24,7 +24,7 @@ const FUNCS: Record<string, (...a: number[]) => number> = {
   sin: Math.sin, cos: Math.cos, tan: Math.tan,
   asin: Math.asin, acos: Math.acos, atan: Math.atan, atan2: Math.atan2,
   sign: Math.sign,
-  // Variadic statistical helpers (used by Reports / custom formulas)
+  // Variadic statistical helpers
   sum: (...a) => a.reduce((s, v) => s + v, 0),
   average: (...a) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN,
   mean: (...a) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN,
@@ -33,6 +33,17 @@ const FUNCS: Record<string, (...a: number[]) => number> = {
     const m = a.reduce((s, v) => s + v, 0) / a.length;
     return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1));
   },
+  // Chemistry domain helpers (mirror the ones from toJavaScript rewrites)
+  percentYield: (actual, theoretical) => (actual / theoretical) * 100,
+  percentPurity: (pure, total) => (pure / total) * 100,
+  percentError: (exp, theo) => Math.abs((exp - theo) / theo) * 100,
+  percentDiff: (a, b) => Math.abs(a - b) / ((a + b) / 2) * 100,
+  percentRecovery: (final, initial) => (final / initial) * 100,
+  molarity: (mol, L) => mol / L,
+  normality: (mol, L, n) => (mol * n) / L,
+  dilution: (c1, v1, v2) => (c1 * v1) / v2,
+  pH: (h) => -Math.log10(h),
+  pOH: (oh) => -Math.log10(oh),
 };
 
 const CONSTS: Record<string, number> = {
