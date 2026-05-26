@@ -6,6 +6,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SectionCloudSync } from './SectionCloudSync';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { safeEvalLiteral } from '@/lib/safeEval';
 
 type EntryStatus = 'good' | 'fair' | 'reject' | 'pending';
 
@@ -221,7 +222,7 @@ function evaluateMiniFormula(expression: string, variables: FormulaVariable[], v
       if (isNaN(val)) return null;
       jsExpr = jsExpr.replace(new RegExp(`\\b${v.name}\\b`, 'g'), val.toString());
     }
-    const result = new Function(`"use strict"; return (${jsExpr});`)();
+    const result = safeEvalLiteral(jsExpr);
     return typeof result === 'number' && isFinite(result) ? result : null;
   } catch {
     return null;

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { SOP_FORMULAS, sopFormulaToSavedFormula } from '@/lib/sopFormulas';
+import { safeEvalLiteral } from '@/lib/safeEval';
 
 export interface AnalyticalResult {
   formulaName: string;
@@ -118,7 +119,7 @@ function evaluateFormula(expression: string, variables: FormulaVariable[], value
       if (isNaN(val)) return null;
       jsExpr = jsExpr.replace(new RegExp(`\\b${v.name}\\b`, 'g'), val.toString());
     }
-    const result = new Function(`"use strict"; return (${jsExpr});`)();
+    const result = safeEvalLiteral(jsExpr);
     return typeof result === 'number' && isFinite(result) ? result : null;
   } catch {
     return null;

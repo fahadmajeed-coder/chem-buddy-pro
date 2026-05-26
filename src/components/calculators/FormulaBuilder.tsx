@@ -2,6 +2,7 @@ import { useState, useRef, DragEvent } from 'react';
 import { Plus, Trash2, Save, Check, X, Variable, Calculator, Search, GripVertical, FlaskConical, Play, FileText, ChevronDown, ChevronUp, Copy, Pencil } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SectionCloudSync } from './SectionCloudSync';
+import { safeEvalLiteral } from '@/lib/safeEval';
 
 interface FormulaVariable {
   id: string;
@@ -450,8 +451,7 @@ export function FormulaBuilder({ isAdmin = true }: { isAdmin?: boolean } = {}) {
     // Validation is handled by the try/catch — toJavaScript converts everything
 
     try {
-      const fn = new Function(`"use strict"; return (${jsExpr});`);
-      const res = fn();
+      const res = safeEvalLiteral(jsExpr);
 
       if (typeof res !== 'number' || !isFinite(res)) {
         setTestError('Result is not a valid number (got Infinity or undefined)');

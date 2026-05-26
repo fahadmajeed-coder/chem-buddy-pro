@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { CalibrationCurveData } from '@/components/calculators/CalibrationCurveCard';
+import { safeEvalLiteral } from '@/lib/safeEval';
 
 function linearRegression(points: { x: number; y: number }[]) {
   const n = points.length;
@@ -28,7 +29,7 @@ function evaluateFormula(formula: string, vars: Record<string, number>): number 
       expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), `(${vars[key]})`);
     }
     if (!/^[\d+\-*/().e\s]+$/.test(expr)) return null;
-    const result = new Function(`"use strict"; return (${expr})`)();
+    const result = safeEvalLiteral(expr);
     return typeof result === 'number' && isFinite(result) ? result : null;
   } catch {
     return null;
