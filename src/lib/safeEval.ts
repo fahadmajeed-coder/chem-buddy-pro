@@ -24,6 +24,15 @@ const FUNCS: Record<string, (...a: number[]) => number> = {
   sin: Math.sin, cos: Math.cos, tan: Math.tan,
   asin: Math.asin, acos: Math.acos, atan: Math.atan, atan2: Math.atan2,
   sign: Math.sign,
+  // Variadic statistical helpers (used by Reports / custom formulas)
+  sum: (...a) => a.reduce((s, v) => s + v, 0),
+  average: (...a) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN,
+  mean: (...a) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN,
+  stdDev: (...a) => {
+    if (a.length < 2) return NaN;
+    const m = a.reduce((s, v) => s + v, 0) / a.length;
+    return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1));
+  },
 };
 
 const CONSTS: Record<string, number> = {
@@ -149,11 +158,14 @@ function apply(op: string, a: number, b: number): number {
 /**
  * Safely evaluate a math expression. Throws on parse error / unknown identifier.
  * Variables already substituted into `vars` (e.g. { SW: 5, TR: 2.1 }).
+ * Accepts both bare (`sqrt(x)`) and JS-style (`Math.sqrt(x)`) function calls.
  */
 export function safeEval(expression: string, vars: Record<string, number> = {}): number {
   if (!expression || !expression.trim()) throw new Error('Empty expression');
-  if (expression.length > 2000) throw new Error('Expression too long');
-  const tokens = tokenize(expression);
+  if (expression.length > 4000) throw new Error('Expression too long');
+  // Normalize Math.X → X so JS-style and bare-style both work
+  const normalized = expression.replace(/\bMath\./g, '');
+  const tokens = tokenize(normalized);
   return parse(tokens, vars);
 }
 
