@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Plus, Trash2, Lock, Unlock, Copy, RotateCcw, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { exportCalibrationPDF, exportCalibrationCSV } from '@/lib/calibrationExport';
+import { safeEvalLiteral } from '@/lib/safeEval';
 
 export interface StandardPoint {
   id: string;
@@ -69,7 +70,7 @@ function evaluateFormula(formula: string, vars: Record<string, number>): number 
     }
     // Only allow safe characters: digits, operators, parentheses, dots, spaces
     if (!/^[\d+\-*/().e\s]+$/.test(expr)) return null;
-    const result = new Function(`"use strict"; return (${expr})`)();
+    const result = safeEvalLiteral(expr);
     return typeof result === 'number' && isFinite(result) ? result : null;
   } catch {
     return null;

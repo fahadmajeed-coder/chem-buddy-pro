@@ -1,11 +1,13 @@
 import { useState, lazy, Suspense, useEffect, useMemo } from 'react';
-import { Sun, Moon, Shield, LogOut, Wifi, WifiOff, Cloud, CloudOff, Command } from 'lucide-react';
+import { Sun, Moon, Shield, LogOut, Wifi, WifiOff, Cloud, CloudOff, Command, Clock, Keyboard } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAdminMode } from '@/hooks/useAdminMode';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { AddSectionDialog } from '@/components/AddSectionDialog';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { CommandPalette, type PaletteCommand } from '@/components/CommandPalette';
+import { HistoryPanel } from '@/components/HistoryPanel';
+import { ShortcutsHelp } from '@/components/ShortcutsHelp';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
@@ -51,6 +53,8 @@ const Index = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [cloudMode, setCloudMode] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
   const { isAdmin, login, logout } = useAdminMode();
@@ -67,16 +71,20 @@ const Index = () => {
     };
   }, []);
 
-  // Global Ctrl/Cmd-K to open command palette
+  // Global keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setPaletteOpen((v) => !v);
-      }
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const k = e.key.toLowerCase();
+      if (k === 'k') { e.preventDefault(); setPaletteOpen((v) => !v); }
+      else if (k === 'h') { e.preventDefault(); setHistoryOpen((v) => !v); }
+      else if (k === '/') { e.preventDefault(); setShortcutsOpen((v) => !v); }
+      else if (k === 'l') { e.preventDefault(); toggleTheme(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUseInCalculator = (target: 'molarity' | 'normality' | 'formality' | 'solution', mw: number, _name: string) => {
@@ -178,7 +186,9 @@ const Index = () => {
       action: () => handleSectionChange(s.id),
     }));
     const actions: PaletteCommand[] = [
-      { id: 'toggle-theme', label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', hint: 'Action', action: toggleTheme },
+      { id: 'history', label: 'Open calculation history', hint: 'Ctrl/⌘+H', action: () => setHistoryOpen(true) },
+      { id: 'shortcuts', label: 'Show keyboard shortcuts', hint: 'Ctrl/⌘+/', action: () => setShortcutsOpen(true) },
+      { id: 'toggle-theme', label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', hint: 'Ctrl/⌘+L', action: toggleTheme },
       { id: 'admin', label: isAdmin ? 'Logout admin' : 'Login as admin', hint: 'Action', action: () => isAdmin ? logout() : setShowAdminLogin(true) },
       { id: 'add-section', label: 'Add custom section', hint: 'Action', action: () => setShowAddDialog(true) },
     ];
@@ -215,6 +225,22 @@ const Index = () => {
               <Command className="w-3.5 h-3.5" />
               {!isMobile && <kbd className="text-[10px] font-mono">⌘K</kbd>}
             </button>
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              title="Calculation history (Ctrl/Cmd-H)"
+            >
+              <Clock className="w-4 h-4" />
+            </button>
+            {!isMobile && (
+              <button
+                onClick={() => setShortcutsOpen(true)}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                title="Keyboard shortcuts (Ctrl/Cmd-/)"
+              >
+                <Keyboard className="w-4 h-4" />
+              </button>
+            )}
             {isAdmin ? (
               <button
                 onClick={logout}
@@ -282,6 +308,14 @@ const Index = () => {
         onClose={() => setPaletteOpen(false)}
         commands={paletteCommands}
       />
+
+      <HistoryPanel
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onJump={(s) => handleSectionChange(s)}
+      />
+
+      <ShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
       {showAdminLogin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setShowAdminLogin(false)}>

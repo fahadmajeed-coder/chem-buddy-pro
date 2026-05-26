@@ -6,6 +6,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SectionCloudSync } from './SectionCloudSync';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { safeEvalLiteral } from '@/lib/safeEval';
 
 type EntryStatus = 'good' | 'fair' | 'reject' | 'pending';
 
@@ -201,15 +202,7 @@ function toJavaScript(expr: string): string {
   js = js.replace(/\bsin\(/g, 'Math.sin(');
   js = js.replace(/\bcos\(/g, 'Math.cos(');
   js = js.replace(/\btan\(/g, 'Math.tan(');
-  const arrayFns: Record<string, string> = {
-    'sum': '((...a)=>a.reduce((s,v)=>s+v,0))',
-    'average': '((...a)=>a.reduce((s,v)=>s+v,0)/a.length)',
-    'stdDev': '((...a)=>{const m=a.reduce((s,v)=>s+v,0)/a.length;return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1))})',
-  };
-  for (const [fn, impl] of Object.entries(arrayFns)) {
-    const re = new RegExp(`\\b${fn}\\(`, 'g');
-    js = js.replace(re, `${impl}(`);
-  }
+  // sum/average/stdDev are provided natively by safeEval — no rewriting needed
   return js;
 }
 
@@ -221,7 +214,7 @@ function evaluateMiniFormula(expression: string, variables: FormulaVariable[], v
       if (isNaN(val)) return null;
       jsExpr = jsExpr.replace(new RegExp(`\\b${v.name}\\b`, 'g'), val.toString());
     }
-    const result = new Function(`"use strict"; return (${jsExpr});`)();
+    const result = safeEvalLiteral(jsExpr);
     return typeof result === 'number' && isFinite(result) ? result : null;
   } catch {
     return null;

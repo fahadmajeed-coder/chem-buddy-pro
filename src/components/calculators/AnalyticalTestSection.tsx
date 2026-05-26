@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { SOP_FORMULAS, sopFormulaToSavedFormula } from '@/lib/sopFormulas';
+import { safeEvalLiteral } from '@/lib/safeEval';
 
 export interface AnalyticalResult {
   formulaName: string;
@@ -73,40 +74,9 @@ function toJavaScript(expr: string): string {
   js = js.replace(/\basin\(/g, 'Math.asin(');
   js = js.replace(/\bacos\(/g, 'Math.acos(');
   js = js.replace(/\batan\(/g, 'Math.atan(');
-  // statistical helpers (multi-arg)
-  const arrayFns: Record<string, string> = {
-    'sum': '((...a)=>a.reduce((s,v)=>s+v,0))',
-    'average': '((...a)=>a.reduce((s,v)=>s+v,0)/a.length)',
-    'count': '((...a)=>a.length)',
-    'median': '((...a)=>{a.sort((x,y)=>x-y);const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2})',
-    'geoMean': '((...a)=>Math.pow(a.reduce((p,v)=>p*v,1),1/a.length))',
-    'harmMean': '((...a)=>a.length/a.reduce((s,v)=>s+1/v,0))',
-    'range': '((...a)=>Math.max(...a)-Math.min(...a))',
-    'variance': '((...a)=>{const m=a.reduce((s,v)=>s+v,0)/a.length;return a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1)})',
-    'stdDev': '((...a)=>{const m=a.reduce((s,v)=>s+v,0)/a.length;return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1))})',
-    'popStdDev': '((...a)=>{const m=a.reduce((s,v)=>s+v,0)/a.length;return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length)})',
-    'cv': '((...a)=>{const m=a.reduce((s,v)=>s+v,0)/a.length;return(Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1))/m)*100})',
-    'stdError': '((...a)=>{const m=a.reduce((s,v)=>s+v,0)/a.length;return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1))/Math.sqrt(a.length)})',
-    'sumSq': '((...a)=>a.reduce((s,v)=>s+v*v,0))',
-    'rss': '((...a)=>a.reduce((s,v)=>s+v*v,0))',
-  };
-  for (const [fn, impl] of Object.entries(arrayFns)) {
-    const re = new RegExp(`\\b${fn}\\(`, 'g');
-    js = js.replace(re, `${impl}(`);
-  }
-  // two-arg helpers
-  js = js.replace(/\broundTo\(/g, '((v,p)=>+(Math.round(+(v+"e+"+p))+"e-"+p))(');
-  js = js.replace(/\bclamp\(/g, '((v,lo,hi)=>Math.min(Math.max(v,lo),hi))(');
-  js = js.replace(/\bpercentYield\(/g, '((a,t)=>(a/t)*100)(');
-  js = js.replace(/\bpercentPurity\(/g, '((p,t)=>(p/t)*100)(');
-  js = js.replace(/\bpercentError\(/g, '((exp,theo)=>Math.abs((exp-theo)/theo)*100)(');
-  js = js.replace(/\bpercentDiff\(/g, '((a,b)=>Math.abs(a-b)/((a+b)/2)*100)(');
-  js = js.replace(/\bpercentRecovery\(/g, '((f,i)=>(f/i)*100)(');
-  js = js.replace(/\bmolarity\(/g, '((mol,L)=>mol/L)(');
-  js = js.replace(/\bnormality\(/g, '((mol,L,n)=>(mol*n)/L)(');
-  js = js.replace(/\bdilution\(/g, '((c1,v1,v2)=>(c1*v1)/v2)(');
-  js = js.replace(/\bpH\(/g, '((h)=>-Math.log10(h))(');
-  js = js.replace(/\bpOH\(/g, '((oh)=>-Math.log10(oh))(');
+  // All multi-arg statistical helpers and chemistry helpers
+  // (sum, average, median, range, variance, stdDev, cv, percentYield,
+  // molarity, pH, roundTo, clamp, …) are provided natively by safeEval.
   return js;
 }
 
@@ -118,7 +88,7 @@ function evaluateFormula(expression: string, variables: FormulaVariable[], value
       if (isNaN(val)) return null;
       jsExpr = jsExpr.replace(new RegExp(`\\b${v.name}\\b`, 'g'), val.toString());
     }
-    const result = new Function(`"use strict"; return (${jsExpr});`)();
+    const result = safeEvalLiteral(jsExpr);
     return typeof result === 'number' && isFinite(result) ? result : null;
   } catch {
     return null;
