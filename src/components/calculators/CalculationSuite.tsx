@@ -1550,32 +1550,46 @@ function FertilizerSolver() {
 }
 
 /* ============ Ratio & Batch Preparation ============ */
+type RatioRow = { name: string; ratio: string; maxOn: boolean; max: string };
 function RatioProportion() {
-  const [rows, setRows] = useState<{ name: string; ratio: string }[]>([
-    { name: 'Component A', ratio: '90' },
-    { name: 'Component B', ratio: '7' },
-    { name: 'Component C', ratio: '3' },
+  const [rows, setRows] = useState<RatioRow[]>([
+    { name: 'Component A', ratio: '90', maxOn: false, max: '' },
+    { name: 'Component B', ratio: '7', maxOn: false, max: '' },
+    { name: 'Component C', ratio: '3', maxOn: false, max: '' },
   ]);
   const [batch, setBatch] = useState('5');
   const [unit, setUnit] = useState('g');
 
   const sumRatio = rows.reduce((s, r) => s + num(r.ratio), 0);
-  const total = num(batch);
+  const userTotal = num(batch);
 
-  const update = (i: number, k: 'name' | 'ratio', v: string) => {
-    setRows(rs => rs.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
+  // Derive effective batch from max-constrained rows: each constraint => total <= max_i * sumRatio / ratio_i
+  const constraintTotals = rows
+    .filter(r => r.maxOn && num(r.ratio) > 0 && num(r.max) > 0)
+    .map(r => (num(r.max) * sumRatio) / num(r.ratio));
+  const hasConstraint = constraintTotals.length > 0;
+  const maxAllowed = hasConstraint ? Math.min(...constraintTotals) : Infinity;
+  // If user hasn't set a batch (0) and we have constraints, use max allowed. Otherwise clamp user batch to max allowed.
+  const total = hasConstraint
+    ? (userTotal > 0 ? Math.min(userTotal, maxAllowed) : maxAllowed)
+    : userTotal;
+  const clamped = hasConstraint && userTotal > 0 && userTotal > maxAllowed;
+
+  const update = (i: number, patch: Partial<RatioRow>) => {
+    setRows(rs => rs.map((r, idx) => idx === i ? { ...r, ...patch } : r));
   };
-  const add = () => setRows(rs => [...rs, { name: `Component ${String.fromCharCode(65 + rs.length)}`, ratio: '1' }]);
+  const add = () => setRows(rs => [...rs, { name: `Component ${String.fromCharCode(65 + rs.length)}`, ratio: '1', maxOn: false, max: '' }]);
   const remove = (i: number) => setRows(rs => rs.length > 1 ? rs.filter((_, idx) => idx !== i) : rs);
+  const useMaxAsBatch = () => { if (hasConstraint && isFinite(maxAllowed)) setBatch(maxAllowed.toFixed(4)); };
 
   return (
     <div className="space-y-4">
       <div>
         <h3 className="font-semibold text-foreground mb-1">Ratio & Batch Preparation</h3>
-        <p className="text-xs text-muted-foreground">Enter any number of components with their ratio parts. Set the total batch size; each component's mass/volume is computed proportionally. Ratios need not sum to 100.</p>
+        <p className="text-xs text-muted-foreground">Enter ratio parts per component. Toggle <b>Max</b> on a component and enter its maximum allowed amount — the batch auto-scales so that component never exceeds its limit while keeping the ratio.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <NumInput label="Total Batch Size" value={batch} onChange={setBatch} unit={unit} />
         <div className="space-y-1">
           <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Unit</label>
@@ -1584,25 +1598,53 @@ function RatioProportion() {
           </select>
         </div>
         <ResultBox label="Ratio Sum" value={sumRatio.toFixed(4)} accent />
+        <ResultBox label="Effective Batch" value={total.toFixed(4)} unit={unit} accent />
       </div>
+
+      {hasConstraint && (
+        <div className={`text-xs px-3 py-2 rounded border ${clamped ? 'border-warning/50 bg-warning/10 text-warning' : 'border-primary/30 bg-primary/5 text-muted-foreground'}`}>
+          {clamped
+            ? <>Requested batch exceeds the max constraint. Clamped to <b>{maxAllowed.toFixed(4)} {unit}</b>.</>
+            : <>Max allowed batch by constraints: <b>{maxAllowed.toFixed(4)} {unit}</b>.</>}
+          {' '}<button onClick={useMaxAsBatch} className="underline hover:text-primary ml-1">Use max as batch</button>
+        </div>
+      )}
 
       <div className="space-y-2">
         {rows.map((r, i) => {
           const part = sumRatio > 0 ? (num(r.ratio) / sumRatio) * total : 0;
           const pct = sumRatio > 0 ? (num(r.ratio) / sumRatio) * 100 : 0;
+          const overMax = r.maxOn && num(r.max) > 0 && part > num(r.max) + 1e-9;
           return (
-            <div key={i} className="grid grid-cols-12 gap-2 items-end p-2 rounded border border-border bg-secondary/20">
-              <div className="col-span-12 sm:col-span-4">
-                <TextInput label={`Component ${i + 1}`} value={r.name} onChange={v => update(i, 'name', v)} />
+            <div key={i} className={`grid grid-cols-12 gap-2 items-end p-2 rounded border bg-secondary/20 ${r.maxOn ? 'border-primary/40' : 'border-border'}`}>
+              <div className="col-span-12 sm:col-span-3">
+                <TextInput label={`Component ${i + 1}`} value={r.name} onChange={v => update(i, { name: v })} />
               </div>
-              <div className="col-span-4 sm:col-span-2">
-                <NumInput label="Ratio" value={r.ratio} onChange={v => update(i, 'ratio', v)} />
+              <div className="col-span-3 sm:col-span-1">
+                <NumInput label="Ratio" value={r.ratio} onChange={v => update(i, { ratio: v })} />
               </div>
-              <div className="col-span-4 sm:col-span-2">
+              <div className="col-span-3 sm:col-span-2">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    <input type="checkbox" checked={r.maxOn} onChange={e => update(i, { maxOn: e.target.checked })} className="accent-primary" />
+                    Max {unit}
+                  </label>
+                  <input
+                    type="number"
+                    value={r.max}
+                    onChange={e => update(i, { max: e.target.value })}
+                    disabled={!r.maxOn}
+                    placeholder="e.g. 1000"
+                    className="w-full bg-input border border-border rounded-md px-2 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none disabled:opacity-40"
+                  />
+                </div>
+              </div>
+              <div className="col-span-2 sm:col-span-2">
                 <ResultBox label="%" value={pct.toFixed(3)} unit="%" />
               </div>
               <div className="col-span-3 sm:col-span-3">
                 <ResultBox label="Amount" value={part.toFixed(4)} unit={unit} accent />
+                {overMax && <div className="text-[10px] text-warning mt-1">exceeds max</div>}
               </div>
               <div className="col-span-1">
                 <button onClick={() => remove(i)} className="p-2 text-destructive hover:bg-destructive/10 rounded"><Trash2 className="w-4 h-4" /></button>
